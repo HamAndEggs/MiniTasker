@@ -1,0 +1,83 @@
+{
+    "tasks":
+    [
+        {
+            "what":"Breakfast",
+            "when":"8:00",
+            "bg_colour":[60,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Study",
+            "when":"9:00",
+            "bg_colour":[60,200,60],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Relax / Snack",
+            "when":"11:00",
+            "bg_colour":[200,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Lunch",
+            "when":"12:00",
+            "bg_colour":[60,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Walk Dog",
+            "when":"12:30",
+            "bg_colour":[60,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Study",
+            "when":"13:00",
+            "bg_colour":[60,200,60],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Relax / Snack",
+            "when":"15:00",
+            "bg_colour":[200,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Study",
+            "when":"16:00",
+            "bg_colour":[60,200,60],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Exercise",
+            "when":"17:30",
+            "bg_colour":[60,200,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Dinner",
+            "when":"18:00",
+            "bg_colour":[60,200,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Leisure Time",
+            "when":"19:00",
+            "bg_colour":[60,200,100],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Walk Dog",
+            "when":"21:30",
+            "bg_colour":[60,60,200],
+            "fg_colour":[0,0,0]
+        },
+        {
+            "what":"Sleep",
+            "when":"22:00",
+            "bg_colour":[10,10,100],
+            "fg_colour":[0,0,0]
+        }
+    ]
+}
