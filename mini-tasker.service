@@ -1,0 +1,8 @@
+[Unit]
+Description=Displays time and current task in frame buffer zero.
+
+[Service]
+ExecStart=/usr/bin/mini-tasker
+
+[Install]
+WantedBy=multi-user.target
