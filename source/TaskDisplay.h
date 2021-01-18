@@ -32,7 +32,7 @@ struct Task
 class TaskDisplay
 {
 public:
-    TaskDisplay();
+    TaskDisplay(const std::string& pFontPath);
     ~TaskDisplay();
 
     /**
@@ -55,7 +55,7 @@ public:
 
 private:
 
-    const Task* FindNextTask();
+    const Task* FindNextTask(int& rTillHour,int& rTillMinute);
 
     FBIO::FreeTypeFont mFont;
 

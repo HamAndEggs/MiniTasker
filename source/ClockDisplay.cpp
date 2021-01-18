@@ -5,9 +5,9 @@
 #include "framebuffer.h"
 #include "ClockDisplay.h"
 
-ClockDisplay::ClockDisplay():
-    mTimeFont("./liberation_serif_font/LiberationSerif-Bold.ttf",160,true),
-    mDateFont("./liberation_serif_font/LiberationSerif-Regular.ttf",60,true)
+ClockDisplay::ClockDisplay(const std::string& pFontPath):
+    mTimeFont( pFontPath + "LiberationSerif-Bold.ttf",160,true),
+    mDateFont( pFontPath + "LiberationSerif-Regular.ttf",60,true)
 {
     mLastHour = -1;
     mLastMinute = -1;
@@ -89,6 +89,6 @@ void ClockDisplay::DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY)
             monthDayTag = "nd";
         }
 
-        mDateFont.Printf(pFB,pX + 300,pY + 44,"%d%s",mLastMonthDay,monthDayTag.c_str());
+        mDateFont.Printf(pFB,pX + 4,pY + 100,"%d%s",mLastMonthDay,monthDayTag.c_str());
     }
 }

@@ -1,20 +1,14 @@
 {
     "source_files": [
-        "MiniTasker.cpp",
-   		"framebuffer.cpp",
-        "ClockDisplay.cpp",
-        "TaskDisplay.cpp"
+        "./source/MiniTasker.cpp",
+   		"./source/framebuffer.cpp",
+        "./source/ClockDisplay.cpp",
+        "./source/TaskDisplay.cpp"
     ],
     "configurations": {
         "release": {
-            "default": true,
-            "target": "executable",
-            "compiler": "gcc",
-            "linker": "gcc",
-            "archiver": "ar",
-            "output_path": "./bin/release/",
-            "standard": "c++14",
-            "optimisation": "2",
+            "output_name": "mini-tasker",
+            "optimisation": "3",
             "debug_level": "0",
             "warnings_as_errors": true,
             "enable_all_warnings": false,
@@ -36,32 +30,28 @@
                 "USE_FREETYPEFONTS"
             ]
         },
-        "debug": {
-            "default": false,
-            "target": "executable",
-            "compiler": "gcc",
-            "linker": "gcc",
-            "archiver": "ar",
-            "output_path": "./bin/debug/",
-            "standard": "c++14",
+        "x11": {
             "optimisation": "0",
             "debug_level": "2",
             "warnings_as_errors": false,
-            "enable_all_warnings": true,
+            "enable_all_warnings": false,
             "fatal_errors": false,
             "include": [
                 "/usr/include/",
                 "/usr/include/freetype2",
-                "./"
+                "./",
+				"../../"
             ],
             "libs": [
                 "m",
                 "stdc++",
                 "pthread",
+                "X11",
                 "freetype"
             ],
             "define": [
                 "DEBUG_BUILD",
+                "USE_X11_EMULATION",
                 "USE_FREETYPEFONTS"
             ]
         }

@@ -16,8 +16,8 @@
 #include "framebuffer.h"
 #include "TaskDisplay.h"
 
-TaskDisplay::TaskDisplay():
-    mFont("./liberation_serif_font/LiberationSerif-Bold.ttf",50,true)
+TaskDisplay::TaskDisplay(const std::string& pFontPath):
+    mFont(pFontPath + "/LiberationSerif-Bold.ttf",50,true)
 {
     mCurrentTask = NULL;
 }
@@ -83,7 +83,8 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
 
 void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
 {
-    const Task* newTask = FindNextTask();
+    int tillHour,tillMinute;
+    const Task* newTask = FindNextTask(tillHour,tillMinute);
     if( newTask != NULL && mCurrentTask != newTask )
     {
         mCurrentTask = newTask;
@@ -91,27 +92,41 @@ void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
         mFont.SetPenColour(mCurrentTask->fg_r,mCurrentTask->fg_g,mCurrentTask->fg_b);
         mFont.SetBackgroundColour(mCurrentTask->bg_r,mCurrentTask->bg_g,mCurrentTask->bg_b);
 
-        pFB->DrawRectangle(pX,pY,pX+800,pY+140,mCurrentTask->bg_r,mCurrentTask->bg_g,mCurrentTask->bg_b,true);
+        pFB->DrawRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight(),mCurrentTask->bg_r,mCurrentTask->bg_g,mCurrentTask->bg_b,true);
 
-        mFont.Print(pFB,pX + 4,pY + 120,mCurrentTask->what.c_str());
-        mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d",mCurrentTask->whenHour,mCurrentTask->whenMinute);
+        mFont.Print(pFB,pX + 4,pFB->GetHeight() - 20,mCurrentTask->what.c_str());
+        mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d to %d:%02d",mCurrentTask->whenHour,mCurrentTask->whenMinute,tillHour,tillMinute);
     }
 }
 
-const Task* TaskDisplay::FindNextTask()
+const Task* TaskDisplay::FindNextTask(int& rTillHour,int& rTillMinute)
 {
     std::time_t result = std::time(nullptr);
     tm local_tm = *localtime(&result);
 
-    // Find the first to be 
+    rTillHour = 23;
+    rTillMinute = 59;
 
+    // Find the first to be 
     const int hour = local_tm.tm_hour;
     const int minute = local_tm.tm_min;
+
+    const Task* previous = nullptr;
 
     for( auto t : mTheTasks )
     {
         if( t->whenHour <= hour && t->whenMinute < minute )
+        {
+            if( previous )
+            {
+                rTillHour = previous->whenHour;
+                rTillMinute = previous->whenMinute;
+            }
+
             return t;
+        }
+
+        previous = t;
     }
 
     // Nowt found, show first one. (which is the last one) 

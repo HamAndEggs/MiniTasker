@@ -22,7 +22,7 @@
 class ClockDisplay
 {
 public:
-    ClockDisplay();
+    ClockDisplay(const std::string& pFontPath);
     ~ClockDisplay();
 
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
