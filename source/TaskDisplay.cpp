@@ -19,7 +19,6 @@
 TaskDisplay::TaskDisplay(const std::string& pFontPath):
     mFont(pFontPath + "/LiberationSerif-Bold.ttf",50,true)
 {
-    mCurrentTask = NULL;
 }
 
 TaskDisplay::~TaskDisplay()
@@ -84,22 +83,20 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
 void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
 {
     int tillHour,tillMinute;
-    const Task* newTask = FindNextTask(tillHour,tillMinute);
-    if( newTask != NULL && mCurrentTask != newTask )
+    const Task* theTask = GetCurrentTask(tillHour,tillMinute);
+    if( theTask != NULL )
     {
-        mCurrentTask = newTask;
+        mFont.SetPenColour(theTask->fg_r,theTask->fg_g,theTask->fg_b);
+        mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
-        mFont.SetPenColour(mCurrentTask->fg_r,mCurrentTask->fg_g,mCurrentTask->fg_b);
-        mFont.SetBackgroundColour(mCurrentTask->bg_r,mCurrentTask->bg_g,mCurrentTask->bg_b);
+        pFB->DrawRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight(),theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
 
-        pFB->DrawRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight(),mCurrentTask->bg_r,mCurrentTask->bg_g,mCurrentTask->bg_b,true);
-
-        mFont.Print(pFB,pX + 4,pFB->GetHeight() - 20,mCurrentTask->what.c_str());
-        mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d to %d:%02d",mCurrentTask->whenHour,mCurrentTask->whenMinute,tillHour,tillMinute);
+        mFont.Print(pFB,pX + 4,pFB->GetHeight() - 20,theTask->what.c_str());
+        mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
 
-const Task* TaskDisplay::FindNextTask(int& rTillHour,int& rTillMinute)
+const Task* TaskDisplay::GetCurrentTask(int& rTillHour,int& rTillMinute)
 {
     std::time_t result = std::time(nullptr);
     tm local_tm = *localtime(&result);

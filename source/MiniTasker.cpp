@@ -106,8 +106,6 @@ int main(int argc, char *argv[])
     {
         FBIO::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
 
-        FB->ClearScreen(0,0,0);
-
         TaskDisplay theTasks(path + "liberation_serif_font/");
         if( theTasks.LoadTaskList(path + taskFile) )
         {
@@ -117,6 +115,8 @@ int main(int argc, char *argv[])
 
             while( FB->GetKeepGoing() )
             {
+                FB->ClearScreen(0,0,0);
+
                 theClock.Update(FB,20,20);
                 theTasks.Update(FB,20,400);
 

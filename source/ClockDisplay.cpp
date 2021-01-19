@@ -9,10 +9,6 @@ ClockDisplay::ClockDisplay(const std::string& pFontPath):
     mTimeFont( pFontPath + "LiberationSerif-Bold.ttf",160,true),
     mDateFont( pFontPath + "LiberationSerif-Regular.ttf",60,true)
 {
-    mLastHour = -1;
-    mLastMinute = -1;
-    mLastWeekDay = -1;
-    mLastMonthDay = -1;
 }
 
 ClockDisplay::~ClockDisplay()
@@ -49,16 +45,7 @@ void ClockDisplay::DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY)
     std::time_t result = std::time(nullptr);
     tm local_tm = *localtime(&result);
 
-    if( mLastHour != local_tm.tm_hour || mLastMinute != local_tm.tm_min )
-    {
-        mLastHour = local_tm.tm_hour;
-        mLastMinute = local_tm.tm_min;
-
-        pFB->DrawRectangle(pX,pY,pX+380,pY+140,mBG.r,mBG.g,mBG.b,true);
-
-        mTimeFont.Printf(pFB,pX + 4,pY + 120,"%02d:%02d",mLastHour,mLastMinute);
-//        pFB->DrawRectangle(pX,pY,pX+380,pY+140,255,0,0,false);
-    }
+    mTimeFont.Printf(pFB,pX + 4,pY + 120,"%02d:%02d",local_tm.tm_hour,local_tm.tm_min);
 }
 
 void ClockDisplay::DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY)
@@ -68,27 +55,18 @@ void ClockDisplay::DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY)
     std::time_t result = std::time(nullptr);
     tm local_tm = *localtime(&result);
 
-    if( mLastWeekDay != local_tm.tm_wday || mLastMonthDay != local_tm.tm_mday )
+    mDateFont.Print(pFB,pX + 4,pY + 44,Days[local_tm.tm_wday].c_str());
+
+    // Do month day.
+    std::string monthDayTag = "th";
+    if( local_tm.tm_mday == 1 || local_tm.tm_mday == 21 || local_tm.tm_mday == 31 )
     {
-        mLastWeekDay = local_tm.tm_wday;
-        mLastMonthDay = local_tm.tm_mday;
-
-        pFB->DrawRectangle(pX,pY,pX+420,pY+60,mBG.r,mBG.g,mBG.b,true);
-
-        mDateFont.Print(pFB,pX + 4,pY + 44,Days[mLastWeekDay].c_str());
-//        pFB->DrawRectangle(pX,pY,pX+420,pY+60,255,0,0,false);
-
-        // Do month day.
-        std::string monthDayTag = "th";
-        if( mLastMonthDay == 1 || mLastMonthDay == 21 || mLastMonthDay == 31 )
-        {
-            monthDayTag = "st";
-        }
-        else if( mLastMonthDay == 2 || mLastMonthDay == 22 )
-        {
-            monthDayTag = "nd";
-        }
-
-        mDateFont.Printf(pFB,pX + 4,pY + 100,"%d%s",mLastMonthDay,monthDayTag.c_str());
+        monthDayTag = "st";
     }
+    else if( local_tm.tm_mday == 2 || local_tm.tm_mday == 22 )
+    {
+        monthDayTag = "nd";
+    }
+
+    mDateFont.Printf(pFB,pX + 4,pY + 100,"%d%s",local_tm.tm_mday,monthDayTag.c_str());
 }

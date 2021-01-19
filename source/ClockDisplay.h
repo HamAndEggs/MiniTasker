@@ -42,13 +42,6 @@ private:
 	{
 		uint8_t r,g,b;
 	}mFG,mBG;
-
-    int mLastHour;
-    int mLastMinute;
-    int mLastWeekDay;
-    int mLastMonthDay;
-
-
 };
 
 #endif //#ifndef CLOCK_DISPLAY_H

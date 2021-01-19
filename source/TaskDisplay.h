@@ -55,12 +55,11 @@ public:
 
 private:
 
-    const Task* FindNextTask(int& rTillHour,int& rTillMinute);
+    const Task* GetCurrentTask(int& rTillHour,int& rTillMinute);
 
     FBIO::FreeTypeFont mFont;
 
     std::vector<const Task*> mTheTasks;
-    const Task* mCurrentTask;
 };
 
 #endif //#ifndef CLOCK_DISPLAY_H
