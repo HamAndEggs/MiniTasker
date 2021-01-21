@@ -104,7 +104,11 @@ void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
         const float nowTotal  = (((hour * 60) + minute) * 60) + local_tm.tm_sec;
 
         // "1.0f -" bit is to inverter result so it goes from left to right. :)
-        const float progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
+        float progress = 1.0f;
+        if( (tillTotal - fromTotal) > 0 )
+        {
+            progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
+        }
 
         const int progressX = pFB->GetWidth() * progress;
         pFB->DrawRectangle(0,pY-8,progressX,pY,tillColour,true);
