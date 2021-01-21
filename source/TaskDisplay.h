@@ -55,7 +55,7 @@ public:
 
 private:
 
-    const Task* GetCurrentTask(int& rTillHour,int& rTillMinute);
+    const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint32_t& rTillColour);
 
     FBIO::FreeTypeFont mFont;
 

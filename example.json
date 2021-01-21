@@ -28,7 +28,7 @@
         {
             "what":"Walk Dog",
             "when":"12:30",
-            "bg_colour":[60,60,200],
+            "bg_colour":[60,200,200],
             "fg_colour":[0,0,0]
         },
         {

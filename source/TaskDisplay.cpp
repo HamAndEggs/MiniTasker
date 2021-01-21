@@ -82,42 +82,57 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
 
 void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
 {
+    std::time_t result = std::time(nullptr);
+    tm local_tm = *localtime(&result);
+    const int hour = local_tm.tm_hour;
+    const int minute = local_tm.tm_min;
+
     int tillHour,tillMinute;
-    const Task* theTask = GetCurrentTask(tillHour,tillMinute);
+    uint32_t tillColour;
+    const Task* theTask = GetCurrentTask(hour,minute,tillHour,tillMinute,tillColour);
     if( theTask != NULL )
     {
         mFont.SetPenColour(theTask->fg_r,theTask->fg_g,theTask->fg_b);
         mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
+        // Draw box for all the text
         pFB->DrawRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight(),theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
 
+        // Draw the progress line.
+        const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
+        const float tillTotal =  ((tillHour * 60) + tillMinute) * 60;
+        const float nowTotal  = (((hour * 60) + minute) * 60) + local_tm.tm_sec;
+
+        // "1.0f -" bit is to inverter result so it goes from left to right. :)
+        const float progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
+
+        const int progressX = pFB->GetWidth() * progress;
+        pFB->DrawRectangle(0,pY-8,progressX,pY,tillColour,true);
+        pFB->DrawRectangle(progressX,pY-8,pFB->GetWidth(),pY,theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
+        pFB->DrawRectangle(progressX-4,pY-8,progressX+4,pY,theTask->fg_r,theTask->fg_g,theTask->fg_b,true);// the tick
+
+        // Draw the text.
         mFont.Print(pFB,pX + 4,pFB->GetHeight() - 20,theTask->what.c_str());
         mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
 
-const Task* TaskDisplay::GetCurrentTask(int& rTillHour,int& rTillMinute)
+const Task* TaskDisplay::GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint32_t& rTillColour)
 {
-    std::time_t result = std::time(nullptr);
-    tm local_tm = *localtime(&result);
-
     rTillHour = 23;
     rTillMinute = 59;
-
-    // Find the first to be 
-    const int hour = local_tm.tm_hour;
-    const int minute = local_tm.tm_min;
 
     const Task* previous = nullptr;
 
     for( auto t : mTheTasks )
     {
-        if( t->whenHour <= hour && t->whenMinute < minute )
+        if( t->whenHour <= pHour && t->whenMinute <= pMinute )
         {
             if( previous )
             {
                 rTillHour = previous->whenHour;
                 rTillMinute = previous->whenMinute;
+                rTillColour = MAKE_PIXEL_COLOUR(previous->bg_r,previous->bg_g,previous->bg_b);
             }
 
             return t;
