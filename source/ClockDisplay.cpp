@@ -36,6 +36,9 @@ void ClockDisplay::SetBackground(uint8_t pR,uint8_t pG,uint8_t pB)
 
 void ClockDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
 {
+    pFB->DrawRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255,true);
+    pFB->DrawRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0,true);
+
     DrawTime(pFB,pX,pY);
     DrawDay(pFB,pX + 8,pY + 140);
 }

@@ -52,10 +52,10 @@ struct X11FrameBufferEmulation
 	Display *mDisplay;
 	Window mWindow;
 	XImage* mFrameBufferImage;
+	Atom mDeleteMessage;
 
-	bool mRunMessagePump;
+	bool mWindowReady;
 	uint8_t* mFrameBuffer;
-	std::thread mMessagePump;
 	struct fb_fix_screeninfo mFixInfo;
 	struct fb_var_screeninfo mVarInfo;
 
@@ -353,7 +353,7 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
 		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromY*mStride) );
-		for( int x = pFromX ; x < pToX && x < mWidth ; x++ )
+		for( int x = pFromX ; x <= pToX && x < mWidth ; x++ )
 		{
 			assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 			dest[x] = pixel;
@@ -363,7 +363,7 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 	{
 		assert( mPixelSize == 3 || mPixelSize == 4 );
 		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int x = pFromX ; x < pToX && x < mWidth ; x++, dest += mPixelSize )
+		for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 		{
 			dest[ (RedShift/8) ] = pRed;
 			dest[ (GreenShift/8) ] = pGreen;
@@ -399,7 +399,7 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 
 		uint16_t *dest = (uint16_t*)mFrameBuffer;
 		dest += pFromX + (pFromY*mWidth);
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mWidth )
+		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mWidth )
 		{
 			*dest = pixel;
 		}
@@ -408,7 +408,7 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 	{
 		assert( mPixelSize == 3 || mPixelSize == 4 );
 		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mStride )
+		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mStride )
 		{
 			dest[ (RedShift/8) ] = pRed;
 			dest[ (GreenShift/8) ] = pGreen;
@@ -581,11 +581,11 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
 			// Don't need to check for y >= mHeight as above we already clamped it.
-			for( int y = pFromY ; y < pToY ; y++ )
+			for( int y = pFromY ; y <= pToY ; y++ )
 			{
 				uint16_t *dest = (uint16_t*)(mFrameBuffer + (y*mStride) );
 				// Don't need to check for x >= mWidth as above we already clamped it.
-				for( int x = pFromX ; x < pToX ; x++ )
+				for( int x = pFromX ; x <= pToX ; x++ )
 				{
 					assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 					dest[x] = pixel;
@@ -595,10 +595,10 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		else
 		{
 			assert( mPixelSize == 3 || mPixelSize == 4 );
-			for( int y = pFromY ; y < pToY ; y++ )
+			for( int y = pFromY ; y <= pToY ; y++ )
 			{
 				uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (y*mStride);
-				for( int x = pFromX ; x < pToX && x < mWidth ; x++, dest += mPixelSize )
+				for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 				{
 					dest[ (RedShift/8) ] = pRed;
 					dest[ (GreenShift/8) ] = pGreen;
@@ -617,6 +617,158 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
 	}
 }
+
+void FrameBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+{
+	if( pRadius < 1 )
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+
+	pFromY = std::max(0,std::min(mHeight,pFromY));
+	pToY = std::max(0,std::min(mHeight,pToY));
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+	pFromX = std::max(0,std::min(mWidth,pFromX));
+	pToX = std::max(0,std::min(mWidth,pToX));
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
+
+	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
+	{
+		pRadius = (pToX - pFromX) / 2;
+		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+	else if( pRadius*2 > pToX - pFromX )
+	{
+		pRadius = (pToX - pFromX) / 2;
+	}
+	else if( pRadius*2 > pToY - pFromY )
+	{
+		pRadius = (pToY - pFromY) / 2;
+	}
+
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
+
+	// Values I need so that the quadrants are positioned in the corners of the rectangle.
+	const int left = pFromX + pRadius; 
+	const int right = pToX - pRadius;
+	const int top = pFromY + pRadius;
+	const int bottom = pToY - pRadius;
+
+    while (x >= y)
+    {
+		if(pFilled)
+		{
+			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue);			
+
+			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue);
+		}
+		else
+		{
+			WritePixel(left - x, top - y,pRed,pGreen,pBlue);
+			WritePixel(left - y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + x, top - y,pRed,pGreen,pBlue);
+
+			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue);
+			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue);
+		}
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
+
+	if( pFilled )
+	{
+		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,true);
+	}
+	else
+	{
+		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue);
+		DrawLineH(left,pToY,right,pRed,pGreen,pBlue);
+
+		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue);
+		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue);
+	}
+}
+
+
+void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
+{
+	// Do some early outs.
+	if( pFromY == pToY || pFromX == pToX )
+		return;
+
+	// Make sure X is in the right direction.
+	if( pFromX > pToX )
+	{
+		std::swap(pFromX,pToX);
+	}
+
+	float a,s;
+
+	// See if we need to flip the direction of the gradient if they are drawing up instead of down.
+	if( pFromY > pToY )
+	{
+		std::swap(pFromY,pToY);
+		a = 1.0f;
+		s = -1.0f / (float)(pToY - pFromY);
+	}
+	else
+	{
+		a = 0.0f;
+		s = 1.0f / (float)(pToY - pFromY);
+	}
+
+	const float fR = (float)pFormRed / 255.0f;
+	const float fG = (float)pFormGreen / 255.0f;
+	const float fB = (float)pFormBlue / 255.0f;
+
+	const float tR = (float)pToRed / 255.0f;
+	const float tG = (float)pToGreen / 255.0f;
+	const float tB = (float)pToBlue / 255.0f;
+
+	for( int y = pFromY ; y <= pToY ; y++, a += s )
+	{
+		const float invA = 1.0f - a;
+		const uint8_t r = (uint8_t)( ((fR * invA) + (tR * a) ) * 255.0f);
+		const uint8_t g = (uint8_t)( ((fG * invA) + (tG * a) ) * 255.0f);
+		const uint8_t b = (uint8_t)( ((fB * invA) + (tB * a) ) * 255.0f);
+
+		DrawLineH(pFromX,y,pToX,r,g,b);
+	}
+}
+
 
 void FrameBuffer::RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV)
 {
@@ -749,9 +901,9 @@ void FrameBuffer::TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 	float a = 0.0f;
 	for( int n = 0 ; n < 256 ; n++, a += (1.0f/255.0f) )
 	{
-		const float H = (fromH*a) + ((1.0f-a) * toH);
-		const float S = (fromS*a) + ((1.0f-a) * toS);
-		const float V = (fromV*a) + ((1.0f-a) * toV);
+		const float H = ((1.0f-a)*fromH) + (a * toH);
+		const float S = ((1.0f-a)*fromS) + (a * toS);
+		const float V = ((1.0f-a)*fromV) + (a * toV);
 
 		uint8_t r,g,b;
 
@@ -765,9 +917,9 @@ void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 {
 	for( uint32_t n = 0 ; n < 256 ; n++ )
 	{
-		const uint32_t r = ( (pFromRed   * n) + (pToRed   * (255 - n)) ) / 255;
-		const uint32_t g = ( (pFromGreen * n) + (pToGreen * (255 - n)) ) / 255;
-		const uint32_t b = ( (pFromBlue  * n) + (pToBlue  * (255 - n)) ) / 255;
+		const uint32_t r = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
+		const uint32_t g = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
+		const uint32_t b = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
 		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
 	}
 }
@@ -1077,7 +1229,7 @@ static const uint8_t font8x13[] =
     0x3a, 0x02, 0x42, 0x3c
 };
 
-PixelFont::PixelFont(int pPixelSize):mPixelSize(1)
+PixelFont::PixelFont(int pPixelSize):mPixelSize(1),mBorderOn(false)
 {
 	SetPenColour(255,255,255);
 	SetPixelSize(pPixelSize);
@@ -1089,9 +1241,30 @@ PixelFont::~PixelFont()
 
 void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
 {
-	const uint8_t* d = font8x13 + pChar * 13;
+	const uint8_t* charBits = font8x13 + pChar * 13;
 	if( mPixelSize == 1 )
 	{
+		if( mBorderOn )
+		{
+			const uint8_t* d = charBits;
+			for(int y = 0 ; y < 13 ; y++ , d++)
+			{
+				int x = pX;
+				const uint8_t bits = *d;
+				if( bits != 0 )
+				{
+					for( int bit = 7 ; bit > -1 ; bit-- , x++ )
+					{
+						if( bits&(1<<bit) )
+						{
+							pDest->DrawRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+						}
+					}
+				}
+			}
+		}
+
+		const uint8_t* d = charBits;
 		for(int y = 0 ; y < 13 ; y++ , d++)
 		{
 			int x = pX;
@@ -1110,6 +1283,28 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 	}
 	else
 	{
+		if( mBorderOn )
+		{
+			const uint8_t* d = charBits;
+			int by = pY;
+			for(int y = 0 ; y < 13 ; y++ , d++ , by += mPixelSize )
+			{
+				int x = pX;
+				const uint8_t bits = *d;
+				if( bits != 0 )
+				{
+					for( int bit = 7 ; bit > -1 ; bit-- , x+=mPixelSize )
+					{
+						if( bits&(1<<bit) )
+						{
+							pDest->DrawRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+						}
+					}
+				}
+			}
+		}
+
+		const uint8_t* d = charBits;
 		for(int y = 0 ; y < 13 ; y++ , d++ , pY += mPixelSize )
 		{
 			int x = pX;
@@ -1120,8 +1315,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 				{
 					if( bits&(1<<bit) )
 					{
-						for(int i = 0 ; i < mPixelSize ; i++ )
-							pDest->DrawLineH(x,pY+i,x+mPixelSize,pGreen,pGreen,pBlue);
+						pDest->DrawRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue,true);
 					}
 				}
 			}
@@ -1178,6 +1372,15 @@ void PixelFont::SetPixelSize(int pPixelSize)
 	if( pPixelSize > 0 )
 		mPixelSize = pPixelSize;
 }
+
+void PixelFont::SetBorder(bool pOn,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	mBorderOn = pOn;
+	mBorderColour.r = pRed;
+	mBorderColour.g = pGreen;
+	mBorderColour.b = pBlue;
+}
+
 
 #ifdef USE_FREETYPEFONTS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1412,7 +1615,7 @@ void FreeTypeFont::RecomputeBlendTable()
 {
 	uint32_t blendTable[256];
 
-	FrameBuffer::TweenColoursRGB(mPenColour.r,mPenColour.g,mPenColour.b,mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,blendTable);
+	FrameBuffer::TweenColoursRGB(mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,mPenColour.r,mPenColour.g,mPenColour.b,blendTable);
 
 	// Unpack to speed up rendering.
 	for( uint32_t p = 0 ; p < 256 ; p++ )
@@ -1433,7 +1636,7 @@ void FreeTypeFont::RecomputeBlendTable()
 X11FrameBufferEmulation::X11FrameBufferEmulation():
 	mDisplay(NULL),
 	mWindow(0),
-	mRunMessagePump(false),
+	mWindowReady(false),
 	mFrameBuffer(NULL)
 {
 	memset(&mFixInfo,0,sizeof(mFixInfo));
@@ -1443,16 +1646,11 @@ X11FrameBufferEmulation::X11FrameBufferEmulation():
 
 X11FrameBufferEmulation::~X11FrameBufferEmulation()
 {
-	mRunMessagePump = false;
+	mWindowReady = false;
 
 	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
 	XDestroyWindow(mDisplay,mWindow);
 	XCloseDisplay(mDisplay);
-
-	if( mMessagePump.joinable() )
-	{
-		mMessagePump.join();
-	}
 }
 
 bool X11FrameBufferEmulation::Open(bool pVerbose)
@@ -1528,46 +1726,16 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 							32,
 							0);
 
-	mRunMessagePump = true;
-	bool ExposeReceived = false;
-	mMessagePump = std::thread([this,&ExposeReceived]()
-	{
-		// So I can exit cleanly if the user uses the close window button.
-		Atom wmDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
-		XSetWMProtocols(mDisplay, mWindow, &wmDeleteMessage, 1);
+	// So I can exit cleanly if the user uses the close window button.
+	mDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(mDisplay, mWindow, &mDeleteMessage, 1);
 
-		XEvent e;
-		while( mRunMessagePump )
-		{
-			XNextEvent(mDisplay, &e);
-			switch( e.type )
-			{
-			case Expose:
-				ExposeReceived = true;
-				break;
-
-			case ClientMessage:
-				// All of this is to stop and error when we try to use the display but has been disconnected.
-				// Snip from X11 docs.
-				// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
-				// 	may be disconnected from the server if the user asks for one of the
-				//  client's top-level windows to be deleted.
-				// 
-				// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
-				if (static_cast<Atom>(e.xclient.data.l[0]) == wmDeleteMessage)
-				{
-					mRunMessagePump = false;
-					FrameBuffer::SetKeepGoingFalse();
-				}
-				break;
-			}
-		};
-	});
 
 	// wait for the expose message.
   	timespec SleepTime = {0,1000000};
-	while( !ExposeReceived )
+	while( !mWindowReady )
 	{
+		Present();
 		nanosleep(&SleepTime,NULL);
 	}
 
@@ -1576,8 +1744,71 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 
 void X11FrameBufferEmulation::Present()
 {
-	GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
-	XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
+	// This is dispite what the documentation stated.
+	while( XPending(mDisplay) )
+	{
+		XEvent e;
+		XNextEvent(mDisplay,&e);
+		switch( e.type )
+		{
+		case Expose:
+			mWindowReady = true;
+			break;
+
+		case ClientMessage:
+			// All of this is to stop and error when we try to use the display but has been disconnected.
+			// Snip from X11 docs.
+			// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
+			// 	may be disconnected from the server if the user asks for one of the
+			//  client's top-level windows to be deleted.
+			// 
+			// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
+			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
+
+		case KeyPress:
+			// exit on ESC key press
+			if ( e.xkey.keycode == 0x09 )
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
+		}
+	}
+
+	if( mWindowReady )
+	{
+		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
+		const int ret = XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+
+		switch (ret)
+		{
+		case BadDrawable:
+			std::cerr << "XPutImage failed BadDrawable\n";
+			break;
+
+		case BadGC:
+			std::cerr << "XPutImage failed BadGC\n";
+			break;
+
+		case BadMatch:
+			std::cerr << "XPutImage failed BadMatch\n";
+			break;
+
+		case BadValue:
+			std::cerr << "XPutImage failed BadValue\n";
+			break;
+
+		default:
+			break;
+		}
+	}
 }
 
 #endif //#ifdef USE_X11_EMULATION

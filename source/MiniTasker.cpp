@@ -115,7 +115,9 @@ int main(int argc, char *argv[])
 
             while( FB->GetKeepGoing() )
             {
-                FB->ClearScreen(0,0,0);
+                FB->DrawGradient(0,0,FB->GetWidth(),140,0,0,0,70,70,70);
+                FB->DrawRectangle(0,140,FB->GetWidth(),260,70,70,70,true);
+                FB->DrawGradient(0,260,FB->GetWidth(),400,70,70,70,0,0,0);
 
                 theClock.Update(FB,20,20);
                 theTasks.Update(FB,20,400);
@@ -123,8 +125,9 @@ int main(int argc, char *argv[])
                 uint64_t upDays,upHours,upMinutes;
                 if( GetUptime(upDays,upHours,upMinutes) )
                 {
-                    FB->DrawRectangle(690,0,FB->GetWidth(),50,20,30,180,true);
-                    StatsFont.Printf(FB,700,30,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+                    FB->DrawRoundedRectangle(650,2,FB->GetWidth()-2,80,20,255,255,255,true);
+                    FB->DrawRoundedRectangle(654,6,FB->GetWidth()-6,76,18,20,30,180,true);
+                    StatsFont.Printf(FB,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
                 }
 
                 FB->Present();
