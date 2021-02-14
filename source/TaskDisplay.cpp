@@ -96,7 +96,7 @@ void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
         mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw box for all the text
-        pFB->DrawRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight(),theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
+        pFB->DrawRoundedRectangle(0,pY,pFB->GetWidth(),pFB->GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
 
         // Draw the progress line.
         const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
@@ -111,12 +111,13 @@ void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
         }
 
         const int progressX = pFB->GetWidth() * progress;
-        pFB->DrawRectangle(0,pY-8,progressX,pY,tillColour,true);
-        pFB->DrawRectangle(progressX,pY-8,pFB->GetWidth(),pY,theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
-        pFB->DrawRectangle(progressX-4,pY-8,progressX+4,pY,theTask->fg_r,theTask->fg_g,theTask->fg_b,true);// the tick
+        const int progressY = pFB->GetHeight();
+        pFB->DrawRectangle(0,progressY-8,progressX,progressY,tillColour,true);
+        pFB->DrawRectangle(progressX,progressY-8,pFB->GetWidth(),progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b,true);
+        pFB->DrawRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b,true);// the tick
 
         // Draw the text.
-        mFont.Print(pFB,pX + 4,pFB->GetHeight() - 20,theTask->what.c_str());
+        mFont.Print(pFB,pX + 4,pFB->GetHeight() - 30,theTask->what.c_str());
         mFont.Printf(pFB,pX + 4,pY + 40,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
