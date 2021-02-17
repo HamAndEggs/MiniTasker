@@ -27,7 +27,6 @@
 #include <vector>
 #include <string>
 #include <utility>
-#include <optional>
 #include <assert.h>
 
 namespace tinyjson{ // Using a namespace to try to prevent name clashes as my class names are kind of obvious :)
