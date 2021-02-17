@@ -14,37 +14,35 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
    
-#ifndef CLOCK_DISPLAY_H
-#define CLOCK_DISPLAY_H
+#ifndef THE_WEATHER_H
+#define THE_WEATHER_H
 
+#include <thread>
+#include <ctime>
 #include <string>
 
-#include "framebuffer.h"
+#include "GetWeather.h"
 
-class ClockDisplay
+class TheWeather
 {
 public:
-    ClockDisplay(const std::string& pFontPath);
-    ~ClockDisplay();
+    TheWeather(const std::string& pWeatherApiKey);
+    ~TheWeather();
 
-    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
+    bool GetHasWeather()const{return mHasWeather;}
+    std::string GetCurrentTemperature()const{return mCurrentTemperature;}
 
-    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const std::string& pCurrentTemperature);
+    void Update();
 
 private:
+    bool mHasWeather;
+    bool mFetchingWeather;
+    tm mLastFetchTime;
+    std::thread mFetchThread;
+    getweather::GetWeather mWeather;
 
-    void DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY);
-    void DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY);
+    std::string mCurrentTemperature;
 
-    FBIO::FreeTypeFont mTimeFont;
-    FBIO::FreeTypeFont mDateFont;
-    FBIO::FreeTypeFont mTemperatureFont;    
-
-	struct
-	{
-		uint8_t r,g,b;
-	}mFG,mBG;
 };
 
-#endif //#ifndef CLOCK_DISPLAY_H
+#endif //#ifndef THE_WEATHER_H

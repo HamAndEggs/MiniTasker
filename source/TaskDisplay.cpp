@@ -7,17 +7,12 @@
 #include <fstream>
 #include <sstream>
 
-
-#define RAPIDJSON_HAS_STDSTRING 1
-#include <rapidjson/document.h>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/prettywriter.h>
-
+#include "TinyJson.h"
 #include "framebuffer.h"
 #include "TaskDisplay.h"
 
 TaskDisplay::TaskDisplay(const std::string& pFontPath):
-    mFont(pFontPath + "/LiberationSerif-Bold.ttf",50,true)
+    mFont(pFontPath + "/LiberationSerif-Bold.ttf",50)
 {
 }
 
@@ -38,18 +33,13 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
         std::stringstream jsonStream;
         jsonStream << jsonFile.rdbuf();// Read the whole file in...
 
-        rapidjson::Document jsonDocument;
-        jsonDocument.Parse(jsonStream.str().c_str());
+   		tinyjson::JsonProcessor json(jsonStream.str());
+		const tinyjson::JsonValue projectRoot = json.GetRoot();
 
-        // Have to invert result as I want true if it worked, false if it failed.
-        if( jsonDocument.HasParseError() )
-            return false;
-
-        // Now parse the data.
-    	const rapidjson::Value& projectRoot = jsonDocument;
+        mWeatherApiKey = projectRoot.GetString("weather-api-key");
 
         // I am not checking the format here for code simplicity. I am creating the input file.
-        for( const auto& val : projectRoot["tasks"].GetArray() )
+        for( const auto& val : projectRoot["tasks"].mArray )
         {
             const std::string what = val["what"].GetString();
             const std::string when = val["when"].GetString();

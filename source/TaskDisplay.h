@@ -53,6 +53,8 @@ public:
      */
     void Update(FBIO::FrameBuffer* pFB,int pX,int pY);
 
+    const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
+
 private:
 
     const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint32_t& rTillColour);
@@ -60,6 +62,8 @@ private:
     FBIO::FreeTypeFont mFont;
 
     std::vector<const Task*> mTheTasks;
+
+    std::string mWeatherApiKey;
 };
 
 #endif //#ifndef CLOCK_DISPLAY_H

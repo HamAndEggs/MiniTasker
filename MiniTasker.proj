@@ -3,7 +3,9 @@
         "./source/MiniTasker.cpp",
    		"./source/framebuffer.cpp",
         "./source/ClockDisplay.cpp",
-        "./source/TaskDisplay.cpp"
+        "./source/TaskDisplay.cpp",
+        "./source/GetWeather.cpp",
+        "./source/TheWeather.cpp"
     ],
     "configurations": {
         "release": {
@@ -22,7 +24,8 @@
                 "m",
                 "stdc++",
                 "pthread",
-                "freetype"
+                "freetype",
+                "curl"
             ],
             "define": [
                 "NDEBUG",
@@ -47,7 +50,8 @@
                 "stdc++",
                 "pthread",
                 "X11",
-                "freetype"
+                "freetype",
+                "curl"
             ],
             "define": [
                 "DEBUG_BUILD",

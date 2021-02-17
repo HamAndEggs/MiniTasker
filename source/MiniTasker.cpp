@@ -30,6 +30,7 @@
 #include "framebuffer.h"
 #include "ClockDisplay.h"
 #include "TaskDisplay.h"
+#include "TheWeather.h"
 
 
 /**
@@ -113,13 +114,16 @@ int main(int argc, char *argv[])
             theClock.SetForground(255,255,255);
             theClock.SetBackground(0,0,0);
 
+            TheWeather weather(theTasks.GetWeatherApiKey());
+
             while( FB->GetKeepGoing() )
             {
                 FB->DrawGradient(0,0,FB->GetWidth(),140,0,0,0,70,70,70);
                 FB->DrawRectangle(0,140,FB->GetWidth(),260,70,70,70,true);
                 FB->DrawGradient(0,260,FB->GetWidth(),400,70,70,70,0,0,0);
 
-                theClock.Update(FB,20,20);
+                weather.Update();
+                theClock.Update(FB,20,20,weather.GetCurrentTemperature());
                 theTasks.Update(FB,20,400);
 
                 uint64_t upDays,upHours,upMinutes;

@@ -6,9 +6,11 @@
 #include "ClockDisplay.h"
 
 ClockDisplay::ClockDisplay(const std::string& pFontPath):
-    mTimeFont( pFontPath + "LiberationSerif-Bold.ttf",160,true),
-    mDateFont( pFontPath + "LiberationSerif-Regular.ttf",60,true)
+    mTimeFont( pFontPath + "LiberationSerif-Bold.ttf",160),
+    mDateFont( pFontPath + "LiberationSerif-Regular.ttf",60),
+    mTemperatureFont( pFontPath + "LiberationSerif-Regular.ttf",60)
 {
+    mTemperatureFont.SetPenColour(140,140,200);
 }
 
 ClockDisplay::~ClockDisplay()
@@ -32,15 +34,21 @@ void ClockDisplay::SetBackground(uint8_t pR,uint8_t pG,uint8_t pB)
     mBG.b = pB;
     mTimeFont.SetBackgroundColour(pR,pG,pB);
     mDateFont.SetBackgroundColour(pR,pG,pB);
+    mTemperatureFont.SetBackgroundColour(pR,pG,pB);
 }
 
-void ClockDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
+void ClockDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY,const std::string& pCurrentTemperature)
 {
     pFB->DrawRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255,true);
     pFB->DrawRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0,true);
 
     DrawTime(pFB,pX,pY);
     DrawDay(pFB,pX + 8,pY + 140);
+    // Draw temperature, if we have one.
+    if( pCurrentTemperature.size() > 0 )
+    {
+        mTemperatureFont.Print(pFB,pX + 200,pY + 260,pCurrentTemperature.c_str());
+    }
 }
 
 void ClockDisplay::DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY)
@@ -71,5 +79,5 @@ void ClockDisplay::DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY)
         monthDayTag = "nd";
     }
 
-    mDateFont.Printf(pFB,pX + 4,pY + 100,"%d%s",local_tm.tm_mday,monthDayTag.c_str());
+    mDateFont.Printf(pFB,pX + 4,pY + 120,"%d%s",local_tm.tm_mday,monthDayTag.c_str());
 }
