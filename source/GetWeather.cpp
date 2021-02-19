@@ -145,7 +145,7 @@ GetWeather::~GetWeather()
 	curl_global_cleanup();
 }
 
-void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(const TheWeather& pWeather)> pReturnFunction)
+void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction)
 { 
 	assert( pReturnFunction != nullptr );
 
@@ -166,15 +166,18 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(const
 		const tinyjson::JsonValue weather = json.GetRoot();
 
 		TheWeather weatherData;
+		bool downloadedOk = false;
 
 		// Lets build up the weather data.
 		if( weather.HasValue("current") )
 		{
+			downloadedOk = true;
 			ReadWeatherData(weather["current"],weatherData.mCurrent);
 		}
 
 		if( weather.GetArraySize("hourly") > 0 )
 		{
+			downloadedOk = true;
 			const tinyjson::JsonValue& hourly = weather["hourly"];
 			for( const auto& weather : hourly.mArray )
 			{
@@ -186,6 +189,7 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(const
 
 		if( weather.GetArraySize("daily") > 0 )
 		{
+			downloadedOk = true;
 			const tinyjson::JsonValue& daily = weather["daily"];
 			for( const auto& weather : daily.mArray )
 			{
@@ -195,7 +199,7 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(const
 
 		}
 
-		pReturnFunction(weatherData);
+		pReturnFunction(downloadedOk,weatherData);
 	}
 }
 

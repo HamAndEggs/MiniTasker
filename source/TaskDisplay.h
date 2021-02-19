@@ -51,7 +51,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void Update(FBIO::FrameBuffer* pFB,int pX,int pY);
+    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime);
 
     const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
 

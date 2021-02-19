@@ -18,6 +18,7 @@
 #define CLOCK_DISPLAY_H
 
 #include <string>
+#include <time.h>
 
 #include "framebuffer.h"
 
@@ -30,12 +31,12 @@ public:
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
     void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
 
-    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const std::string& pCurrentTemperature);
+    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature);
 
 private:
 
-    void DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY);
-    void DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY);
+    void DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY,int pHour,int pMinute);
+    void DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY,int pWeekDay,int pMonthDay);
 
     FBIO::FreeTypeFont mTimeFont;
     FBIO::FreeTypeFont mDateFont;

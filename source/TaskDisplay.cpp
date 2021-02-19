@@ -70,12 +70,10 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
     return false;
 }
 
-void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
+void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime)
 {
-    std::time_t result = std::time(nullptr);
-    tm local_tm = *localtime(&result);
-    const int hour = local_tm.tm_hour;
-    const int minute = local_tm.tm_min;
+    const int hour = pCurrentTime.tm_hour;
+    const int minute = pCurrentTime.tm_min;
 
     int tillHour,tillMinute;
     uint32_t tillColour;
@@ -91,7 +89,7 @@ void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY)
         // Draw the progress line.
         const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
         const float tillTotal =  ((tillHour * 60) + tillMinute) * 60;
-        const float nowTotal  = (((hour * 60) + minute) * 60) + local_tm.tm_sec;
+        const float nowTotal  = (((hour * 60) + minute) * 60) + pCurrentTime.tm_sec;
 
         // "1.0f -" bit is to inverter result so it goes from left to right. :)
         float progress = 1.0f;

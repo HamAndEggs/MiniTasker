@@ -17,7 +17,6 @@
 #ifndef THE_WEATHER_H
 #define THE_WEATHER_H
 
-#include <thread>
 #include <ctime>
 #include <string>
 
@@ -32,13 +31,12 @@ public:
     bool GetHasWeather()const{return mHasWeather;}
     std::string GetCurrentTemperature()const{return mCurrentTemperature;}
 
-    void Update();
+    void Update(const tm& pCurrentTime);
 
 private:
     bool mHasWeather;
-    bool mFetchingWeather;
+    int mFetchLimiter;
     tm mLastFetchTime;
-    std::thread mFetchThread;
     getweather::GetWeather mWeather;
 
     std::string mCurrentTemperature;

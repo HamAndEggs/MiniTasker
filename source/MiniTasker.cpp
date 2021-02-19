@@ -102,6 +102,10 @@ int main(int argc, char *argv[])
         taskFile = argv[2];
     }
 
+    std::time_t result = std::time(nullptr);
+    tm currentTime = *localtime(&result);
+
+
     FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
 	if( FB )
     {
@@ -118,13 +122,21 @@ int main(int argc, char *argv[])
 
             while( FB->GetKeepGoing() )
             {
+                // See if day has changed.
+                std::time_t result = std::time(nullptr);
+                const tm *now = localtime(&result);
+                if( now != nullptr )
+                {
+                    currentTime = *now;
+                }
+
                 FB->DrawGradient(0,0,FB->GetWidth(),140,0,0,0,70,70,70);
                 FB->DrawRectangle(0,140,FB->GetWidth(),260,70,70,70,true);
                 FB->DrawGradient(0,260,FB->GetWidth(),400,70,70,70,0,0,0);
 
-                weather.Update();
-                theClock.Update(FB,20,20,weather.GetCurrentTemperature());
-                theTasks.Update(FB,20,400);
+                weather.Update(currentTime);
+                theClock.Update(FB,20,20,currentTime,weather.GetCurrentTemperature());
+                theTasks.Update(FB,20,400,currentTime);
 
                 uint64_t upDays,upHours,upMinutes;
                 if( GetUptime(upDays,upHours,upMinutes) )

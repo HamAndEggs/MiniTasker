@@ -191,7 +191,7 @@ public:
 	GetWeather(const std::string& pAPIKey);
 	~GetWeather();
 
-	void Get(double pLatitude,double pLongitude,std::function<void(const TheWeather& pWeather)> pReturnFunction);
+	void Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction);
 
 private:
 

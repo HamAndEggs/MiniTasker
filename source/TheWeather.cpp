@@ -8,7 +8,7 @@
 
 TheWeather::TheWeather(const std::string& pWeatherApiKey):
     mHasWeather(false),
-    mFetchingWeather(false),
+    mFetchLimiter(0),
     mWeather(pWeatherApiKey)
 {
 
@@ -16,49 +16,44 @@ TheWeather::TheWeather(const std::string& pWeatherApiKey):
 
 TheWeather::~TheWeather()
 {
-    if( mFetchThread.joinable() )
-    {
-        mFetchThread.join();
-    }
 }
 
-void TheWeather::Update()
+void TheWeather::Update(const tm& pCurrentTime)
 {
     if( mHasWeather == false )
     {
-        if( mFetchingWeather == false )
+        // Because when time is 11:59 the fetch limiter could be set to a big number and when the day changes next minute
+        // will never be less that current minute of the day.
+        // So I also check the day too, again. Done a second time, once, at the bottom, to see if we need a new days time.
+        if( mFetchLimiter < (pCurrentTime.tm_hour*60) + pCurrentTime.tm_min || mLastFetchTime.tm_yday != pCurrentTime.tm_yday )
         {
-            mFetchingWeather = true;
-            mFetchThread = std::thread([this]()
+            mLastFetchTime = pCurrentTime;
+            mFetchLimiter = (pCurrentTime.tm_hour*60) + pCurrentTime.tm_min;
+            std::cout << "fetching new weather data\n";
+            mWeather.Get(50.72824,-1.15244,[this](bool pDownloadedOk,const getweather::TheWeather &pTheWeather)
             {
-                mWeather.Get(50.72824,-1.15244,[this](const getweather::TheWeather &pTheWeather)
+                if( pDownloadedOk )
                 {
-                    std::time_t result = std::time(nullptr);
-                    mLastFetchTime = *localtime(&result);
-
                     // Not building for C++20 so can't use std::format yet.... So go old school.
                     char buf[64];
 
                     snprintf(buf,sizeof(buf),"%04.2fC",pTheWeather.mCurrent.mTemperature.Day.c);
                     mCurrentTemperature = buf;
                     mHasWeather = true;
-                    mFetchingWeather = false;
-                });
+                }
+                else
+                {
+                    mCurrentTemperature = "Failed";
+
+                }
             });
         }
     }
     else // We have some weather, so see if it needs to be fetched again.
     {
-        // See if day has changed.
-        std::time_t result = std::time(nullptr);
-        tm now = *localtime(&result);
-
-        if( mLastFetchTime.tm_yday != now.tm_yday )
+        if( mLastFetchTime.tm_yday != pCurrentTime.tm_yday )
         {
-            std::cout << "fetching new weather data\n";
-            mLastFetchTime = now;
             mHasWeather = false;
         }
-
     }
 }
