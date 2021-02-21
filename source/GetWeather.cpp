@@ -30,6 +30,7 @@
 namespace getweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {
 	if(writerData == NULL)
@@ -149,6 +150,9 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 { 
 	assert( pReturnFunction != nullptr );
 
+	TheWeather weatherData;
+	bool downloadedOk = false;
+
 	std::string jsonData;
 	std::stringstream url;
 	url << "http://api.openweathermap.org/data/2.5/onecall?";
@@ -164,9 +168,6 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 		// And so I will make my own json reader, it's easy but not the best solution.
 		tinyjson::JsonProcessor json(jsonData);
 		const tinyjson::JsonValue weather = json.GetRoot();
-
-		TheWeather weatherData;
-		bool downloadedOk = false;
 
 		// Lets build up the weather data.
 		if( weather.HasValue("current") )
@@ -198,9 +199,10 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 			}
 
 		}
-
-		pReturnFunction(downloadedOk,weatherData);
 	}
+
+	// Always return something. So they know if it failed or not.
+	pReturnFunction(downloadedOk,weatherData);
 }
 
 bool GetWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
@@ -247,4 +249,5 @@ bool GetWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJso
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-} //namespace getweather{
+};// namespace getweather{
+

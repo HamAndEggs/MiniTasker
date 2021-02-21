@@ -29,11 +29,12 @@ void TheWeather::Update(const tm& pCurrentTime)
         {
             mLastFetchTime = pCurrentTime;
             mFetchLimiter = (pCurrentTime.tm_hour*60) + pCurrentTime.tm_min;
-            std::cout << "fetching new weather data\n";
             mWeather.Get(50.72824,-1.15244,[this](bool pDownloadedOk,const getweather::TheWeather &pTheWeather)
             {
                 if( pDownloadedOk )
                 {
+                    std::clog << "Fetched weather data " << mLastFetchTime.tm_mday << " " << mLastFetchTime.tm_hour << ":" << mLastFetchTime.tm_min << ":" << mLastFetchTime.tm_sec << "\n";
+
                     // Not building for C++20 so can't use std::format yet.... So go old school.
                     char buf[64];
 
@@ -43,6 +44,7 @@ void TheWeather::Update(const tm& pCurrentTime)
                 }
                 else
                 {
+                    std::cerr << "Failed to fetched weather data! " << mLastFetchTime.tm_mday << " " << mLastFetchTime.tm_hour << ":" << mLastFetchTime.tm_min << ":" << mLastFetchTime.tm_sec << "\n";
                     mCurrentTemperature = "Failed";
 
                 }
