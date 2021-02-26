@@ -31,13 +31,12 @@ public:
     bool GetHasWeather()const{return mHasWeather;}
     std::string GetCurrentTemperature()const{return mCurrentTemperature;}
 
-    void Update(const tm& pCurrentTime);
+    void Update(const std::time_t pCurrentTime);
 
 private:
     bool mHasWeather;
-    int mFetchLimiter;
-    tm mLastFetchTime;
-    getweather::GetWeather mWeather;
+    std::time_t mFetchLimiter;
+    getweather::TheWeather mWeather;
 
     std::string mCurrentTemperature;
 

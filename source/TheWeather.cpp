@@ -18,44 +18,41 @@ TheWeather::~TheWeather()
 {
 }
 
-void TheWeather::Update(const tm& pCurrentTime)
+void TheWeather::Update(const std::time_t pCurrentTime)
 {
-    if( mHasWeather == false )
+   if( mFetchLimiter < pCurrentTime )
     {
-        // Because when time is 11:59 the fetch limiter could be set to a big number and when the day changes next minute
-        // will never be less that current minute of the day.
-        // So I also check the day too, again. Done a second time, once, at the bottom, to see if we need a new days time.
-        if( mFetchLimiter < (pCurrentTime.tm_hour*60) + pCurrentTime.tm_min || mLastFetchTime.tm_yday != pCurrentTime.tm_yday )
+        mHasWeather = false;
+        mWeather.Get(50.72824,-1.15244,[this,pCurrentTime](bool pDownloadedOk,const getweather::TheWeather &pTheWeather)
         {
-            mLastFetchTime = pCurrentTime;
-            mFetchLimiter = (pCurrentTime.tm_hour*60) + pCurrentTime.tm_min;
-            mWeather.Get(50.72824,-1.15244,[this](bool pDownloadedOk,const getweather::TheWeather &pTheWeather)
+            if( pDownloadedOk )
             {
-                if( pDownloadedOk )
-                {
-                    std::clog << "Fetched weather data " << mLastFetchTime.tm_mday << " " << mLastFetchTime.tm_hour << ":" << mLastFetchTime.tm_min << ":" << mLastFetchTime.tm_sec << "\n";
+                std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
+                mHasWeather = true;
 
-                    // Not building for C++20 so can't use std::format yet.... So go old school.
-                    char buf[64];
-
-                    snprintf(buf,sizeof(buf),"%04.2fC",pTheWeather.mCurrent.mTemperature.Day.c);
-                    mCurrentTemperature = buf;
-                    mHasWeather = true;
-                }
-                else
-                {
-                    std::cerr << "Failed to fetched weather data! " << mLastFetchTime.tm_mday << " " << mLastFetchTime.tm_hour << ":" << mLastFetchTime.tm_min << ":" << mLastFetchTime.tm_sec << "\n";
-                    mCurrentTemperature = "Failed";
-
-                }
-            });
-        }
+                // It worked, do the next fetch in a days time.
+                mFetchLimiter = pCurrentTime + (60*60*24);
+            }
+            else
+            {
+                const getweather::WeatherTime now(pCurrentTime);
+                std::cerr << "Failed to fetched weather data! " << now.GetDate() << " " << now.GetTime() << "\n";
+                mCurrentTemperature = "Failed";
+                mFetchLimiter = pCurrentTime + (60*60);// If it fails, this will make the next attempt an hour later.
+            }
+        });
     }
-    else // We have some weather, so see if it needs to be fetched again.
+
+    if( mHasWeather )
     {
-        if( mLastFetchTime.tm_yday != pCurrentTime.tm_yday )
-        {
-            mHasWeather = false;
-        }
+        // Not building for C++20 so can't use std::format yet.... So go old school.
+        char buf[64];
+
+        float c = 0.0f;
+
+        const auto t = mWeather.GetHourlyForcast(pCurrentTime);
+        snprintf(buf,sizeof(buf),"%04.2fC",t->mTemperature.c);
+        mCurrentTemperature = buf;
     }
+
 }

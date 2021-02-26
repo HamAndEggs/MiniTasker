@@ -20,71 +20,59 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <ctime>
 
 namespace getweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct WeatherTime
+{
+	std::time_t mUTC;
+
+	WeatherTime() = default;
+	WeatherTime(std::time_t pUTC)
+	{
+		Set(pUTC);
+	}
+
+	void Set(std::time_t pTime)
+	{
+		mUTC = pTime;
+
+		tm currentTime = *localtime((time_t*)&pTime);
+
+		mYear = currentTime.tm_year + 1900;
+		mMonth = currentTime.tm_mon + 1; // (1 - 12) tm.tm_mon is zero based index 0 - 11 but day in month is not, no consistency!
+		mDay = currentTime.tm_mday;   // (1 - 31) or 30 or 29 or 28..... tm.tm_mday is 1 based index.
+		mHour = currentTime.tm_hour;
+		mMinute = currentTime.tm_min;
+	}
+
+	int mYear;
+	int mMonth; // (1 - 12)
+	int mDay;   // (1 - 31) or 30 or 29 or 28.....
+	int mHour;
+	int mMinute;
+
+	std::string GetDate()const{return std::to_string(mDay) + "/" + std::to_string(mMonth) + "/" + std::to_string(mYear);}
+	std::string GetTime()const{return std::to_string(mHour) + ":" + std::to_string(mMinute);}
+
+	inline bool operator < (const WeatherTime& pOther)const{return mUTC < pOther.mUTC;}
+	inline bool operator == (const WeatherTime& pOther)const{return mUTC == pOther.mUTC;}
+};
+
 struct Temperature
 {
+	float k;	// Kelvin
+	float c;	// Celsius
+	float f;	// Fahrenheit
+
 	void Set(float pKelvin)
 	{
-		Morning.Set(pKelvin);
-		Day.Set(pKelvin);
-		Evening.Set(pKelvin);
-		Night.Set(pKelvin);
-
-		UpdateMinMax();
+		k = pKelvin;
+		c = k - 273.15f;
+		f = k * 9.0f/5.0f - 459.670f;
 	}
-
-	void Set(float pMorning,float pDay,float pEvening,float pNight,float pMin,float pMax)
-	{
-		Morning.Set(pMorning);
-		Day.Set(pDay);
-		Evening.Set(pEvening);
-		Night.Set(pNight);
-
-		if( pMin > 0.0f && pMax > 0.0f )
-		{
-			Min.Set(pMin);
-			Max.Set(pMax);
-		}
-		else
-		{
-			UpdateMinMax();
-		}
-	}
-
-	void UpdateMinMax()
-	{
-		float minK = Morning.k;
-		float maxK = Morning.k;
-
-		minK = std::min(minK,Day.k);
-		minK = std::min(minK,Evening.k);
-		minK = std::min(minK,Night.k);
-
-		maxK = std::max(minK,Day.k);
-		maxK = std::max(minK,Evening.k);
-		maxK = std::max(minK,Night.k);
-
-		Min.Set(minK);
-		Max.Set(maxK);
-	}
-
-	struct
-	{
-		float k;	// Kelvin
-		float c;	// Celsius
-		float f;	// Fahrenheit
-
-		void Set(float pKelvin)
-		{
-			k = pKelvin;
-			c = k - 273.15f;
-			f = k * 9.0f/5.0f - 459.670f;
-		}
-
-	}Morning,Day,Evening,Night,Min,Max;
 };
 
 struct DisplayData
@@ -102,9 +90,9 @@ struct DisplayData
  */
 struct WeatherData
 {
-	uint64_t mTime;				//!< Current time, Unix, UTC
-	uint64_t mSunrise;			//!< Sunrise time, Unix, UTC
-	uint64_t mSunset;			//!< Sunset time, Unix, UTC
+	WeatherTime mTime;				//!< Current time, Unix, UTC
+	WeatherTime mSunrise;			//!< Sunrise time, Unix, UTC
+	WeatherTime mSunset;			//!< Sunset time, Unix, UTC
 	Temperature mTemperature;	//!< Temperature. Units - default: kelvin, metric: Celsius, imperial: Fahrenheit. How to change units used
 	Temperature mFeelsLike;		//!< This temperature parameter accounts for the human perception of weather. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
 	uint32_t mPressure;			//!< Atmospheric pressure on the sea level, hPa
@@ -122,11 +110,36 @@ struct WeatherData
 struct DailyWeatherData
 {
 	
-	uint64_t mTime;				//!< Current time, Unix, UTC
-	uint64_t mSunrise;			//!< Sunrise time, Unix, UTC
-	uint64_t mSunset;			//!< Sunset time, Unix, UTC
-	Temperature mTemperature;	//!< Temperature. Units - default: kelvin, metric: Celsius, imperial: Fahrenheit. How to change units used
-	Temperature mFeelsLike;		//!< This temperature parameter accounts for the human perception of weather. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
+	WeatherTime mTime;				//!< Current time, Unix, UTC
+	WeatherTime mSunrise;			//!< Sunrise time, Unix, UTC
+	WeatherTime mSunset;			//!< Sunset time, Unix, UTC
+
+	struct
+	{
+		void Set(float pMorning,float pDay,float pEvening,float pNight,float pMin,float pMax)
+		{
+			Morning.Set(pMorning);
+			Day.Set(pDay);
+			Evening.Set(pEvening);
+			Night.Set(pNight);
+			Min.Set(pNight);
+			Max.Set(pNight);
+		}
+		Temperature Morning,Day,Evening,Night,Min,Max;
+	}mTemperature;	//!< Temperature. Units - default: kelvin, metric: Celsius, imperial: Fahrenheit. How to change units used
+
+	struct
+	{
+		void Set(float pMorning,float pDay,float pEvening,float pNight)
+		{
+			Morning.Set(pMorning);
+			Day.Set(pDay);
+			Evening.Set(pEvening);
+			Night.Set(pNight);
+		}
+		Temperature Morning,Day,Evening,Night;
+	}mFeelsLike;		//!< This temperature parameter accounts for the human perception of weather. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
+
 	uint32_t mPressure;			//!< Atmospheric pressure on the sea level, hPa
 	uint32_t mHumidity;			//!< Humidity, %
 	float mDewPoint;			//!< Atmospheric temperature (varying according to pressure and humidity) below which water droplets begin to condense and dew can form. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
@@ -150,13 +163,15 @@ struct DailyWeatherData
  */
 struct MinutelyForecast
 {
-	uint64_t mTime; //!< Time of the forecasted data, unix, UTC
+	WeatherTime mTime; //!< Time of the forecasted data, unix, UTC
 	uint32_t mPrecipitation; //!< Precipitation volume, mm
 };
 
 /**
  * @brief Contains all the weather information downloaded.
- * 
+ * When you call get it will build a tree of data that you can read that represents the weather for your area.
+ * uses OpenWeather one-call-api https://openweathermap.org/api/one-call-api
+ * You will need to make a free account and get an API key
  */
 struct TheWeather
 {
@@ -178,20 +193,19 @@ struct TheWeather
 	//!< alerts.start Date and time of the start of the alert, Unix, UTC
 	//!< alerts.end Date and time of the end of the alert, Unix, UTC
 	//!< alerts.description Description of the alert
-};
 
-/**
- * @brief Builds a tree of data that you can read that represents the weather for your area.
- * uses OpenWeather one-call-api https://openweathermap.org/api/one-call-api
- * You will need to make a free account and get an API key
- */
-class GetWeather
-{
-public:
-	GetWeather(const std::string& pAPIKey);
-	~GetWeather();
+	TheWeather(const std::string& pAPIKey);
+	~TheWeather();
 
 	void Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction);
+
+	/**
+	 * @brief Get the current temperature forcast from the hourly forcast data.
+	 * 
+	 * @param pNowUTC 
+	 * @return const Temperature* 
+	 */
+	const WeatherData* GetHourlyForcast(std::time_t pNowUTC)const;
 
 private:
 
@@ -202,6 +216,6 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-}// namespace getweather{
+}; //namespace getweather{
 
 #endif //GET_WEATHER_H

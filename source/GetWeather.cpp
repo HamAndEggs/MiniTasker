@@ -30,7 +30,6 @@
 namespace getweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {
 	if(writerData == NULL)
@@ -44,9 +43,9 @@ static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerD
 static void ReadWeatherData(const tinyjson::JsonValue pJson,WeatherData& rWeather)
 {
 
-	rWeather.mTime = pJson.GetUInt64("dt");					//!< Current time, Unix, UTC
-	rWeather.mSunrise = pJson.GetUInt64("sunrise");			//!< Sunrise time, Unix, UTC
-	rWeather.mSunset = pJson.GetUInt64("sunset");				//!< Sunset time, Unix, UTC
+	rWeather.mTime.Set(pJson.GetUInt64("dt"));					//!< Current time, Unix, UTC
+	rWeather.mSunrise.Set(pJson.GetUInt64("sunrise"));			//!< Sunrise time, Unix, UTC
+	rWeather.mSunset.Set(pJson.GetUInt64("sunset"));				//!< Sunset time, Unix, UTC
 	rWeather.mTemperature.Set(pJson.GetFloat("temp"));			//!< Temperature. Units - default: kelvin, metric: Celsius, imperial: Fahrenheit. How to change units used
 	rWeather.mFeelsLike.Set(pJson.GetFloat("feels_like"));		//!< This temperature parameter accounts for the human perception of weather. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
 	rWeather.mPressure = pJson.GetUInt64("pressure");			//!< Atmospheric pressure on the sea level, hPa
@@ -72,9 +71,9 @@ static void ReadWeatherData(const tinyjson::JsonValue pJson,WeatherData& rWeathe
 static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherData& rDaily)
 {
 
-	rDaily.mTime = pJson.GetUInt64("dt");					//!< Current time, Unix, UTC
-	rDaily.mSunrise = pJson.GetUInt64("sunrise");			//!< Sunrise time, Unix, UTC
-	rDaily.mSunset = pJson.GetUInt64("sunset");				//!< Sunset time, Unix, UTC
+	rDaily.mTime.Set(pJson.GetUInt64("dt"));					//!< Current time, Unix, UTC
+	rDaily.mSunrise.Set(pJson.GetUInt64("sunrise"));			//!< Sunrise time, Unix, UTC
+	rDaily.mSunset.Set(pJson.GetUInt64("sunset"));				//!< Sunset time, Unix, UTC
 	rDaily.mPressure = pJson.GetUInt64("pressure");			//!< Atmospheric pressure on the sea level, hPa
 	rDaily.mHumidity = pJson.GetUInt64("humidity");			//!< Humidity, %
 	rDaily.mDewPoint = pJson.GetFloat("dew_point");			//!< Atmospheric temperature (varying according to pressure and humidity) below which water droplets begin to condense and dew can form. Units – default: kelvin, metric: Celsius, imperial: Fahrenheit.
@@ -104,7 +103,16 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 	}
 	else if( pJson.GetType("temp") == tinyjson::JTYPE_NUMBER  )
 	{
-		rDaily.mTemperature.Set(pJson.GetFloat("temp"));
+		const float k = pJson.GetFloat("temp");
+		rDaily.mTemperature.Set
+		(
+			k,
+			k,
+			k,
+			k,
+			k,
+			k
+		);
 	}
 
 	if( pJson.GetType("feels_like") == tinyjson::JTYPE_OBJECT  )
@@ -115,14 +123,19 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 			feels_like.GetFloat("morn"),
 			feels_like.GetFloat("day"),
 			feels_like.GetFloat("eve"),
-			feels_like.GetFloat("night"),
-			feels_like.GetFloat("min"),
-			feels_like.GetFloat("max")
+			feels_like.GetFloat("night")
 		);
 	}
 	else if( pJson.GetType("feels_like") == tinyjson::JTYPE_NUMBER  )
 	{
-		rDaily.mFeelsLike.Set(pJson.GetFloat("feels_like"));
+		const float k = pJson.GetFloat("temp");
+		rDaily.mFeelsLike.Set
+		(
+			k,
+			k,
+			k,
+			k
+		);
 	}
 
 	if( pJson.GetArraySize("weather") > 0 )
@@ -135,22 +148,25 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 	}
 }
 
-
-GetWeather::GetWeather(const std::string& pAPIKey):mAPIKey(pAPIKey)
+TheWeather::TheWeather(const std::string& pAPIKey):
+	mLatitude(0),
+	mLongitude(0),
+	mTimezoneOffset(0),
+	mAPIKey(pAPIKey)
 {
+	std::clog << "sizeof time_t = " << sizeof(time_t) << " sizeof uint64_t = " << sizeof(uint64_t) << '\n';
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
-GetWeather::~GetWeather()
+TheWeather::~TheWeather()
 {
 	curl_global_cleanup();
 }
 
-void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction)
+void TheWeather::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction)
 { 
 	assert( pReturnFunction != nullptr );
 
-	TheWeather weatherData;
 	bool downloadedOk = false;
 
 	std::string jsonData;
@@ -169,11 +185,14 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 		tinyjson::JsonProcessor json(jsonData);
 		const tinyjson::JsonValue weather = json.GetRoot();
 
+		mTimeZone = weather.GetString("timezone");
+		mTimezoneOffset = weather.GetUInt32("timezone_offset");
+
 		// Lets build up the weather data.
 		if( weather.HasValue("current") )
 		{
 			downloadedOk = true;
-			ReadWeatherData(weather["current"],weatherData.mCurrent);
+			ReadWeatherData(weather["current"],mCurrent);
 		}
 
 		if( weather.GetArraySize("hourly") > 0 )
@@ -183,8 +202,8 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 			for( const auto& weather : hourly.mArray )
 			{
 				// Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
-                weatherData.mHourly.resize(weatherData.mHourly.size()+1);
-				ReadWeatherData(weather,weatherData.mHourly.back());
+                mHourly.resize(mHourly.size()+1);
+				ReadWeatherData(weather,mHourly.back());
 			}
 		}
 
@@ -194,18 +213,33 @@ void GetWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 			const tinyjson::JsonValue& daily = weather["daily"];
 			for( const auto& weather : daily.mArray )
 			{
-                weatherData.mDaily.resize(weatherData.mDaily.size()+1);
-				ReadDailyWeatherData(weather,weatherData.mDaily.back());
+                mDaily.resize(mDaily.size()+1);
+				ReadDailyWeatherData(weather,mDaily.back());
 			}
 
 		}
 	}
 
 	// Always return something. So they know if it failed or not.
-	pReturnFunction(downloadedOk,weatherData);
+	pReturnFunction(downloadedOk,*this);
 }
 
-bool GetWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
+const WeatherData* TheWeather::GetHourlyForcast(std::time_t pNowUTC)const
+{
+	const WeatherData* current = nullptr;
+	for( const auto& t : mHourly )
+	{
+		if( t.mTime.mUTC < pNowUTC )
+		{
+			current = &t;
+		}
+	}
+
+	return current;
+}
+
+
+bool TheWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
 {
 	bool result = false;
 	CURL *curl = curl_easy_init();
@@ -249,5 +283,5 @@ bool GetWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJso
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};// namespace getweather{
+}; //namespace getweather{
 
