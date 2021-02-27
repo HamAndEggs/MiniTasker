@@ -30,8 +30,18 @@ void TheWeather::Update(const std::time_t pCurrentTime)
                 std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
                 mHasWeather = true;
 
+                const std::time_t ONE_MINUTE = (60);
+                const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
+                const std::time_t ONE_DAY = (ONE_HOUR*24);
                 // It worked, do the next fetch in a days time.
-                mFetchLimiter = pCurrentTime + (60*60*24);
+                mFetchLimiter = pCurrentTime + ONE_DAY;
+                // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
+                mFetchLimiter -= (mFetchLimiter%ONE_DAY);
+                mFetchLimiter += ONE_MINUTE;
+
+                const getweather::WeatherTime nextDownload(mFetchLimiter);
+                std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
+
             }
             else
             {
