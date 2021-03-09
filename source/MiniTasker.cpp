@@ -181,8 +181,8 @@ int main(int argc, char *argv[])
         uint64_t upDays,upHours,upMinutes;
         if( GetUptime(upDays,upHours,upMinutes) )
         {
-            RT.DrawRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255,true);
-            RT.DrawRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180,true);
+            RT.FillRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255);
+            RT.FillRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180);
             StatsFont.Printf(RT,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
         }
 

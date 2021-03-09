@@ -38,8 +38,8 @@ void ClockDisplay::SetBackground(uint8_t pR,uint8_t pG,uint8_t pB)
 
 void ClockDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature)
 {
-    RT.DrawRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255,true);
-    RT.DrawRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0,true);
+    RT.FillRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255);
+    RT.FillRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0);
 
     DrawTime(RT,pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
     DrawDay(RT,pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);

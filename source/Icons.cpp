@@ -7,7 +7,7 @@ Icons::Icons(const std::string& pIconFolder)
     const int padding = 2;
     mIconBG.Resize(size,size,true);
     mIconBG.Clear(0,0,0,0);
-    mIconBG.DrawRoundedRectangle(padding,padding,size-padding-1,size-padding-1,rounded,0,0,0,100,true);
+    mIconBG.FillRoundedRectangle(padding,padding,size-padding-1,size-padding-1,rounded,0,0,0,100);
     mIconBG.DrawRoundedRectangle(padding,padding,size-padding-1,size-padding-1,rounded,255,255,255);
 
     // Load the images.

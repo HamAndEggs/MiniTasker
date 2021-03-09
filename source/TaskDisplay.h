@@ -57,7 +57,7 @@ public:
 
 private:
 
-    const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint32_t& rTillColour);
+    const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint8_t& rTillR,uint8_t& rTillG,uint8_t& rTillB);
 
     tiny2d::FreeTypeFont mFont;
 
