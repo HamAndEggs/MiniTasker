@@ -2,10 +2,12 @@
     "source_files": [
         "./source/MiniTasker.cpp",
    		"./source/Tiny2D.cpp",
+   		"./source/TinyPNG.cpp",
         "./source/ClockDisplay.cpp",
         "./source/TaskDisplay.cpp",
         "./source/GetWeather.cpp",
-        "./source/TheWeather.cpp"
+        "./source/TheWeather.cpp",
+        "./source/Icons.cpp"
     ],
     "configurations": {
         "release": {
@@ -25,7 +27,8 @@
                 "stdc++",
                 "pthread",
                 "freetype",
-                "curl"
+                "curl",
+                "z"
             ],
             "define": [
                 "NDEBUG",
@@ -51,7 +54,8 @@
                 "pthread",
                 "X11",
                 "freetype",
-                "curl"
+                "curl",
+                "z"
             ],
             "define": [
                 "DEBUG_BUILD",

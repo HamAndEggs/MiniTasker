@@ -14,38 +14,28 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
    
-#ifndef CLOCK_DISPLAY_H
-#define CLOCK_DISPLAY_H
+#ifndef ICONS_H
+#define ICONS_H
 
+#include <map>
 #include <string>
-#include <time.h>
 
 #include "Tiny2D.h"
+#include "TinyPNG.h"
 
-class ClockDisplay
+class Icons
 {
 public:
-    ClockDisplay(const std::string& pFontPath);
-    ~ClockDisplay();
+    Icons(const std::string& pIconFolder);
 
-    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
-
-    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature);
+    const tiny2d::DrawBuffer& GetIcon(const std::string& pName)const;
+    const tiny2d::DrawBuffer& GetIconBG()const{return mIconBG;}
 
 private:
+    tiny2d::DrawBuffer mIconBG;
+    std::map<std::string,tiny2d::DrawBuffer>mIcons;
 
-    void DrawTime(tiny2d::DrawBuffer& RT,int pX,int pY,int pHour,int pMinute);
-    void DrawDay(tiny2d::DrawBuffer& RT,int pX,int pY,int pWeekDay,int pMonthDay);
-
-    tiny2d::FreeTypeFont mTimeFont;
-    tiny2d::FreeTypeFont mDateFont;
-    tiny2d::FreeTypeFont mTemperatureFont;    
-
-	struct
-	{
-		uint8_t r,g,b;
-	}mFG,mBG;
+    void BuildIcon(tinypng::Loader& bg,const std::string pName);
 };
 
-#endif //#ifndef CLOCK_DISPLAY_H
+#endif //#ifndef ICONS_H

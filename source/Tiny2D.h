@@ -64,28 +64,281 @@ typedef uint32_t PixelColour;
 #define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
 #define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
 
+
 /**
- * @brief Simple image container, if I don't write one everyone else will. :)
- * If you need more, then time to fork and play. :)
+ * @brief Convert RGB to HSV
+ * Very handy for creating colour palettes.
+ * See:- (thanks David H)
+ * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
  */
-struct TinyImage
+extern void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV);
+
+/**
+ * @brief Convert HSV to RGB
+ * Very handy for creating colour palettes.
+ * See:- (thanks David H)
+ * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+ */
+extern void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue);
+
+/**
+ * @brief This uses RGB space as input and output but does the belending in the HSV space.
+ * This creates the best tweening of colours for palettes and graduations.
+ */
+extern void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
+
+/**
+ * @brief By using the RGB space this creates an accurate reproduction of the 'alpha blend' operation.
+ */
+extern void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+class FrameBuffer;
+
+/**
+ * @brief This is the main off screen drawing / image buffer.
+ * This can be used to simply hold an image as well as creating new images from primitive calls.
+ * This images can then be presented to the display buffer for viewing by the user.
+ * This is the object that most of your interations will be with.
+ */
+class DrawBuffer
 {
+public:
+	// For simplicity and flexibility all visable and modifiable. So don't be daft. :) 
 	std::vector<uint8_t> mPixels;
-	const uint32_t mWidth;
-	const uint32_t mHeight;
-	const uint32_t mStride;
-	const bool mHasAlpha;
+	int mWidth;
+	int mHeight;
+	size_t mPixelSize;	//!< The number of bytes per pixel.
+	size_t mStride;	//!< The number of bytes per scan line.
+	bool mHasAlpha;
 	bool mPreMultipliedAlpha;
 
 	/**
 	 * @brief Construct a new Tiny Image object
 	 */
-	TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
 	 */
-	TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(int pWidth, int pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Construct a draw buffer that is suitable for use as a render target.
+	 * 
+	 * @param pFB 
+	 */
+	DrawBuffer(const FrameBuffer* pFB);
+
+	/**
+	 * @brief Default empty constructor
+	 */
+	DrawBuffer();
+
+	int GetWidth()const{return mWidth;}
+	int GetHeight()const{return mHeight;}
+
+	/**
+	 * @brief Get the index of the first byte of the pixel at x,y.
+	 */
+	inline size_t GetPixelIndex(int pX,int pY)const{return (pX * mPixelSize) + (pY * mStride);}
+
+	/**
+	 * @brief Resets the image into a new different size / format.
+	 * Expect image pixels to vanish after calling. If they don't, it's luck!
+	 * Does NOT scale the image!
+	 */
+	void Resize(int pWidth, int pHeight,size_t pPixelSize,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	void Resize(int pWidth, int pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false)
+	{
+		Resize(pWidth,pHeight,pHasAlpha?4:3,pHasAlpha,pPreMultipliedAlpha);
+	}
+
+	/**
+	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * pAlpha is ignored if destination has no alpha channel.
+	 */
+	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+
+	/**
+	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 */
+	void WritePixel(int pX,int pY,PixelColour pColour)
+	{
+		WritePixel(pX,pY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does (S*A) + (D*(1-A))
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPixel(int pX,int pY,const uint8_t* pRGBA);
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does S + (D * A) Quicker but less flexable.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
+	
+	/**
+	 * @brief Clears the entire screen.
+	 * Alpha ignored it dest has no alpha channel
+	 */
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha);
+
+	/**
+	 * @brief Clears the entire screen.
+	 */
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		Clear(pRed,pGreen,pBlue,255);
+	}
+
+	/**
+	 * @brief Clears the entire screen.
+	 */
+	void ClearScreen(PixelColour pColour)
+	{
+		Clear(PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @briefExpects source to be 24bit, three 8 bit bytes in R G B order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green and pSourcePixels[2] is blue.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	*/
+	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight);
+
+	/**
+	 * @brief Expects source to be 24bit, three 8 bit bytes in R G B order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green and pSourcePixels[2] is blue.
+	 * Renders the image to pX,pY from pSourceX,pSourceY in the source without scaling.
+	 * pSourceStride is the byte size of one scan line in the source data.
+	 * Allows sub rect render of the source image.
+	 */
+	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer,
+	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	 */
+	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Draws the sub rectangle of the image to the draw buffer,
+	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	 */
+	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer.
+	 */
+	void Blit(const DrawBuffer& pImage,int pX,int pY);
+
+	/**
+	 * @brief Draws a horizontal line.
+	 */
+	void DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+
+	/**
+	 * @brief  Draws a horizontal line.
+	 */
+	void DrawLineH(int pFromX,int pFromY,int pToX,PixelColour pColour)
+	{
+		DrawLineH(pFromX,pFromY,pToX,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws a vertical line.
+	 */
+	void DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+
+	/**
+	 * @brief Draws a vertical line.
+	 */
+	void DrawLineV(int pFromX,int pFromY,int pToY,PixelColour pColour)
+	{
+		DrawLineH(pFromX,pFromY,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws an arbitrary line.
+	 * Will take a short cut if the line is horizontal or vertical.
+	 */
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
+	/**
+	 * @brief Draws an arbitrary line.
+	 * Will take a short cut if the line is horizontal or vertical.
+	 */
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour)
+	{
+		DrawLine(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws a circle using the Midpoint algorithm.
+	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+	 */
+	void DrawCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255,bool pFilled = false);
+
+	/**
+	 * @brief Draws a circle using the Midpoint algorithm.
+	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+	 */
+	void DrawCircle(int pCenterX,int pCenterY,int pRadius,PixelColour pColour,bool pFilled = false)
+	{
+		DrawCircle(pCenterX,pCenterY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with the passed in RGB values either filled or not.
+	 */
+	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255,bool pFilled = false);
+	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false)
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,255,pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with the passed in pixel colour either filled or not.
+	 */
+	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour,bool pFilled = false)
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with rounder corners in the passed in RGB values either filled or not.
+	 */
+	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled = false);
+	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false)
+	{
+		DrawRoundedRectangle(pFromX,pFromY,pToX,pToY,pRadius,pRed,pGreen,pBlue,255,pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with rounder corners in the passed in pixel colour either filled or not.
+	 */
+	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,PixelColour pColour,bool pFilled = false)
+	{
+		DrawRoundedRectangle(pFromX,pFromY,pToX,pToY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a gradient using HSV colour space. Don't expect high speed, is doing a lot of math!
+	 */
+	void DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue);
 
 	/**
 	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
@@ -94,8 +347,18 @@ struct TinyImage
  	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
 	 */
 	void PreMultiplyAlpha();
+
+private:
+	/*
+		Draws an arbitrary line.
+		Using Bresenham's line algorithm
+		https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+	*/
+	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct X11FrameBufferEmulation;
 /**
  * @brief Represents the linux frame buffer display.
@@ -158,395 +421,7 @@ public:
 	 * @brief Depending on the buffering mode and the render environment will display the changes to the frame buffer on screen.
 	 * 
 	 */
-	void Present();
-
-	/**
-	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
-	 * The pixel will not be written if it's outside the frame buffers bounds.
-	 * @param pX 
-	 * @param pY 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
-	/**
-	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
-	 * The pixel will not be written if it's outside the frame buffers bounds.
-	 * 
-	 * @param pX 
-	 * @param pY 
-	 * @param pColour 
-	 */
-	void WritePixel(int pX,int pY,PixelColour pColour)
-	{
-		WritePixel(pX,pY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
-	}
-
-	/**
-	 * @brief Blends a single pixel with the frame buffer. does (S*A) + (D*(1-A))
-	 * The pixel will not be written if it's outside the frame buffers bounds.
-	 * 
-	 * @param pX 
-	 * @param pY 
-	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
-	 */
-	void BlendPixel(int pX,int pY,const uint8_t* pRGBA);
-
-	/**
-	 * @brief Blends a single pixel with the frame buffer. does S + (D * A) Quicker but less flexable.
-	 * The pixel will not be written if it's outside the frame buffers bounds.
-	 * 
-	 * @param pX 
-	 * @param pY 
-	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
-	 */
-	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
-	
-	
-	/**
-	 * @brief Clears the entire screen.
-	 * 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
-	/**
-	 * @brief Clears the entire screen.
-	 * 
-	 * @param pColour 
-	 */
-	void ClearScreen(PixelColour pColour)
-	{
-		ClearScreen(PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
-	}
-
-	/* 
-		Expects source to be 24bit, three 8 bit bytes in R G B order.
-		IE pSourcePixels[0] is red, pSourcePixels[1] is green and pSourcePixels[2] is blue.
-		Renders the image to pX,pY without scaling. Most basic blit.
-	*/
-	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight);
-	
-	/* 
-		Expects source to be 24bit, three 8 bit bytes in R G B order.
-		IE pSourcePixels[0] is red, pSourcePixels[1] is green and pSourcePixels[2] is blue.
-		Renders the image to pX,pY from pSourceX,pSourceY in the source without scaling.
-		pSourceStride is the byte size of one scan line in the source data.
-		Allows sub rect render of the source image.
-	*/
-	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
-
-	/**
-	 * @brief Draws the entire image to the draw buffer,
-	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
-	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
-	 * Renders the image to pX,pY without scaling. Most basic blit.
-	 * 
-	 * @param pSourcePixels 
-	 * @param pX 
-	 * @param pY 
-	 * @param pSourceWidth 
-	 * @param pSourceHeight 
-	 * @param pPreMultipliedAlpha 
-	 */
-	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha = false);
-
-	/**
-	 * @brief Draws the sub rectangle of the image to the draw buffer,
-	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
-	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
-	 * Renders the image to pX,pY without scaling. Most basic blit.
-	 * 
-	 * @param pSourcePixels 
-	 * @param pX 
-	 * @param pY 
-	 * @param pWidth 
-	 * @param pHeight 
-	 * @param pSourceX 
-	 * @param pSourceY 
-	 * @param pSourceStride 
-	 * @param pPreMultipliedAlpha 
-	 */
-	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha = false);
-
-	/**
-	 * @brief Draws the entire image to the draw buffer.
-	 * 
-	 * @param pImage 
-	 * @param pX 
-	 * @param pY 
-	 */
-	void Blit(const TinyImage& pImage,int pX,int pY);
-
-	/**
-	 * @brief Draws a horizontal line.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
-	/**
-	 * @brief  Draws a horizontal line.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pColour 
-	 */
-	void DrawLineH(int pFromX,int pFromY,int pToX,PixelColour pColour)
-	{
-		DrawLineH(pFromX,pFromY,pToX,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
-	}
-
-	/**
-	 * @brief Draws a vertical line.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToY 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
-	/**
-	 * @brief Draws a vertical line.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToY 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void DrawLineV(int pFromX,int pFromY,int pToY,PixelColour pColour)
-	{
-		DrawLineH(pFromX,pFromY,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
-	}
-
-	/**
-	 * @brief Draws an arbitrary line.
-	 * Will take a short cut if the line is horizontal or vertical.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 */
-	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
-	/**
-	 * @brief Draws an arbitrary line.
-	 * Will take a short cut if the line is horizontal or vertical.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pColour 
-	 */
-	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour)
-	{
-		DrawLine(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
-	}
-
-	/**
-	 * @brief Draws a circle using the Midpoint algorithm.
-	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-	 * 
-	 * @param pCenterX 
-	 * @param pCenterY 
-	 * @param pRadius 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 * @param pFilled 
-	 */
-	void DrawCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
-
-	/**
-	 * @brief Draws a circle using the Midpoint algorithm.
-	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-	 * 
-	 * @param pCenterX 
-	 * @param pCenterY 
-	 * @param pRadius 
-	 * @param pColour 
-	 * @param pFilled 
-	 */
-	void DrawCircle(int pCenterX,int pCenterY,int pRadius,PixelColour pColour,bool pFilled = false)
-	{
-		DrawCircle(pCenterX,pCenterY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
-	}
-
-	/**
-	 * @brief Draws a rectangle with the passed in RGB values either filled or not.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 * @param pFilled 
-	 */
-	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
-
-	/**
-	 * @brief Draws a rectangle with the passed in pixel colour either filled or not.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pColour 
-	 * @param pFilled 
-	 */
-	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour,bool pFilled = false)
-	{
-		DrawRectangle(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
-	}
-
-	/**
-	 * @brief Draws a rectangle with rounder corners in the passed in RGB values either filled or not.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pRadius 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 * @param pFilled 
-	 */
-	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
-
-	/**
-	 * @brief Draws a rectangle with rounder corners in the passed in pixel colour either filled or not.
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pRadius 
-	 * @param pColour 
-	 * @param pFilled 
-	 */
-	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,PixelColour pColour,bool pFilled = false)
-	{
-		DrawRoundedRectangle(pFromX,pFromY,pToX,pToY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
-	}
-
-	/**
-	 * @brief Draws a gradient using HSV colour space. Don't expect high speed, is doing a lot of math!
-	 * 
-	 * @param pFromX 
-	 * @param pFromY 
-	 * @param pToX 
-	 * @param pToY 
-	 * @param pFormRed 
-	 * @param pFormGreen 
-	 * @param pFormBlue 
-	 * @param pToRed 
-	 * @param pToGreen 
-	 * @param pToBlue 
-	 */
-	void DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue);
-
-	/**
-	 * @brief Convert RGB to HSV
-	 * Very handy for creating colour palettes.
-	 * See:- (thanks David H)
-	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-	 * 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 * @param rH 
-	 * @param rS 
-	 * @param rV 
-	 */
-	static void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV);
-
-	/**
-	 * @brief Convert HSV to RGB
-	 * Very handy for creating colour palettes.
-	 * See:- (thanks David H)
-	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-	 * 
-	 * @param H 
-	 * @param S 
-	 * @param V 
-	 * @param rRed 
-	 * @param rGreen 
-	 * @param rBlue 
-	 */
-	static void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue);
-
-	/**
-	 * @brief This uses RGB space as input and output but does the belending in the HSV space.
-	 * This creates the best tweening of colours for palettes and graduations.
-	 * 
-	 * @param pFromRed 
-	 * @param pFromGreen 
-	 * @param pFromBlue 
-	 * @param pToRed 
-	 * @param pToGreen 
-	 * @param pToBlue 
-	 * @param rBlendTable 
-	 */
-	static void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
-
-	/**
-	 * @brief By using the RGB space this creates an accurate reproduction of the 'alpha blend' operation.
-	 * 
-	 * @param pFromRed 
-	 * @param pFromGreen 
-	 * @param pFromBlue 
-	 * @param pToRed 
-	 * @param pToGreen 
-	 * @param pToBlue 
-	 * @param rBlendTable 
-	 */
-	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
-
-	/**
-	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
- 	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
- 	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.		
- 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
- 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
- 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
-	 * 
-	 * @param pRGBA 
-	 * @param pPixelCount
-	 */
-	static void PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount);
-
-	/**
-	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
-	 * Handy wrapper.
-	 * @param pRGBA 
-	 */
-	static void PreMultiplyAlphaChannel(std::vector<uint8_t>& pRGBA)
-	{
-		PreMultiplyAlphaChannel(pRGBA.data(),pRGBA.size()/4);
-	}
+	void Present(const DrawBuffer& pImage);
 
 private:
 	/**
@@ -559,13 +434,6 @@ private:
 	 */
 	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
-	/*
-		Draws an arbitrary line.
-		Using Bresenham's line algorithm
-		https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-	*/
-	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
 	/**
 	 * @brief Handle ctrl + c event.
 	 * 
@@ -575,16 +443,10 @@ private:
 
 	const int mWidth,mHeight;
 
-	// We always render to the frame buffer, do the conversion to the display buffer format when the image is presented.
-	// This makes the drawing code a lot simpler and easier to maintain.
-	const int mDrawBufferStride;		// Num bytes between each line.
-	const int mDrawBufferSize;
-	uint8_t* mDrawBuffer;
-
-	const int mDisplayBufferStride;		// Num bytes between each line.
-	const int mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const size_t mDisplayBufferStride;	// Num bytes between each line.
+	const size_t mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const size_t mDisplayBufferSize;
 	const int mDisplayBufferFile;
-	const int mDisplayBufferSize;
 	uint8_t*  mDisplayBuffer;
 
 	const struct fb_var_screeninfo mVariableScreenInfo;
@@ -621,13 +483,13 @@ public:
 	int GetCharHeight()const{return 13*mPixelSize;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	void DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
+	void DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
 
 	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
-	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 	void SetPixelSize(int pPixelSize);
@@ -668,9 +530,9 @@ public:
 	int GetCharHeight()const{return 13;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	int DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
+	int DrawChar(DrawBuffer& pDest,int pX,int pY,char pChar)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 	void SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);

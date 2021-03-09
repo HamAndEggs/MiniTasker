@@ -36,30 +36,30 @@ void ClockDisplay::SetBackground(uint8_t pR,uint8_t pG,uint8_t pB)
     mTemperatureFont.SetBackgroundColour(pR,pG,pB);
 }
 
-void ClockDisplay::Update(tiny2d::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature)
+void ClockDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature)
 {
-    pFB->DrawRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255,true);
-    pFB->DrawRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0,true);
+    RT.DrawRoundedRectangle(pX-8,pY-8,pX + 400,pY + 300,35,255,255,255,true);
+    RT.DrawRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 300-4,32,0,0,0,true);
 
-    DrawTime(pFB,pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
-    DrawDay(pFB,pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);
+    DrawTime(RT,pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
+    DrawDay(RT,pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);
     // Draw temperature, if we have one.
     if( pCurrentTemperature.size() > 0 )
     {
-        mTemperatureFont.Print(pFB,pX + 200,pY + 260,pCurrentTemperature.c_str());
+        mTemperatureFont.Print(RT,pX + 200,pY + 260,pCurrentTemperature.c_str());
     }
 }
 
-void ClockDisplay::DrawTime(tiny2d::FrameBuffer* pFB,int pX,int pY,int pHour,int pMinute)
+void ClockDisplay::DrawTime(tiny2d::DrawBuffer& RT,int pX,int pY,int pHour,int pMinute)
 {
-    mTimeFont.Printf(pFB,pX + 4,pY + 120,"%02d:%02d",pHour,pMinute);
+    mTimeFont.Printf(RT,pX + 4,pY + 120,"%02d:%02d",pHour,pMinute);
 }
 
-void ClockDisplay::DrawDay(tiny2d::FrameBuffer* pFB,int pX,int pY,int pWeekDay,int pMonthDay)
+void ClockDisplay::DrawDay(tiny2d::DrawBuffer& RT,int pX,int pY,int pWeekDay,int pMonthDay)
 {
     static const std::array<std::string,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 
-    mDateFont.Print(pFB,pX + 4,pY + 44,Days[pWeekDay].c_str());
+    mDateFont.Print(RT,pX + 4,pY + 44,Days[pWeekDay].c_str());
 
     // Do month day.
     std::string monthDayTag = "th";
@@ -76,5 +76,5 @@ void ClockDisplay::DrawDay(tiny2d::FrameBuffer* pFB,int pX,int pY,int pWeekDay,i
         monthDayTag = "rd";
     }
 
-    mDateFont.Printf(pFB,pX + 4,pY + 120,"%d%s",pMonthDay,monthDayTag.c_str());
+    mDateFont.Printf(RT,pX + 4,pY + 120,"%d%s",pMonthDay,monthDayTag.c_str());
 }

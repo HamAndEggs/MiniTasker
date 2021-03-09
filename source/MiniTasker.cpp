@@ -31,7 +31,9 @@
 #include "ClockDisplay.h"
 #include "TaskDisplay.h"
 #include "TheWeather.h"
+#include "Icons.h"
 
+#include "TinyPNG.h"
 
 /**
  * @brief Gets the uptime of the system
@@ -105,59 +107,90 @@ int main(int argc, char *argv[])
     std::time_t result = std::time(nullptr);
     tm currentTime = *localtime(&result);
 
-
-    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
-	if( FB )
+    TaskDisplay theTasks(path + "liberation_serif_font/");
+    if( theTasks.LoadTaskList(path + taskFile) == false )
     {
-        tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
-
-        TaskDisplay theTasks(path + "liberation_serif_font/");
-        if( theTasks.LoadTaskList(path + taskFile) )
-        {
-            ClockDisplay theClock(path + "liberation_serif_font/");
-            theClock.SetForground(255,255,255);
-            theClock.SetBackground(0,0,0);
-
-            TheWeather weather(theTasks.GetWeatherApiKey());
-
-            while( FB->GetKeepGoing() )
-            {
-                // See if day has changed.
-                std::time_t theTimeUTC = std::time(nullptr);
-                const tm *now = localtime(&theTimeUTC);
-                if( now != nullptr )
-                {
-                    currentTime = *now;
-                }
-
-                FB->DrawGradient(0,0,FB->GetWidth(),140,0,0,0,70,70,70);
-                FB->DrawRectangle(0,140,FB->GetWidth(),260,70,70,70,true);
-                FB->DrawGradient(0,260,FB->GetWidth(),400,70,70,70,0,0,0);
-
-                weather.Update(theTimeUTC);
-                theClock.Update(FB,20,20,currentTime,weather.GetCurrentTemperature());
-                theTasks.Update(FB,20,400,currentTime);
-
-                uint64_t upDays,upHours,upMinutes;
-                if( GetUptime(upDays,upHours,upMinutes) )
-                {
-                    FB->DrawRoundedRectangle(650,2,FB->GetWidth()-2,80,20,255,255,255,true);
-                    FB->DrawRoundedRectangle(654,6,FB->GetWidth()-6,76,18,20,30,180,true);
-                    StatsFont.Printf(FB,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
-                }
-
-                FB->Present();
-                sleep(1);
-            }
-
-            return EXIT_SUCCESS;
-        }
-        else
-        {
-            std::cerr << "Failed to read task file\n";
-        }
-        
+        std::cerr << "Failed to read task file\n";
+       	return EXIT_FAILURE;
     }
 
-	return EXIT_FAILURE;
+    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
+	if( !FB )
+    	return EXIT_FAILURE;
+
+    tiny2d::DrawBuffer RT(FB);
+
+    // Load a background, later I'll make this configurable.
+    tiny2d::DrawBuffer Background;
+
+    tinypng::Loader bg(true);
+    if( bg.LoadFromFile(path + "images/clockwork.png") )
+    {
+        Background.Resize(bg.GetWidth(),bg.GetHeight());
+        bg.GetRGB(Background.mPixels);
+    }
+    else
+    {
+        // Do something default.
+        Background.Resize(RT.GetWidth(),RT.GetHeight());
+        uint8_t* pixels = Background.mPixels.data();
+        for(size_t n = 0 ; n < Background.mPixels.size() ; n += 3, pixels += 3 )
+        {
+            pixels[0] = 100;
+            pixels[1] = 100;
+            pixels[2] = 100;
+        }
+    }
+
+    Icons WeatherIcons(path + "icons/");
+    
+    tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
+
+    ClockDisplay theClock(path + "liberation_serif_font/");
+    theClock.SetForground(255,255,255);
+    theClock.SetBackground(0,0,0);
+
+    TheWeather weather(theTasks.GetWeatherApiKey());
+
+    while( FB->GetKeepGoing() )
+    {
+        // See if day has changed.
+        std::time_t theTimeUTC = std::time(nullptr);
+        const tm *now = localtime(&theTimeUTC);
+        if( now != nullptr )
+        {
+            currentTime = *now;
+        }
+
+        RT.Blit(Background,0,0);
+
+
+        for( int s = 0 ; s < 6 ; s++ )
+        {
+            const int x = RT.GetWidth() - 600 + s*100;
+            const int y = 220;
+
+            RT.Blit(WeatherIcons.GetIconBG(),x,y);
+            RT.Blit(WeatherIcons.GetIcon("11d"),x,y);
+        }
+
+        weather.Update(theTimeUTC);
+        theClock.Update(RT,20,20,currentTime,weather.GetCurrentTemperature());
+        theTasks.Update(RT,20,400,currentTime);
+
+        uint64_t upDays,upHours,upMinutes;
+        if( GetUptime(upDays,upHours,upMinutes) )
+        {
+            RT.DrawRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255,true);
+            RT.DrawRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180,true);
+            StatsFont.Printf(RT,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+        }
+
+        FB->Present(RT);
+        sleep(1);
+    }
+
+    delete FB;
+
+    return EXIT_SUCCESS;
 }

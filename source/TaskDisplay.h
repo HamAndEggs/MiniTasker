@@ -51,7 +51,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void Update(tiny2d::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime);
+    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
 
     const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
 
