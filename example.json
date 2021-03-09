@@ -1,5 +1,6 @@
 {
-    "weather-api-key":"your-weather-api-key",
+    "xweather-api-key":"your-weather-api-key",
+    "weather-api-key":"c015f40cb0d18e0256c12fcb70db6390",
     "tasks":
     [
         {

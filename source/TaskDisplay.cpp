@@ -8,7 +8,6 @@
 #include <sstream>
 
 #include "TinyJson.h"
-#include "framebuffer.h"
 #include "TaskDisplay.h"
 
 TaskDisplay::TaskDisplay(const std::string& pFontPath):
@@ -70,7 +69,7 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
     return false;
 }
 
-void TaskDisplay::Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime)
+void TaskDisplay::Update(tiny2d::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime)
 {
     const int hour = pCurrentTime.tm_hour;
     const int minute = pCurrentTime.tm_min;

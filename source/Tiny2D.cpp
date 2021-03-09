@@ -34,13 +34,15 @@
 	#include <thread>
 #endif
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
-namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
+namespace tiny2d{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // X11 frame buffer emulation hidden definition.
 // Implementation is at the bottom of the source file.
+// This code is intended to allow development on a full desktop system for applications that
+// will eventually be deployed on a minimal linux system without all the X11 + fancy UI rendering bloat.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef USE_X11_EMULATION
 /**
@@ -51,11 +53,11 @@ struct X11FrameBufferEmulation
 {
 	Display *mDisplay;
 	Window mWindow;
-	XImage* mFrameBufferImage;
+	XImage* mDisplayBufferImage;
 	Atom mDeleteMessage;
 
 	bool mWindowReady;
-	uint8_t* mFrameBuffer;
+	uint8_t* mDisplayBuffer;
 	struct fb_fix_screeninfo mFixInfo;
 	struct fb_var_screeninfo mVarInfo;
 
@@ -76,7 +78,7 @@ struct X11FrameBufferEmulation
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FrameBuffer Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
+FrameBuffer* FrameBuffer::Open(bool pVerbose)
 {
 	FrameBuffer* newFrameBuffer = NULL;
 
@@ -84,16 +86,14 @@ FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
 	X11FrameBufferEmulation* newX11 = new X11FrameBufferEmulation();
 	if( newX11->Open(pVerbose) )
 	{
-		newFrameBuffer = new FrameBuffer(0,newX11->mFrameBuffer,newX11->mFrameBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
+		newFrameBuffer = new FrameBuffer(0,newX11->mDisplayBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
 		newFrameBuffer->mX11 = newX11;
 	}
 	else
 	{
 		delete newX11;
 	}
-	
 #else
-
 	// Open the file for reading and writing
 	int File = open("/dev/fb0", O_RDWR);
 	if(File)
@@ -139,15 +139,8 @@ FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
 				assert(DisplayRam);
 				if( DisplayRam != NULL )
 				{
-					uint8_t* FrameRam = DisplayRam;
-					if( pDoubleBuffer )
-					{
-						FrameRam = new uint8_t[finfo.smem_len];
-					}
-
-					newFrameBuffer = new FrameBuffer(File,FrameRam,DisplayRam,finfo,vinfo,pVerbose);					
+					newFrameBuffer = new FrameBuffer(File,DisplayRam,finfo,vinfo,pVerbose);					
 				}
-
 			}
 		}
 	}
@@ -165,17 +158,22 @@ FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
 	return newFrameBuffer;
 }
 
-FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose):
+FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose):
 	mWidth(pScreenInfo.xres),
 	mHeight(pScreenInfo.yres),
-	mStride(pFixInfo.line_length),
-	mPixelSize(pScreenInfo.bits_per_pixel/8),
-	mFrameBufferFile(pFile),
-	mFrameBufferSize(pFixInfo.smem_len),
-	mVerbose(pVerbose),
+
+	mDrawBufferStride(mWidth * 3),
+	mDrawBufferSize(mHeight * mDrawBufferStride),
+	mDrawBuffer(new uint8_t[mDrawBufferSize]),
+
+	mDisplayBufferStride(pFixInfo.line_length),
+	mDisplayBufferPixelSize(pScreenInfo.bits_per_pixel/8),
+	mDisplayBufferFile(pFile),
+	mDisplayBufferSize(pFixInfo.smem_len),
+	mDisplayBuffer(pDisplayBuffer),
+
 	mVariableScreenInfo(pScreenInfo),
-	mFrameBuffer(pFrameBuffer),
-	mDisplayBuffer(pDisplayBuffer)
+	mVerbose(pVerbose)
 {
 	FrameBuffer::mKeepGoing = true;
 	// Lets hook ctrl + c.
@@ -191,26 +189,72 @@ FrameBuffer::~FrameBuffer()
 	{
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
 	}
-
-	if( mFrameBuffer != mDisplayBuffer )
-	{
-		delete []mFrameBuffer;
-	}
-
-	munmap((void*)mDisplayBuffer,mFrameBufferSize);
-	close(mFrameBufferFile);
+	munmap((void*)mDisplayBuffer,mDisplayBufferSize);
+	close(mDisplayBufferFile);
 #endif //#ifdef USE_X11_EMULATION
+
+	delete []mDrawBuffer;
 }
 
 void FrameBuffer::Present()
 {
+	// When optimized by compiler these const vars will
+	// all move to generate the same code as if I made it all one line and unreadable!
+	// Trust your optimizer. :)
+	const int RedShift = mVariableScreenInfo.red.offset;
+	const int GreenShift = mVariableScreenInfo.green.offset;
+	const int BlueShift = mVariableScreenInfo.blue.offset;
+
+	if( mDisplayBufferPixelSize == 3 && mDisplayBufferStride == mDrawBufferStride && mDisplayBufferSize == mDrawBufferSize )
+	{// Early out...
+		memcpy(mDisplayBuffer,mDrawBuffer,mDrawBufferSize);
+	}
+	else if( mDisplayBufferPixelSize == 2 )
+	{
+		uint16_t* dst = (uint16_t*)(mDisplayBuffer);
+		const u_int8_t* src = mDrawBuffer;
+		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
+		{
+			for( int x = 0 ; x < mWidth ; x++, src += 3 )
+			{
+				const uint16_t r = src[0] >> 3;
+				const uint16_t g = src[1] >> 2;
+				const uint16_t b = src[2] >> 3;
+
+				const uint16_t pixel = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
+
+				assert( (y*mDisplayBufferStride) + x < mDisplayBufferSize );
+
+				dst[x] = pixel;
+			}
+		}
+	}
+	else
+	{
+		assert( mDisplayBufferPixelSize == 3 || mDisplayBufferPixelSize == 4 );
+		u_int8_t* dst = mDisplayBuffer;
+		const u_int8_t* src = mDrawBuffer;
+		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
+		{
+			for( int x = 0 ; x < mWidth ; x++, src += 3 )
+			{
+				const int index = (x * mDisplayBufferPixelSize);
+
+				assert( index >= 0 );
+				assert( index + (RedShift/8) < mDisplayBufferSize );
+				assert( index + (GreenShift/8) < mDisplayBufferSize );
+				assert( index + (BlueShift/8) < mDisplayBufferSize );
+
+				dst[ index + (RedShift/8) ]		= src[0];
+				dst[ index + (GreenShift/8) ]	= src[1];
+				dst[ index + (BlueShift/8) ]	= src[2];
+			}
+		}
+	}
+
+
 #ifdef USE_X11_EMULATION
 	mX11->Present();
-#else
-	if( mFrameBuffer != mDisplayBuffer )
-	{
-		memcpy(mDisplayBuffer,mFrameBuffer,mFrameBufferSize);
-	}
 #endif //#ifdef USE_X11_EMULATION
 }
 
@@ -221,111 +265,197 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 		// When optimized by compiler these const vars will
 		// all move to generate the same code as if I made it all one line and unreadable!
 		// Trust your optimizer. :)
-		const int RedShift = mVariableScreenInfo.red.offset;
-		const int GreenShift = mVariableScreenInfo.green.offset;
-		const int BlueShift = mVariableScreenInfo.blue.offset;
-		
-		if( mPixelSize == 2 )
-		{
-			const uint16_t red = pRed >> 3;
-			const uint16_t green = pGreen >> 2;
-			const uint16_t blue = pBlue >> 3;
+		const int index = (pX * 3) + (pY * mDrawBufferStride);
 
-			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
+		assert( index >= 0 );
+		assert( index + 0 < mDrawBufferSize );
+		assert( index + 1 < mDrawBufferSize );
+		assert( index + 2 < mDrawBufferSize );
 
-			assert( (pY*mStride) + pX < mFrameBufferSize );
+		mDrawBuffer[ index + 0 ] = pRed;
+		mDrawBuffer[ index + 1 ] = pGreen;
+		mDrawBuffer[ index + 2 ] = pBlue;
+	}
+}
 
-			((uint16_t*)(mFrameBuffer + (pY*mStride)))[pX] = pixel;
-		}
-		else
-		{
-			const int index = (pX*mPixelSize) + (pY*mStride);
+void FrameBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
+{
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const int index = (pX * 3) + (pY * mDrawBufferStride);
+		uint8_t* dst = mDrawBuffer + index;
 
-			assert( index >= 0 );
-			assert( index + (RedShift/8) < mFrameBufferSize );
-			assert( index + (GreenShift/8) < mFrameBufferSize );
-			assert( index + (BlueShift/8) < mFrameBufferSize );
+		assert( index >= 0 );
+		assert( index + 0 < mDrawBufferSize );
+		assert( index + 1 < mDrawBufferSize );
+		assert( index + 2 < mDrawBufferSize );
 
-			assert( mPixelSize == 3 || mPixelSize == 4 );
+		const uint32_t sA = pRGBA[3];
+		const uint32_t dA = 255 - sA;
 
-			mFrameBuffer[ index + (RedShift/8) ] = pRed;
-			mFrameBuffer[ index + (GreenShift/8) ] = pGreen;
-			mFrameBuffer[ index + (BlueShift/8) ] = pBlue;
-		}
+		const uint32_t sR = (pRGBA[0] * sA) / 255;
+		const uint32_t sG = (pRGBA[1] * sA) / 255;
+		const uint32_t sB = (pRGBA[2] * sA) / 255;
+
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
+	}
+}
+
+void FrameBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
+{
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const int index = (pX * 3) + (pY * mDrawBufferStride);
+		uint8_t* dst = mDrawBuffer + index;
+
+		assert( index >= 0 );
+		assert( index + 0 < mDrawBufferSize );
+		assert( index + 1 < mDrawBufferSize );
+		assert( index + 2 < mDrawBufferSize );
+
+		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
+
+		// Already had Alpha applied, just grab values.
+		const uint32_t sR = pRGBA[0];
+		const uint32_t sG = pRGBA[1];
+		const uint32_t sB = pRGBA[2];
+
+		// Apply alpha to unpredictable colour values.
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		// Write new values
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
 	}
 }
 
 void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
-	const int RedShift = mVariableScreenInfo.red.offset;
-	const int GreenShift = mVariableScreenInfo.green.offset;
-	const int BlueShift = mVariableScreenInfo.blue.offset;
-
-	if( mPixelSize == 2 )
+	uint8_t *dest = mDrawBuffer;
+	for( int y = 0 ; y < mHeight ; y++ )
 	{
-		const uint16_t red = pRed >> 3;
-		const uint16_t green = pGreen >> 2;
-		const uint16_t blue = pBlue >> 3;
-		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
-
-		uint8_t *line = mFrameBuffer;// line pointer is byte as mStride is in number of bytes too, line pointer is incremented by that.
-		for( int y = 0 ; y < mHeight ; y++, line += mStride )
+		for( int x = 0 ; x < mWidth ; x++, dest += 3 )
 		{
-			// Now go to 16bit mode for each pixel write.
-			uint16_t *dest = (uint16_t*)line;
-			for( int x = 0 ; x < mWidth ; x++ )
-			{
-				assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
-				dest[x] = pixel;
-			}
-		}
-	}
-	else
-	{
-		assert( mPixelSize == 3 || mPixelSize == 4 );
-		uint8_t *line = mFrameBuffer;
-		for( int y = 0 ; y < mHeight ; y++, line += mStride )
-		{
-			uint8_t *dest = line;
-			for( int x = 0 ; x < mWidth ; x++, dest += mPixelSize )
-			{// Could have been done with three dst pointers to remove the (c/8) but that is not an speed up. There are indirect addressing modes on most if not all CPU's.
-			// Also the (c/8) will be compiled out by the optimiser.
-				dest[ (RedShift/8) ] = pRed;
-				dest[ (GreenShift/8) ] = pGreen;
-				dest[ (BlueShift/8) ] = pBlue;
-			}
+			dest[0] = pRed;
+			dest[1] = pGreen;
+			dest[2] = pBlue;
 		}
 	}
 }
 
-void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
+void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
 {
 	int EndX = pSourceWidth + pX; 
 	int EndY = pSourceHeight + pY;
 	for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 3 )
 	{
-		const uint8_t* scanline = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < EndX ; x++, scanline += 3 )
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 3 )
 		{
-			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
 		}
 	}
 }
 	
-void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
+void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
 {
 	pWidth += pX; 
 	pHeight += pY;
 	pSourcePixels += (pSourceX*3) + (pSourceY * pSourceStride);
 	for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
 	{
-		const uint8_t* scanline = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 3 )
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 3 )
 		{
-			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
 		}
 	}
 }
+
+void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha)
+{
+	int EndX = pSourceWidth + pX; 
+	int EndY = pSourceHeight + pY;
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
+		}
+	}
+}
+
+void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha)
+{
+	pWidth += pX; 
+	pHeight += pY;
+	pSourcePixels += (pSourceX*4) + (pSourceY * pSourceStride);
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
+		}
+	}
+}
+
+void FrameBuffer::Blit(const TinyImage& pImage,int pX,int pY)
+{
+	if( pImage.mHasAlpha )
+	{
+		BlitRGBA(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride,pImage.mPreMultipliedAlpha);
+	}
+	else
+	{
+		BlitRGB(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride);
+	}	
+}
+
 
 void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
@@ -341,35 +471,14 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 	if( pFromX > pToX )
 		std::swap(pFromX,pToX);
 
-	const int RedShift = mVariableScreenInfo.red.offset;
-	const int GreenShift = mVariableScreenInfo.green.offset;
-	const int BlueShift = mVariableScreenInfo.blue.offset;
-
-	if( mPixelSize == 2 )
+	uint8_t *dest = mDrawBuffer + (pFromX * 3) + (pFromY * mDrawBufferStride);
+	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
 	{
-		const uint16_t red = pRed >> 3;
-		const uint16_t green = pGreen >> 2;
-		const uint16_t blue = pBlue >> 3;
-		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
+		dest[0] = pRed;
+		dest[1] = pGreen;
+		dest[2] = pBlue;
+	}
 
-		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromY*mStride) );
-		for( int x = pFromX ; x <= pToX && x < mWidth ; x++ )
-		{
-			assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
-			dest[x] = pixel;
-		}
-	}
-	else
-	{
-		assert( mPixelSize == 3 || mPixelSize == 4 );
-		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
-		{
-			dest[ (RedShift/8) ] = pRed;
-			dest[ (GreenShift/8) ] = pGreen;
-			dest[ (BlueShift/8) ] = pBlue;
-		}
-	}
 }
 
 void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -386,35 +495,15 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 	if( pFromY > pToY )
 		std::swap(pFromY,pToY);
 
-	const int RedShift = mVariableScreenInfo.red.offset;
-	const int GreenShift = mVariableScreenInfo.green.offset;
-	const int BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mPixelSize == 2 )
+	uint8_t *dest = mDrawBuffer + (pFromX*3) + (pFromY*mDrawBufferStride);
+	for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mDrawBufferStride )
 	{
-		const uint16_t red = pRed >> 3;
-		const uint16_t green = pGreen >> 2;
-		const uint16_t blue = pBlue >> 3;
-		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
+		dest[0] = pRed;
+		dest[1] = pGreen;
+		dest[2] = pBlue;
+	}
 
-		uint16_t *dest = (uint16_t*)mFrameBuffer;
-		dest += pFromX + (pFromY*mWidth);
-		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mWidth )
-		{
-			*dest = pixel;
-		}
-	}
-	else
-	{
-		assert( mPixelSize == 3 || mPixelSize == 4 );
-		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mStride )
-		{
-			dest[ (RedShift/8) ] = pRed;
-			dest[ (GreenShift/8) ] = pGreen;
-			dest[ (BlueShift/8) ] = pBlue;
-		}
-	}
 }
 
 void FrameBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -569,44 +658,16 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		if( pFromX > pToX )
 			std::swap(pFromX,pToX);
 
-		const int RedShift = mVariableScreenInfo.red.offset;
-		const int GreenShift = mVariableScreenInfo.green.offset;
-		const int BlueShift = mVariableScreenInfo.blue.offset;
-
-		if( mPixelSize == 2 )
+		for( int y = pFromY ; y <= pToY ; y++ )
 		{
-			const uint16_t red = pRed >> 3;
-			const uint16_t green = pGreen >> 2;
-			const uint16_t blue = pBlue >> 3;
-			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
-
-			// Don't need to check for y >= mHeight as above we already clamped it.
-			for( int y = pFromY ; y <= pToY ; y++ )
+			uint8_t *dest = mDrawBuffer + (pFromX*3) + (y*mDrawBufferStride);
+			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
 			{
-				uint16_t *dest = (uint16_t*)(mFrameBuffer + (y*mStride) );
-				// Don't need to check for x >= mWidth as above we already clamped it.
-				for( int x = pFromX ; x <= pToX ; x++ )
-				{
-					assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
-					dest[x] = pixel;
-				}
+				dest[0] = pRed;
+				dest[1] = pGreen;
+				dest[2] = pBlue;
 			}
 		}
-		else
-		{
-			assert( mPixelSize == 3 || mPixelSize == 4 );
-			for( int y = pFromY ; y <= pToY ; y++ )
-			{
-				uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (y*mStride);
-				for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
-				{
-					dest[ (RedShift/8) ] = pRed;
-					dest[ (GreenShift/8) ] = pGreen;
-					dest[ (BlueShift/8) ] = pBlue;
-				}
-			}
-		}
-
 	}
 	else
 	{
@@ -918,6 +979,24 @@ void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 	}
 }
 
+void FrameBuffer::PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount)
+{
+	while( pPixelCount-- )
+	{// More readable that doing it all on one line and generates same code once optimized by complier!
+		const uint32_t R = pRGBA[0];
+		const uint32_t G = pRGBA[1];
+		const uint32_t B = pRGBA[2];
+		const uint32_t A = pRGBA[3];
+
+		pRGBA[0] = (uint8_t)((R * A)/255);
+		pRGBA[1] = (uint8_t)((G * A)/255);
+		pRGBA[2] = (uint8_t)((B * A)/255);
+		pRGBA[3] = 255 - A;
+
+		pRGBA += 4;
+	}
+}
+
 sighandler_t FrameBuffer::mUsersSignalAction = NULL;
 bool FrameBuffer::mKeepGoing = false;
 void FrameBuffer::CtrlHandler(int SigNum)
@@ -937,6 +1016,53 @@ void FrameBuffer::CtrlHandler(int SigNum)
 	std::cout << '\n'; // without this the command prompt may be at the end of the ^C char.
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TinyImage Implementation.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha) :
+	mWidth(pWidth),
+	mHeight(pHeight),
+	mStride(pStride),
+	mHasAlpha(pHasAlpha),
+	mPreMultipliedAlpha(pPreMultipliedAlpha)
+{
+	mPixels.resize(mHeight * mStride);
+}
+
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha) :
+	mWidth(pWidth),
+	mHeight(pHeight),
+	mStride(mWidth * (pHasAlpha?4:3)),
+	mHasAlpha(pHasAlpha),
+	mPreMultipliedAlpha(pPreMultipliedAlpha)
+{
+	mPixels.resize(mHeight * mStride);
+}
+
+void TinyImage::PreMultiplyAlpha()
+{
+	assert( mPreMultipliedAlpha == false ); // Can't do this more than once!
+	assert( mHasAlpha ); // Has to have alpha data!
+	assert( (mPixels.size()&3) == 0 ); // Must be multiples for four bytes!
+
+	uint8_t* pixel = mPixels.data();
+	size_t pixelCount = mPixels.size()/4;
+	mPreMultipliedAlpha = true;
+	while( pixelCount-- )
+	{// More readable that doing it all on one line and generates same code once optimized by complier!
+		const uint32_t R = pixel[0];
+		const uint32_t G = pixel[1];
+		const uint32_t B = pixel[2];
+		const uint32_t A = pixel[3];
+
+		pixel[0] = (uint8_t)((R * A)/255);
+		pixel[1] = (uint8_t)((G * A)/255);
+		pixel[2] = (uint8_t)((B * A)/255);
+		pixel[3] = 255 - A;
+
+		pixel += 4;
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font Implementation.
@@ -1631,7 +1757,7 @@ X11FrameBufferEmulation::X11FrameBufferEmulation():
 	mDisplay(NULL),
 	mWindow(0),
 	mWindowReady(false),
-	mFrameBuffer(NULL)
+	mDisplayBuffer(NULL)
 {
 	memset(&mFixInfo,0,sizeof(mFixInfo));
 	memset(&mVarInfo,0,sizeof(mVarInfo));
@@ -1702,19 +1828,18 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask );
 	XMapWindow(mDisplay, mWindow);
 
-
-	mFrameBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
-	memset(mFrameBuffer,0,mFixInfo.smem_len);
+	mDisplayBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
+	memset(mDisplayBuffer,0,mFixInfo.smem_len);
 
 	Visual *visual=DefaultVisual(mDisplay, 0);
 	const int defDepth = DefaultDepth(mDisplay,DefaultScreen(mDisplay));
-	mFrameBufferImage = XCreateImage(
+	mDisplayBufferImage = XCreateImage(
 							mDisplay,
 							visual,
 							defDepth,
 							ZPixmap,
 							0,
-							(char*)mFrameBuffer,
+							(char*)mDisplayBuffer,
 							mVarInfo.width,
 							mVarInfo.height,
 							32,
@@ -1723,7 +1848,6 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 	// So I can exit cleanly if the user uses the close window button.
 	mDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
 	XSetWMProtocols(mDisplay, mWindow, &mDeleteMessage, 1);
-
 
 	// wait for the expose message.
   	timespec SleepTime = {0,1000000};
@@ -1779,7 +1903,7 @@ void X11FrameBufferEmulation::Present()
 	if( mWindowReady )
 	{
 		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
-		const int ret = XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+		const int ret = XPutImage(mDisplay, mWindow,defGC,mDisplayBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
 
 		switch (ret)
 		{
@@ -1809,5 +1933,5 @@ void X11FrameBufferEmulation::Present()
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};//namespace FBIO
+};//namespace tiny2d
    

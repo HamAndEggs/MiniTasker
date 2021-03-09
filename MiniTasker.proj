@@ -1,7 +1,7 @@
 {
     "source_files": [
         "./source/MiniTasker.cpp",
-   		"./source/framebuffer.cpp",
+   		"./source/Tiny2D.cpp",
         "./source/ClockDisplay.cpp",
         "./source/TaskDisplay.cpp",
         "./source/GetWeather.cpp",

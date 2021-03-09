@@ -20,7 +20,7 @@
 #include <string>
 #include <time.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 class ClockDisplay
 {
@@ -31,16 +31,16 @@ public:
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
     void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
 
-    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature);
+    void Update(tiny2d::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature);
 
 private:
 
-    void DrawTime(FBIO::FrameBuffer* pFB,int pX,int pY,int pHour,int pMinute);
-    void DrawDay(FBIO::FrameBuffer* pFB,int pX,int pY,int pWeekDay,int pMonthDay);
+    void DrawTime(tiny2d::FrameBuffer* pFB,int pX,int pY,int pHour,int pMinute);
+    void DrawDay(tiny2d::FrameBuffer* pFB,int pX,int pY,int pWeekDay,int pMonthDay);
 
-    FBIO::FreeTypeFont mTimeFont;
-    FBIO::FreeTypeFont mDateFont;
-    FBIO::FreeTypeFont mTemperatureFont;    
+    tiny2d::FreeTypeFont mTimeFont;
+    tiny2d::FreeTypeFont mDateFont;
+    tiny2d::FreeTypeFont mTemperatureFont;    
 
 	struct
 	{

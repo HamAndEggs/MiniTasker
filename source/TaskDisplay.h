@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 struct Task
 {
@@ -51,7 +51,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void Update(FBIO::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime);
+    void Update(tiny2d::FrameBuffer* pFB,int pX,int pY,const tm& pCurrentTime);
 
     const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
 
@@ -59,7 +59,7 @@ private:
 
     const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint32_t& rTillColour);
 
-    FBIO::FreeTypeFont mFont;
+    tiny2d::FreeTypeFont mFont;
 
     std::vector<const Task*> mTheTasks;
 

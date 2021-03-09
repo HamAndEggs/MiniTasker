@@ -14,18 +14,24 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef FRAME_BUFFER_H
-#define FRAME_BUFFER_H
+#ifndef TINY_2D_H
+#define TINY_2D_H
 
+#include <vector>
+
+#include <assert.h>
 #include <signal.h>
 #include <stdint.h>
+
 #include <linux/fb.h>
 
 /**
  * @brief define USE_X11_EMULATION for a system running X11.
  * This codebase is targeting systems without X11, but sometimes we want to develop on a system with it.
  * This define allows that. But is expected to be used ONLY for development.
- * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT
+ * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT in your build settings.
+ * These below are here for default behaviour.
+ * Doing this saves on params that are not needed 99% of the time.
  */
 #ifdef USE_X11_EMULATION
 	#ifndef X11_EMULATION_WIDTH
@@ -47,7 +53,7 @@
 	#include FT_FREETYPE_H
 #endif
 
-namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
+namespace tiny2d{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef uint32_t PixelColour;
@@ -58,10 +64,44 @@ typedef uint32_t PixelColour;
 #define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
 #define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
 
+/**
+ * @brief Simple image container, if I don't write one everyone else will. :)
+ * If you need more, then time to fork and play. :)
+ */
+struct TinyImage
+{
+	std::vector<uint8_t> mPixels;
+	const uint32_t mWidth;
+	const uint32_t mHeight;
+	const uint32_t mStride;
+	const bool mHasAlpha;
+	bool mPreMultipliedAlpha;
+
+	/**
+	 * @brief Construct a new Tiny Image object
+	 */
+	TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
+	 */
+	TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
+ 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
+ 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+	 */
+	void PreMultiplyAlpha();
+};
+
 struct X11FrameBufferEmulation;
 /**
  * @brief Represents the linux frame buffer display.
  * Is able to deal with and abstract out the various pixel formats. 
+ * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
  */
 class FrameBuffer
 {
@@ -71,13 +111,14 @@ public:
 	 * @brief Creates and opens a FrameBuffer object.
 	 * If the OS does not support the frame buffer driver or there is some other error,
 	 * this function will return NULL.
-	 * If enabled, double buffering will reduce the amount of tearing when redrawing the display at the cost of a little speed.
+	 * For simplicity all drawing is done at eight bits per channel to an off screen bufffer.
+	 * This makes the code very simple as the colour space conversion is only done when the
+	 * offscreen buffer is copied to the display.
 	 * 
-	 * @param pDoubleBuffer If true all drawing will be offscreen and you will need to call Present to see the results.
 	 * @param pVerbose get debugging information as the object is created.
 	 * @return FrameBuffer* 
 	 */
-	static FrameBuffer* Open(bool pDoubleBuffer = false,bool pVerbose = false);
+	static FrameBuffer* Open(bool pVerbose = false);
 
 	~FrameBuffer();
 
@@ -142,6 +183,27 @@ public:
 	{
 		WritePixel(pX,pY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
 	}
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does (S*A) + (D*(1-A))
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pX 
+	 * @param pY 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPixel(int pX,int pY,const uint8_t* pRGBA);
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does S + (D * A) Quicker but less flexable.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pX 
+	 * @param pY 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
+	
 	
 	/**
 	 * @brief Clears the entire screen.
@@ -167,7 +229,7 @@ public:
 		IE pSourcePixels[0] is red, pSourcePixels[1] is green and pSourcePixels[2] is blue.
 		Renders the image to pX,pY without scaling. Most basic blit.
 	*/
-	void BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight);
+	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight);
 	
 	/* 
 		Expects source to be 24bit, three 8 bit bytes in R G B order.
@@ -176,7 +238,49 @@ public:
 		pSourceStride is the byte size of one scan line in the source data.
 		Allows sub rect render of the source image.
 	*/
-	void BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
+	void BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer,
+	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	 * 
+	 * @param pSourcePixels 
+	 * @param pX 
+	 * @param pY 
+	 * @param pSourceWidth 
+	 * @param pSourceHeight 
+	 * @param pPreMultipliedAlpha 
+	 */
+	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Draws the sub rectangle of the image to the draw buffer,
+	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	 * 
+	 * @param pSourcePixels 
+	 * @param pX 
+	 * @param pY 
+	 * @param pWidth 
+	 * @param pHeight 
+	 * @param pSourceX 
+	 * @param pSourceY 
+	 * @param pSourceStride 
+	 * @param pPreMultipliedAlpha 
+	 */
+	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer.
+	 * 
+	 * @param pImage 
+	 * @param pX 
+	 * @param pY 
+	 */
+	void Blit(const TinyImage& pImage,int pX,int pY);
 
 	/**
 	 * @brief Draws a horizontal line.
@@ -421,8 +525,39 @@ public:
 	 */
 	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
 
+	/**
+	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
+ 	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+ 	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.		
+ 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
+ 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+	 * 
+	 * @param pRGBA 
+	 * @param pPixelCount
+	 */
+	static void PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount);
+
+	/**
+	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
+	 * Handy wrapper.
+	 * @param pRGBA 
+	 */
+	static void PreMultiplyAlphaChannel(std::vector<uint8_t>& pRGBA)
+	{
+		PreMultiplyAlphaChannel(pRGBA.data(),pRGBA.size()/4);
+	}
+
 private:
-	FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
+	/**
+	 * @brief Construct a new Frame Buffer object
+	 * @param pFile 
+	 * @param pDisplayBuffer 
+	 * @param pFixInfo 
+	 * @param pScreenInfo 
+	 * @param pVerbose 
+	 */
+	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
 	/*
 		Draws an arbitrary line.
@@ -439,19 +574,21 @@ private:
 	static void CtrlHandler(int SigNum);
 
 	const int mWidth,mHeight;
-	const int mStride;// Num bytes between each line.
-	const int mPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
-	const int mFrameBufferFile;
-	const int mFrameBufferSize;
-	const bool mVerbose;
-	const struct fb_var_screeninfo mVariableScreenInfo;
 
-	/**
-	 * @brief If double buffer is on then mFrameBuffer is the buffer that is rendered too and display buffer is what is on view.
-	 * If no double buffering, these point to the same memory.
-	 */
-	uint8_t* mFrameBuffer;
-	uint8_t* mDisplayBuffer;
+	// We always render to the frame buffer, do the conversion to the display buffer format when the image is presented.
+	// This makes the drawing code a lot simpler and easier to maintain.
+	const int mDrawBufferStride;		// Num bytes between each line.
+	const int mDrawBufferSize;
+	uint8_t* mDrawBuffer;
+
+	const int mDisplayBufferStride;		// Num bytes between each line.
+	const int mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const int mDisplayBufferFile;
+	const int mDisplayBufferSize;
+	uint8_t*  mDisplayBuffer;
+
+	const struct fb_var_screeninfo mVariableScreenInfo;
+	const bool mVerbose;
 
 	/**
 	 * @brief set to false by the ctrl + c handler.
@@ -565,6 +702,6 @@ private:
 #endif //#ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};//namespace FBIO
+};//namespace tiny2d
 	
-#endif //FRAME_BUFFER_H
+#endif //TINY_2D_H

@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 #include "ClockDisplay.h"
 #include "TaskDisplay.h"
 #include "TheWeather.h"
@@ -106,10 +106,10 @@ int main(int argc, char *argv[])
     tm currentTime = *localtime(&result);
 
 
-    FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( FB )
     {
-        FBIO::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
+        tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
 
         TaskDisplay theTasks(path + "liberation_serif_font/");
         if( theTasks.LoadTaskList(path + taskFile) )
