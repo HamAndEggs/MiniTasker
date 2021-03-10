@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
        	return EXIT_FAILURE;
     }
 
-    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
+    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open();
 	if( !FB )
     	return EXIT_FAILURE;
 
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     // Load a background, later I'll make this configurable.
     tiny2d::DrawBuffer Background;
 
-    tinypng::Loader bg(true);
+    tinypng::Loader bg;
     if( bg.LoadFromFile(path + "images/clockwork.png") )
     {
         Background.Resize(bg.GetWidth(),bg.GetHeight());
@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
     Icons WeatherIcons(path + "icons/");
     
     tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
+    tiny2d::FreeTypeFont IconFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);        
 
     ClockDisplay theClock(path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
@@ -164,14 +165,35 @@ int main(int argc, char *argv[])
 
         RT.Blit(Background,0,0);
 
-
-        for( int s = 0 ; s < 6 ; s++ )
+        // Show next six icons.
+        // I could render this to an offscreen image and only update once an hour.
+        // But for now, render each time.
         {
-            const int x = RT.GetWidth() - 600 + s*100;
-            const int y = 220;
+            const std::map<int,std::string>icons = weather.GetTodaysIcons();
+            for( int s = 0 ; s < 6 ; s++ )
+            {
+                const auto& f = icons.find(currentTime.tm_hour + s);
+                if( f != icons.end() )
+                {
+                    const int x = RT.GetWidth() - 600 + s*100;
+                    const int y = 220;
 
-            RT.Blit(WeatherIcons.GetIconBG(),x,y);
-            RT.Blit(WeatherIcons.GetIcon("11d"),x,y);
+                    RT.Blit(WeatherIcons.GetIconBG(),x,y);
+                    RT.Blit(WeatherIcons.GetIcon(f->second),x,y+10);
+
+                    std::string hour; 
+                    if( f->first <= 12 )
+                    {
+                        hour = std::to_string(f->first) + "am";
+                    }
+                    else
+                    {
+                        hour = std::to_string(f->first-12) + "pm";
+                    }
+
+                    IconFont.Print(RT,x+12,y+22,hour.c_str());
+                }
+            }
         }
 
         weather.Update(theTimeUTC);

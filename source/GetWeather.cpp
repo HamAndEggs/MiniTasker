@@ -238,6 +238,22 @@ const WeatherData* TheWeather::GetHourlyForcast(std::time_t pNowUTC)const
 	return current;
 }
 
+std::map<int,std::string> TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
+{
+	std::map<int,std::string> icons;
+
+	const WeatherTime now(pNowUTC);
+
+	for( const auto& t : mHourly )
+	{
+		if( t.mTime.mDay == now.mDay )
+		{
+			icons[t.mTime.mHour] = t.mDisplay.mIcon;
+		}
+	}
+
+	return icons;
+}
 
 bool TheWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
 {

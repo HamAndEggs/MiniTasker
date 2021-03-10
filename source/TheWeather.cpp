@@ -42,6 +42,7 @@ void TheWeather::Update(const std::time_t pCurrentTime)
                 const getweather::WeatherTime nextDownload(mFetchLimiter);
                 std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
 
+                mTodaysIcons = pTheWeather.GetHourlyIconCodes(std::time(nullptr));
             }
             else
             {

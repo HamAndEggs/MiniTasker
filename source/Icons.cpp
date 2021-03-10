@@ -2,13 +2,14 @@
 
 Icons::Icons(const std::string& pIconFolder)
 {
-    const int size = 100;
+    const int sizeX = 100;
+    const int sizeY = 100;
     const int rounded = 15;
     const int padding = 2;
-    mIconBG.Resize(size,size,true);
+    mIconBG.Resize(sizeX,sizeY,true);
     mIconBG.Clear(0,0,0,0);
-    mIconBG.FillRoundedRectangle(padding,padding,size-padding-1,size-padding-1,rounded,0,0,0,100);
-    mIconBG.DrawRoundedRectangle(padding,padding,size-padding-1,size-padding-1,rounded,255,255,255);
+    mIconBG.FillRoundedRectangle(padding,padding,sizeX-padding-1,sizeY-padding-1,rounded,0,0,0,200);
+    mIconBG.DrawRoundedRectangle(padding,padding,sizeX-padding-1,sizeY-padding-1,rounded,255,255,255);
 
     // Load the images.
     const std::vector<std::string> files =
@@ -33,7 +34,7 @@ Icons::Icons(const std::string& pIconFolder)
         "50n",
     }; 
 
-    tinypng::Loader bg(true);
+    tinypng::Loader bg;
     for( std::string f : files )
     {
         if( bg.LoadFromFile(pIconFolder + f + "@2x.png") )

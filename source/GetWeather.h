@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <functional>
 #include <ctime>
 
@@ -34,7 +35,7 @@ struct WeatherTime
 	{
 		Set(pUTC);
 	}
-
+	
 	void Set(std::time_t pTime)
 	{
 		mUTC = pTime;
@@ -206,6 +207,14 @@ struct TheWeather
 	 * @return const Temperature* 
 	 */
 	const WeatherData* GetHourlyForcast(std::time_t pNowUTC)const;
+
+	/**
+	 * @brief For the day passed in UTC time you'll get a map of weather icon names for each hour.
+	 * 
+	 * @param pNowUTC The map is <24h,name>. EG the icon for 7pm is 'icon name == map[19]'
+	 * @return const std::map<int,std::string> 
+	 */
+	std::map<int,std::string> GetHourlyIconCodes(std::time_t pNowUTC)const;
 
 private:
 

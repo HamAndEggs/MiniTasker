@@ -370,7 +370,10 @@ bool Loader::BuildImage(const std::vector<uint8_t>& pCompressionData)
     std::vector<uint8_t> imageBuffer;
     imageBuffer.resize(mWidth*mHeight*8);
 
-    std::clog << "Decompressing " << pCompressionData.size() << " bytes to possibly " << imageBuffer.size() << " bytes\n";
+    if( mVerbose )
+    {
+        std::clog << "Decompressing " << pCompressionData.size() << " bytes to possibly " << imageBuffer.size() << " bytes";
+    }
 
     z_stream infstream;
     infstream.zalloc = Z_NULL;
@@ -389,7 +392,10 @@ bool Loader::BuildImage(const std::vector<uint8_t>& pCompressionData)
     if( infstream.total_out <= 0 )
         return false;
 
-    std::clog << "Decompressed size is " << infstream.total_out << "\n";
+    if( mVerbose )
+    {
+        std::clog << ", decompressed size is really " << infstream.total_out << "\n";
+    }
 
     std::vector<uint8_t> rowFilters;
     FillColourPlanes(imageBuffer,rowFilters);

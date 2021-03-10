@@ -19,6 +19,7 @@
 
 #include <ctime>
 #include <string>
+#include <map>
 
 #include "GetWeather.h"
 
@@ -30,6 +31,7 @@ public:
 
     bool GetHasWeather()const{return mHasWeather;}
     std::string GetCurrentTemperature()const{return mCurrentTemperature;}
+    std::map<int,std::string> GetTodaysIcons()const{return mTodaysIcons;}
 
     void Update(const std::time_t pCurrentTime);
 
@@ -40,6 +42,7 @@ private:
 
     std::string mCurrentTemperature;
 
+    std::map<int,std::string> mTodaysIcons;
 };
 
 #endif //#ifndef THE_WEATHER_H
