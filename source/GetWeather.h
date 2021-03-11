@@ -26,6 +26,8 @@
 namespace getweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+typedef std::vector<std::pair<int,std::string>> HourlyIconVector;
+
 struct WeatherTime
 {
 	std::time_t mUTC;
@@ -210,11 +212,19 @@ struct TheWeather
 
 	/**
 	 * @brief For the day passed in UTC time you'll get a map of weather icon names for each hour.
-	 * 
-	 * @param pNowUTC The map is <24h,name>. EG the icon for 7pm is 'icon name == map[19]'
-	 * @return const std::map<int,std::string> 
+	 * I send back the hour as that helps when you do the display, you can mark it as 6am for example.
+	 * @param pNowUTC 
+	 * @return const HourlyIconVector The map is <24h,name>. EG the icon for 7pm is 'icon name == map[19]'
 	 */
-	std::map<int,std::string> GetHourlyIconCodes(std::time_t pNowUTC)const;
+	HourlyIconVector GetTodaysHourlyIconCodes(std::time_t pNowUTC)const;
+
+	/**
+	 * @brief For the UTC time you'll get a map of weather icon names for each hour into the future spanning many days.
+	 * I send back the hour as that helps when you do the display, you can mark it as 6am for example.
+	 * @param pNowUTC 
+	 * @return const HourlyIconVector In hour order. The map is <24h,name>. EG the icon for 7pm is 'icon name == map[19]'
+	 */
+	HourlyIconVector GetHourlyIconCodes(std::time_t pNowUTC)const;
 
 private:
 

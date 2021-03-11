@@ -9,7 +9,8 @@
 TheWeather::TheWeather(const std::string& pWeatherApiKey):
     mHasWeather(false),
     mFetchLimiter(0),
-    mWeather(pWeatherApiKey)
+    mWeather(pWeatherApiKey),
+    mHourlyUpdates(0)
 {
 
 }
@@ -42,7 +43,8 @@ void TheWeather::Update(const std::time_t pCurrentTime)
                 const getweather::WeatherTime nextDownload(mFetchLimiter);
                 std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
 
-                mTodaysIcons = pTheWeather.GetHourlyIconCodes(std::time(nullptr));
+                // Reset this time out to force a rebuild.
+                mHourlyUpdates = 0;
             }
             else
             {
@@ -56,14 +58,21 @@ void TheWeather::Update(const std::time_t pCurrentTime)
 
     if( mHasWeather )
     {
-        // Not building for C++20 so can't use std::format yet.... So go old school.
-        char buf[64];
+        // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
+        if( mHourlyUpdates < pCurrentTime )
+        {
+            mHourlyUpdates = pCurrentTime + (60*60);
 
-        float c = 0.0f;
+            mNextHourlyIcons = mWeather.GetHourlyIconCodes(pCurrentTime);
 
-        const auto t = mWeather.GetHourlyForcast(pCurrentTime);
-        snprintf(buf,sizeof(buf),"%04.2fC",t->mTemperature.c);
-        mCurrentTemperature = buf;
+            // Not building for C++20 so can't use std::format yet.... So go old school.
+            char buf[64];
+            float c = 0.0f;
+            const auto t = mWeather.GetHourlyForcast(pCurrentTime);
+            snprintf(buf,sizeof(buf),"%04.2fC",t->mTemperature.c);
+            mCurrentTemperature = buf;
+
+        }
     }
 
 }

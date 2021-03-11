@@ -238,9 +238,9 @@ const WeatherData* TheWeather::GetHourlyForcast(std::time_t pNowUTC)const
 	return current;
 }
 
-std::map<int,std::string> TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
+HourlyIconVector TheWeather::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
 {
-	std::map<int,std::string> icons;
+	HourlyIconVector icons;
 
 	const WeatherTime now(pNowUTC);
 
@@ -248,12 +248,28 @@ std::map<int,std::string> TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)con
 	{
 		if( t.mTime.mDay == now.mDay )
 		{
-			icons[t.mTime.mHour] = t.mDisplay.mIcon;
+			icons.push_back(std::make_pair(t.mTime.mHour,t.mDisplay.mIcon));
 		}
 	}
 
 	return icons;
 }
+
+HourlyIconVector TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
+{
+	HourlyIconVector icons;
+
+	for( const auto& t : mHourly )
+	{
+		if( pNowUTC <= t.mTime.mUTC )
+		{
+			icons.push_back(std::make_pair(t.mTime.mHour,t.mDisplay.mIcon));
+		}
+	}
+
+	return icons;
+}
+
 
 bool TheWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
 {

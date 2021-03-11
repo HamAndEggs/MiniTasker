@@ -31,7 +31,7 @@ public:
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
     void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
 
-    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime,const std::string& pCurrentTemperature);
+    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
 
 private:
 
@@ -40,7 +40,6 @@ private:
 
     tiny2d::FreeTypeFont mTimeFont;
     tiny2d::FreeTypeFont mDateFont;
-    tiny2d::FreeTypeFont mTemperatureFont;    
 
 	struct
 	{

@@ -23,6 +23,8 @@
 #include "Tiny2D.h"
 #include "TinyPNG.h"
 
+class TheWeather;
+
 class Icons
 {
 public:
@@ -31,9 +33,21 @@ public:
     const tiny2d::DrawBuffer& GetIcon(const std::string& pName)const;
     const tiny2d::DrawBuffer& GetIconBG()const{return mIconBG;}
 
+    /**
+     * @brief Draws a set of icons to get a brief over view of the weather coming up.
+     * 
+     * @param pFB 
+     * @param pX 
+     * @param pY 
+     */
+    void RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurrentTime,const TheWeather& pWeather);
+
+
 private:
     tiny2d::DrawBuffer mIconBG;
     std::map<std::string,tiny2d::DrawBuffer>mIcons;
+    tiny2d::FreeTypeFont mIconFont;
+    tiny2d::FreeTypeFont mTemperatureFont;    
 
     void BuildIcon(tinypng::Loader& bg,const std::string pName);
 };

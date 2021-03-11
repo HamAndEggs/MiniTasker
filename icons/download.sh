@@ -24,6 +24,6 @@ ICONS=(
 
 for t in ${ICONS[@]}; do
 #    wget "$BASE_URL$t.png"
-    wget "$BASE_URL$t@2x.png"
-#    wget "$BASE_URL$t@4x.png"
+#    wget "$BASE_URL$t@2x.png"
+    wget "$BASE_URL$t@4x.png" -O "$t.png" 
 done

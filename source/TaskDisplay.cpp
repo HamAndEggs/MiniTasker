@@ -104,8 +104,8 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
         RT.FillRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b);// the tick
 
         // Draw the text.
-        mFont.Print(RT,pX + 4,RT.GetHeight() - 30,theTask->what.c_str());
-        mFont.Printf(RT,pX + 4,pY + 40,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
+        mFont.Print(RT,pX + 4,RT.GetHeight() - 28,theTask->what.c_str());
+        mFont.Printf(RT,pX + 4,pY + 50,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
 

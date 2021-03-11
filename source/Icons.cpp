@@ -1,15 +1,23 @@
 #include "Icons.h"
+#include "TheWeather.h"
 
-Icons::Icons(const std::string& pIconFolder)
+static const int ICON_WIDTH = 160;
+
+
+Icons::Icons(const std::string& pPath) : 
+    mIconFont(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",30),
+    mTemperatureFont( pPath + "liberation_serif_font/LiberationSerif-Regular.ttf",60)
 {
-    const int sizeX = 100;
-    const int sizeY = 100;
+    mTemperatureFont.SetPenColour(0,0,0);
+    
+    const int sizeY = 160;
     const int rounded = 15;
     const int padding = 2;
-    mIconBG.Resize(sizeX,sizeY,true);
+    mIconBG.Resize(ICON_WIDTH,sizeY,true);
     mIconBG.Clear(0,0,0,0);
-    mIconBG.FillRoundedRectangle(padding,padding,sizeX-padding-1,sizeY-padding-1,rounded,0,0,0,200);
-    mIconBG.DrawRoundedRectangle(padding,padding,sizeX-padding-1,sizeY-padding-1,rounded,255,255,255);
+    mIconBG.FillRoundedRectangle(padding,padding,ICON_WIDTH-padding-1,sizeY-padding-1,rounded,0,0,0,200);
+    mIconBG.DrawRoundedRectangle(padding,padding,ICON_WIDTH-padding-1,sizeY-padding-1,rounded,255,255,255);
+    
 
     // Load the images.
     const std::vector<std::string> files =
@@ -37,10 +45,53 @@ Icons::Icons(const std::string& pIconFolder)
     tinypng::Loader bg;
     for( std::string f : files )
     {
-        if( bg.LoadFromFile(pIconFolder + f + "@2x.png") )
+        if( bg.LoadFromFile(pPath + "icons/" + f + ".png") )
         {
             BuildIcon(bg,f);
         }
+    }
+}
+
+void Icons::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurrentTime,const TheWeather& pWeather)
+{
+     // Show next six icons.
+    // I could render this to an offscreen image and only update once an hour.
+    // But for now, render each time.
+    const getweather::HourlyIconVector icons = pWeather.GetNextHourlyIcons();
+    int n = 0;
+    int x = (RT.GetWidth()/2) - ((ICON_WIDTH*6) / 2);
+    int y = pY;
+    for( const auto& icon : icons )
+    {
+        RT.Blit(GetIconBG(),x,y);
+        RT.Blit(GetIcon(icon.second),x-20,y-10);
+
+        std::string hour; 
+        if( icon.first <= 12 )
+        {
+            hour = std::to_string(icon.first) + "am";
+        }
+        else
+        {
+            hour = std::to_string(icon.first-12) + "pm";
+        }
+
+        mIconFont.Print(RT,x+12,y+30,hour.c_str());
+
+        x += ICON_WIDTH;
+        n++;
+
+        if( n == 6 )
+        {// Sorry, this is crap. ;)
+            break;
+        }
+    }
+
+    // Draw temperature, if we have one.
+    const std::string temperature = "12.12C";//pWeather.GetCurrentTemperature();
+    if( temperature.size() > 0 )
+    {
+        mTemperatureFont.Print(RT,RT.GetWidth() - 200,y - 20,temperature.c_str());
     }
 }
 

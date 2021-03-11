@@ -31,18 +31,21 @@ public:
 
     bool GetHasWeather()const{return mHasWeather;}
     std::string GetCurrentTemperature()const{return mCurrentTemperature;}
-    std::map<int,std::string> GetTodaysIcons()const{return mTodaysIcons;}
+
+    // List of the hourly icons from and including now but not before.
+    getweather::HourlyIconVector GetNextHourlyIcons()const{return mNextHourlyIcons;}
 
     void Update(const std::time_t pCurrentTime);
 
 private:
     bool mHasWeather;
     std::time_t mFetchLimiter;
+    std::time_t mHourlyUpdates;
     getweather::TheWeather mWeather;
 
     std::string mCurrentTemperature;
 
-    std::map<int,std::string> mTodaysIcons;
+    getweather::HourlyIconVector mNextHourlyIcons;
 };
 
 #endif //#ifndef THE_WEATHER_H

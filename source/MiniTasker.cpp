@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     tiny2d::DrawBuffer Background;
 
     tinypng::Loader bg;
-    if( bg.LoadFromFile(path + "images/clockwork.png") )
+    if( bg.LoadFromFile(path + "images/bg-pastal-01.png") )
     {
         Background.Resize(bg.GetWidth(),bg.GetHeight());
         bg.GetRGB(Background.mPixels);
@@ -142,10 +142,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    Icons WeatherIcons(path + "icons/");
+    Icons WeatherIcons(path);
     
-    tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");        
-    tiny2d::FreeTypeFont IconFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);        
+    tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
 
     ClockDisplay theClock(path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
@@ -165,41 +164,14 @@ int main(int argc, char *argv[])
 
         RT.Blit(Background,0,0);
 
-        // Show next six icons.
-        // I could render this to an offscreen image and only update once an hour.
-        // But for now, render each time.
-        {
-            const std::map<int,std::string>icons = weather.GetTodaysIcons();
-            for( int s = 0 ; s < 6 ; s++ )
-            {
-                const auto& f = icons.find(currentTime.tm_hour + s);
-                if( f != icons.end() )
-                {
-                    const int x = RT.GetWidth() - 600 + s*100;
-                    const int y = 220;
-
-                    RT.Blit(WeatherIcons.GetIconBG(),x,y);
-                    RT.Blit(WeatherIcons.GetIcon(f->second),x,y+10);
-
-                    std::string hour; 
-                    if( f->first <= 12 )
-                    {
-                        hour = std::to_string(f->first) + "am";
-                    }
-                    else
-                    {
-                        hour = std::to_string(f->first-12) + "pm";
-                    }
-
-                    IconFont.Print(RT,x+12,y+22,hour.c_str());
-                }
-            }
-        }
-
         weather.Update(theTimeUTC);
-        theClock.Update(RT,20,20,currentTime,weather.GetCurrentTemperature());
-        theTasks.Update(RT,20,400,currentTime);
+        theClock.Update(RT,20,20,currentTime);
+        theTasks.Update(RT,20,450,currentTime);
 
+        // Render the weather icons.
+        WeatherIcons.RenderWeatherForcast(RT,280,currentTime,weather);
+
+        // Render the uptime
         uint64_t upDays,upHours,upMinutes;
         if( GetUptime(upDays,upHours,upMinutes) )
         {
