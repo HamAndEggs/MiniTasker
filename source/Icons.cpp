@@ -66,14 +66,20 @@ void Icons::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurren
         RT.Blit(GetIconBG(),x,y);
         RT.Blit(GetIcon(icon.second),x-20,y-10);
 
+
+        // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
         std::string hour; 
         if( icon.first == 0 )
         {// Special case zero houndred, IE 12am...
-            hour = "12am";
+            hour = "Midnight";
         }
-        else if( icon.first <= 12 )
+        else if( icon.first < 12 )
         {
             hour = std::to_string(icon.first) + "am";
+        }
+        else if( icon.first == 12 )
+        {// Special case 12 houndred, IE 12pm, or am, or pm.......
+            hour = "Midday";
         }
         else
         {
