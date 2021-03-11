@@ -60,7 +60,8 @@
             "define": [
                 "DEBUG_BUILD",
                 "USE_X11_EMULATION",
-                "USE_FREETYPEFONTS"
+                "USE_FREETYPEFONTS",
+                "DEVELOPMENT_TASK_FILE=\"/usr/share/mini-tasker/task-file.json\""
             ]
         }
     },

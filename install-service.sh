@@ -1,20 +1,38 @@
 #/bin/bash
 SERVICE_NAME="mini-tasker"
 APP_NAME="mini-tasker"
+APP_FOLDER="/usr/share/$APP_NAME"
 
-echo "Building app, you have to have 'appbuild' installed to do this"
-appbuild
+echo "This script uses sudo, please review first if you're not sure."
+echo "Do you wish to continue?"
+read -p "(y/n)?" answer
 
-echo "Copying app to /usr/bin will need root access"
-sudo cp ./bin/release/$APP_NAME /usr/bin/
+if [ $answer == "y" ] || [ $answer == "Y" ] ;then
+    echo "Building application"
+    appbuild
 
-echo "Copying service file"
-sudo cp ./$SERVICE_NAME.service /lib/systemd/system/
+    ./update-resources.sh
 
-echo "Setting mode"
-sudo chmpd 664  /lib/systemd/system/$SERVICE_NAME.service
+    echo "Copying configuration file"
+    sudo cp ./task-file.json &APP_FOLDER
 
-echo "Enabling at boot"
-sudo systemctl enable $SERVICE_NAME
+    echo "Copying app to /usr/bin"
+    sudo cp ./bin/release/$APP_NAME /usr/bin/
 
-echo "service is called $SERVICE_NAME, will be loaded at next boot. Keep cool! :)"
+    echo "Copying service file"
+    sudo cp ./$SERVICE_NAME.service /lib/systemd/system/
+
+    echo "Setting mode"
+    sudo chmpd 664  /lib/systemd/system/$SERVICE_NAME.service
+
+    echo "Enabling at boot"
+    sudo systemctl enable $SERVICE_NAME
+
+    echo "service is called $SERVICE_NAME, will be loaded at next boot. Keep cool! :)"
+    echo "You now need to go an modify the task-file.json configuration json file, it is loaded from $APP_FOLDER"
+    echo "A copy is already waiting for you. Add your weather API key too."
+
+else
+    echo "Application not installed"
+fi
+

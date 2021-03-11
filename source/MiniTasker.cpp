@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
 
     // Crude argument list handling.
     std::string path = "./";
-    std::string taskFile = "example.json";
+
+    std::string taskFile = "task-file.json";
     if( (argc == 2 || argc == 3) && DirectoryExists(argv[1]) )
     {
         path = argv[1];
@@ -108,6 +109,7 @@ int main(int argc, char *argv[])
     tm currentTime = *localtime(&result);
 
     TaskDisplay theTasks(path + "liberation_serif_font/");
+    
     if( theTasks.LoadTaskList(path + taskFile) == false )
     {
         std::cerr << "Failed to read task file\n";

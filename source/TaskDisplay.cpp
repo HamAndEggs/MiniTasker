@@ -26,7 +26,16 @@ TaskDisplay::~TaskDisplay()
 
 bool TaskDisplay::LoadTaskList(const std::string& pFilename)
 {
-    std::ifstream jsonFile(pFilename);
+// Allows me to have my own personal file with personal data in it not in the repo.
+// Defined in the x11 project settings.
+#ifdef DEVELOPMENT_TASK_FILE
+    const std::string filename = DEVELOPMENT_TASK_FILE;
+    std::cout << "Using project overide for task file, " << filename << "\n";
+#else
+    const std::string filename = pFilename;
+#endif
+
+    std::ifstream jsonFile(filename);
     if( jsonFile.is_open() )
     {
         std::stringstream jsonStream;

@@ -1,6 +1,5 @@
 {
-    "xweather-api-key":"your-weather-api-key",
-    "weather-api-key":"c015f40cb0d18e0256c12fcb70db6390",
+    "weather-api-key":"your-weather-api-key",
     "tasks":
     [
         {
@@ -10,15 +9,9 @@
             "fg_colour":[0,0,0]
         },
         {
-            "what":"Study",
+            "what":"Work",
             "when":"9:00",
             "bg_colour":[60,200,60],
-            "fg_colour":[0,0,0]
-        },
-        {
-            "what":"Relax / Snack",
-            "when":"11:00",
-            "bg_colour":[200,60,200],
             "fg_colour":[0,0,0]
         },
         {
@@ -34,7 +27,7 @@
             "fg_colour":[0,0,0]
         },
         {
-            "what":"Study",
+            "what":"Work",
             "when":"13:00",
             "bg_colour":[60,200,60],
             "fg_colour":[0,0,0]
@@ -43,12 +36,6 @@
             "what":"Relax / Snack",
             "when":"15:00",
             "bg_colour":[200,60,200],
-            "fg_colour":[0,0,0]
-        },
-        {
-            "what":"Study",
-            "when":"16:00",
-            "bg_colour":[60,200,60],
             "fg_colour":[0,0,0]
         },
         {
