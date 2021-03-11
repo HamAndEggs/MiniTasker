@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     theClock.SetBackground(0,0,0);
 
     TheWeather weather(theTasks.GetWeatherApiKey());
-
+    int lastMinute = -1;// Only redraw once a minute.
     while( FB->GetKeepGoing() )
     {
         // See if day has changed.
@@ -164,25 +164,34 @@ int main(int argc, char *argv[])
             currentTime = *now;
         }
 
-        RT.Blit(Background,0,0);
-
-        weather.Update(theTimeUTC);
-        theClock.Update(RT,20,20,currentTime);
-        theTasks.Update(RT,20,450,currentTime);
-
-        // Render the weather icons.
-        WeatherIcons.RenderWeatherForcast(RT,280,currentTime,weather);
-
-        // Render the uptime
-        uint64_t upDays,upHours,upMinutes;
-        if( GetUptime(upDays,upHours,upMinutes) )
+        if( lastMinute != currentTime.tm_min )
         {
-            RT.FillRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255);
-            RT.FillRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180);
-            StatsFont.Printf(RT,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+            // Redraw the off screen display buffer
+            lastMinute = currentTime.tm_min;
+            RT.Blit(Background,0,0);
+
+            weather.Update(theTimeUTC);
+            theClock.Update(RT,20,20,currentTime);
+            theTasks.Update(RT,20,450,currentTime);
+
+            // Render the weather icons.
+            WeatherIcons.RenderWeatherForcast(RT,280,currentTime,weather);
+
+            // Render the uptime
+            uint64_t upDays,upHours,upMinutes;
+            if( GetUptime(upDays,upHours,upMinutes) )
+            {
+                RT.FillRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255);
+                RT.FillRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180);
+                StatsFont.Printf(RT,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+            }
         }
 
+        // Always redraw FB, something on the OS may have don't something I can't stop.
+        // Also handles user input.
         FB->Present(RT);
+
+        // Check again in a second. Do doing big wait here as I need to be able to quit in a timely fashion.
         sleep(1);
     }
 
