@@ -82,6 +82,7 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
 {
     const int hour = pCurrentTime.tm_hour;
     const int minute = pCurrentTime.tm_min;
+    const int Xpadding = 20;
 
     int tillHour,tillMinute;
     uint8_t rTillR,rTillG,rTillB;
@@ -92,7 +93,7 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
         mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw box for all the text
-        RT.FillRoundedRectangle(0,pY,RT.GetWidth(),RT.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        RT.FillRoundedRectangle(Xpadding,pY,RT.GetWidth()-1-Xpadding,RT.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw the progress line.
         const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
@@ -100,21 +101,21 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
         const float nowTotal  = (((hour * 60) + minute) * 60) + pCurrentTime.tm_sec;
 
         // "1.0f -" bit is to inverter result so it goes from left to right. :)
-        float progress = 1.0f;
+        float progress = 0.0f;
         if( (tillTotal - fromTotal) > 0 )
         {
-            progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
+//            progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
         }
 
-        const int progressX = RT.GetWidth() * progress;
+        const int progressX = Xpadding + 4 + ((RT.GetWidth()-1-Xpadding-Xpadding-8) * progress);
         const int progressY = RT.GetHeight();
-        RT.FillRectangle(0,progressY-8,progressX,progressY,rTillR,rTillG,rTillB);
-        RT.FillRectangle(progressX,progressY-8,RT.GetWidth(),progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        RT.FillRectangle(Xpadding,progressY-8,progressX,progressY,rTillR,rTillG,rTillB);
+        RT.FillRectangle(progressX,progressY-8,RT.GetWidth()-1-Xpadding,progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
         RT.FillRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b);// the tick
 
         // Draw the text.
-        mFont.Print(RT,pX + 4,RT.GetHeight() - 28,theTask->what.c_str());
-        mFont.Printf(RT,pX + 4,pY + 50,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
+        mFont.Print(RT,pX + 4 + Xpadding,RT.GetHeight() - 28,theTask->what.c_str());
+        mFont.Printf(RT,pX + 4 + Xpadding,pY + 50,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
 
