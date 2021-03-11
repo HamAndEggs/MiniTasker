@@ -29,6 +29,14 @@
 
 namespace getweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+const std::time_t ONE_MINUTE = (60);
+const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
+const std::time_t ONE_DAY = (ONE_HOUR*24);
+
+static const std::time_t RoundToHour(const std::time_t pTime)
+{
+    return pTime - (pTime%ONE_HOUR);
+}
 
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {
@@ -258,6 +266,10 @@ HourlyIconVector TheWeather::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
 HourlyIconVector TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
 {
 	HourlyIconVector icons;
+
+	// Adjust time to be on the hour.
+	// Done line this as the icons can span days.
+	pNowUTC = RoundToHour(pNowUTC);
 
 	for( const auto& t : mHourly )
 	{

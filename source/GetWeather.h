@@ -220,6 +220,7 @@ struct TheWeather
 
 	/**
 	 * @brief For the UTC time you'll get a map of weather icon names for each hour into the future spanning many days.
+	 * First is the current hour.
 	 * I send back the hour as that helps when you do the display, you can mark it as 6am for example.
 	 * @param pNowUTC 
 	 * @return const HourlyIconVector In hour order. The map is <24h,name>. EG the icon for 7pm is 'icon name == map[19]'

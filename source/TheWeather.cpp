@@ -10,6 +10,23 @@ const std::time_t ONE_MINUTE = (60);
 const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
 const std::time_t ONE_DAY = (ONE_HOUR*24);
 
+static const std::time_t RoundToHour(const std::time_t pTime)
+{
+    return pTime - (pTime%ONE_HOUR);
+}
+
+static const std::time_t NextHour(const std::time_t pTime)
+{
+    return RoundToHour(pTime) + ONE_HOUR;
+}
+
+// Mainly for debugging.
+static std::string GetTimeString(const std::time_t pTime)
+{
+    tm currentTime = *localtime((time_t*)&pTime);
+	return std::to_string(currentTime.tm_hour) + ":" + std::to_string(currentTime.tm_min) + ":" + std::to_string(currentTime.tm_sec);
+}
+
 TheWeather::TheWeather(const std::string& pWeatherApiKey):
     mHasWeather(false),
     mFetchLimiter(0),
@@ -62,14 +79,12 @@ void TheWeather::Update(const std::time_t pCurrentTime)
         // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
         if( mHourlyUpdates < pCurrentTime )
         {
-            // Now round to start of hour. If not display may lag behind for first day of run.
-            // Makes code consistant.
-            const std::time_t onTheHour = pCurrentTime%ONE_HOUR;
-
+            std::clog << "Updating icons " << GetTimeString(mHourlyUpdates) << "\n";
             // Update in an hour and on the hour.
-            mHourlyUpdates = onTheHour + ONE_HOUR;
+            mHourlyUpdates = NextHour(pCurrentTime);
+            std::clog << "Next icon update at " << GetTimeString(mHourlyUpdates) << "\n";
 
-            mNextHourlyIcons = mWeather.GetHourlyIconCodes(onTheHour);
+            mNextHourlyIcons = mWeather.GetHourlyIconCodes(pCurrentTime);
 
             // Not building for C++20 so can't use std::format yet.... So go old school.
             char buf[64];
