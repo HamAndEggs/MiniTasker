@@ -212,7 +212,18 @@ DrawBuffer::DrawBuffer(int pWidth, int pHeight,bool pHasAlpha,bool pPreMultiplie
 DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
 {
 	assert( pFB );
-	Resize(pFB->GetWidth(),pFB->GetHeight(),false,false);
+//	Resize(pFB->GetWidth(),pFB->GetHeight(),false,false);
+
+	mWidth = pFB->GetWidth();
+	mHeight = pFB->GetHeight();
+	mPixelSize = pFB->GetPixelSize();
+	mStride = pFB->GetStride();
+	mHasAlpha = false;
+	mPreMultipliedAlpha = false;
+	mPixels.resize(mHeight * mStride);
+
+	assert( mStride >= mWidth * mPixelSize );
+
 }
 
 DrawBuffer::DrawBuffer() :

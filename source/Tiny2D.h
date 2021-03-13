@@ -328,6 +328,9 @@ public:
 	*/
 	int GetHeight()const{return mHeight;}
 
+	int GetPixelSize()const{return mDisplayBufferPixelSize;}
+	int GetStride()const{return mDisplayBufferStride;}
+
 	/**
 	 * @brief See if the app main loop should keep going.
 	 * 
