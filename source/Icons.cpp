@@ -98,7 +98,7 @@ void Icons::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurren
     }
 
     // Draw temperature, if we have one.
-    const std::string temperature = "12.12C";//pWeather.GetCurrentTemperature();
+    const std::string temperature = pWeather.GetCurrentTemperature();
     if( temperature.size() > 0 )
     {
         mTemperatureFont.Print(RT,RT.GetWidth() - 200,y - 20,temperature.c_str());
