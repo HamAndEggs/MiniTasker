@@ -63,9 +63,8 @@ void Icons::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurren
     int y = pY;
     for( const auto& icon : icons )
     {
-        RT.Blit(GetIconBG(),x,y);
-        RT.Blit(GetIcon(icon.second),x-20,y-10);
-
+        RT.Blend(GetIconBG(),x,y);
+        RT.Blend(GetIcon(icon.second),x-20,y-10);
 
         // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
         std::string hour; 
@@ -118,12 +117,18 @@ void Icons::BuildIcon(tinypng::Loader& bg,const std::string pName)
 {
     tiny2d::DrawBuffer& icon = mIcons[pName];
     icon.Resize(bg.GetWidth(),bg.GetHeight(),bg.GetHasAlpha());
+
+    std::vector<uint8_t> pixels;
+
     if( bg.GetHasAlpha() )
     {
-        bg.GetRGBA(icon.mPixels);
+        bg.GetRGBA(pixels);
+        icon.BlitRGBA(pixels.data(),0,0,bg.GetWidth(),bg.GetHeight());
+        icon.PreMultiplyAlpha();
     }
     else
     {
-        bg.GetRGB(icon.mPixels);
+        bg.GetRGB(pixels);
+        icon.BlitRGB(pixels.data(),0,0,bg.GetWidth(),bg.GetHeight());
     }
 }

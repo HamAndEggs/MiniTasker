@@ -129,7 +129,11 @@ int main(int argc, char *argv[])
     if( bg.LoadFromFile(path + "images/bg-pastal-01.png") )
     {
         Background.Resize(bg.GetWidth(),bg.GetHeight());
-        bg.GetRGB(Background.mPixels);
+
+        std::vector<uint8_t> RGB;
+        bg.GetRGB(RGB);
+
+        Background.BlitRGB(RGB.data(),0,0,bg.GetWidth(),bg.GetHeight());
     }
     else
     {
