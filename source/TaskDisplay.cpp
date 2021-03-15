@@ -104,7 +104,7 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
         float progress = 0.0f;
         if( (tillTotal - fromTotal) > 0 )
         {
-//            progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
+            progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
         }
 
         const int progressX = Xpadding + 4 + ((RT.GetWidth()-1-Xpadding-Xpadding-8) * progress);
