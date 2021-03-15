@@ -1,3 +1,19 @@
+/*
+   Copyright (C) 2017, Richard e Collins.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
 #include <ctime>
 #include <string>
 #include <array>
@@ -8,14 +24,14 @@
 #include <sstream>
 
 #include "TinyJson.h"
-#include "TaskDisplay.h"
+#include "DisplayTask.h"
 
-TaskDisplay::TaskDisplay(const std::string& pFontPath):
+DisplayTask::DisplayTask(const std::string& pFontPath):
     mFont(pFontPath + "/LiberationSerif-Bold.ttf",50)
 {
 }
 
-TaskDisplay::~TaskDisplay()
+DisplayTask::~DisplayTask()
 {
     // Clean up.
     for(auto t : mTheTasks )
@@ -24,7 +40,7 @@ TaskDisplay::~TaskDisplay()
     }
 }
 
-bool TaskDisplay::LoadTaskList(const std::string& pFilename)
+bool DisplayTask::LoadTaskList(const std::string& pFilename)
 {
 // Allows me to have my own personal file with personal data in it not in the repo.
 // Defined in the x11 project settings.
@@ -78,7 +94,7 @@ bool TaskDisplay::LoadTaskList(const std::string& pFilename)
     return false;
 }
 
-void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime)
+void DisplayTask::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime)
 {
     const int hour = pCurrentTime.tm_hour;
     const int minute = pCurrentTime.tm_min;
@@ -119,7 +135,7 @@ void TaskDisplay::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
     }
 }
 
-const Task* TaskDisplay::GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint8_t& rTillR,uint8_t& rTillG,uint8_t& rTillB)
+const Task* DisplayTask::GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint8_t& rTillR,uint8_t& rTillG,uint8_t& rTillB)
 {
     rTillHour = 23;
     rTillMinute = 59;

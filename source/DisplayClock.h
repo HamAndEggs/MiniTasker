@@ -14,31 +14,37 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
    
-#ifndef ICONS_H
-#define ICONS_H
+#ifndef DISPLAY_CLOCK_H
+#define DISPLAY_CLOCK_H
 
-#include <map>
 #include <string>
+#include <time.h>
 
 #include "Tiny2D.h"
-#include "TinyPNG.h"
 
-class TheWeather;
-
-class Icons
+class DisplayClock
 {
 public:
-    Icons(const std::string& pIconFolder);
+    DisplayClock(const std::string& pFontPath);
+    ~DisplayClock();
 
-    const tiny2d::DrawBuffer& GetIcon(const std::string& pName)const;
-    const tiny2d::DrawBuffer& GetIconBG()const{return mIconBG;}
-    int GetIconWidth()const{return 160;}
+    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
+    void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
+
+    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
 
 private:
-    tiny2d::DrawBuffer mIconBG;
-    std::map<std::string,tiny2d::DrawBuffer>mIcons;
 
-    void BuildIcon(tinypng::Loader& bg,const std::string pName);
+    void DrawTime(tiny2d::DrawBuffer& RT,int pX,int pY,int pHour,int pMinute);
+    void DrawDay(tiny2d::DrawBuffer& RT,int pX,int pY,int pWeekDay,int pMonthDay);
+
+    tiny2d::FreeTypeFont mTimeFont;
+    tiny2d::FreeTypeFont mDateFont;
+
+	struct
+	{
+		uint8_t r,g,b;
+	}mFG,mBG;
 };
 
-#endif //#ifndef ICONS_H
+#endif //#ifndef DISPLAY_CLOCK_H

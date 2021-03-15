@@ -28,8 +28,11 @@
 #include <vector>
 
 #include "Tiny2D.h"
-#include "ClockDisplay.h"
-#include "TaskDisplay.h"
+
+#include "DisplayClock.h"
+#include "DisplayTask.h"
+#include "DisplayWeather.h"
+
 #include "TheWeather.h"
 #include "Icons.h"
 
@@ -108,7 +111,7 @@ int main(int argc, char *argv[])
     std::time_t result = std::time(nullptr);
     tm currentTime = *localtime(&result);
 
-    TaskDisplay theTasks(path + "liberation_serif_font/");
+    DisplayTask theTasks(path + "liberation_serif_font/");
     
     if( theTasks.LoadTaskList(path + taskFile) == false )
     {
@@ -148,15 +151,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    Icons WeatherIcons(path);
+    Icons someIcons(path);
+    DisplayWeather theWeather(path);
     
     tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
 
-    ClockDisplay theClock(path + "liberation_serif_font/");
+    DisplayClock theClock(path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
     theClock.SetBackground(0,0,0);
 
-    TheWeather weather(theTasks.GetWeatherApiKey());
+    TheWeather weatherData(theTasks.GetWeatherApiKey());
     int lastMinute = -1;// Only redraw once a minute.
     while( FB->GetKeepGoing() )
     {
@@ -174,12 +178,12 @@ int main(int argc, char *argv[])
             lastMinute = currentTime.tm_min;
             RT.Blit(Background,0,0);
 
-            weather.Update(theTimeUTC);
+            weatherData.Update(theTimeUTC);
             theClock.Update(RT,20,20,currentTime);
             theTasks.Update(RT,20,450,currentTime);
 
-            // Render the weather icons.
-            WeatherIcons.RenderWeatherForcast(RT,280,currentTime,weather);
+            // Render the weather forcast.
+            theWeather.RenderWeatherForcast(RT,280,currentTime,weatherData,someIcons);
 
             // Render the uptime
             uint64_t upDays,upHours,upMinutes;
