@@ -2,7 +2,8 @@
 Description=Displays time and current task in frame buffer zero.
 
 [Service]
-ExecStart=/usr/bin/mini-tasker
+ExecStart=/usr/bin/mini-tasker /usr/share/mini-tasker task-file.json
+
 
 [Install]
 WantedBy=multi-user.target
