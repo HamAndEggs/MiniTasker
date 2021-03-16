@@ -76,6 +76,6 @@ void DisplayWeather::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm
     const std::string temperature = pWeather.GetCurrentTemperature();
     if( temperature.size() > 0 )
     {
-        mTemperatureFont.Print(RT,RT.GetWidth() - 200,y - 20,temperature.c_str());
+        mTemperatureFont.Print(RT,RT.GetWidth() - 160,y - 20,temperature.c_str());
     }
 }

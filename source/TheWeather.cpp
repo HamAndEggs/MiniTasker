@@ -18,7 +18,9 @@
 #include <string>
 #include <array>
 #include <iostream>
+#include <cmath>
 
+#include "TinyTools.h"
 #include "TheWeather.h"
 
 const std::time_t ONE_MINUTE = (60);
@@ -103,9 +105,9 @@ void TheWeather::Update(const std::time_t pCurrentTime)
 
             // Not building for C++20 so can't use std::format yet.... So go old school.
             char buf[64];
-            float c = 0.0f;
             const auto t = mWeather.GetHourlyForcast(pCurrentTime);
-            snprintf(buf,sizeof(buf),"%04.2fC",t->mTemperature.c);
+
+            snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(t->mTemperature.c));
             mCurrentTemperature = buf;
         }
     }

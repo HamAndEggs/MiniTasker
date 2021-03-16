@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "Tiny2D.h"
+#include "TinyTools.h"
 
 #include "DisplayClock.h"
 #include "DisplayTask.h"

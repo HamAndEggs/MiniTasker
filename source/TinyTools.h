@@ -20,12 +20,41 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <cmath>
 
 #include <assert.h>
 #include <time.h>
 
 namespace tinytools{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+namespace math
+{
+	inline float GetFractional(float pValue)
+	{
+		return std::fmod(pValue,1.0f);
+	}
+
+	inline float GetInteger(float pValue)
+	{
+		return pValue - GetFractional(pValue);
+	}
+
+	/**
+	 * @brief Rounds a floating point value into multiplies of 0.5
+	 * -1.2 -> -1.0
+	 * -1.0 -> -1.0
+	 * -0.8 -> -1.0
+	 * 2.3 -> 2.5
+	 * 2.8 -> 3.0
+	 */
+	inline float RoundToPointFive(float pValue)
+	{
+		const float integer = GetInteger(pValue);
+		const float frac = std::round(GetFractional(pValue)*2.0f) / 2.0f;
+		return integer + frac;
+	}
+};
 
 class MillisecondTicker
 {
