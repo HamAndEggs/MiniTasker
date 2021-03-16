@@ -14,8 +14,8 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef TASK_DISPLAY_H
-#define TASK_DISPLAY_H
+#ifndef DISPLAY_TASK_H
+#define DISPLAY_TASK_H
 
 #include <vector>
 
@@ -29,11 +29,11 @@ struct Task
     const u_int8_t bg_r,bg_b,bg_g;
 };
 
-class TaskDisplay
+class DisplayTask
 {
 public:
-    TaskDisplay(const std::string& pFontPath);
-    ~TaskDisplay();
+    DisplayTask(const std::string& pFontPath);
+    ~DisplayTask();
 
     /**
      * @brief Loads in a JSON file that describes the tasks that need to be done.
@@ -66,4 +66,4 @@ private:
     std::string mWeatherApiKey;
 };
 
-#endif //#ifndef CLOCK_DISPLAY_H
+#endif //#ifndef DISPLAY_TASK_H

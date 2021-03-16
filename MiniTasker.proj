@@ -3,8 +3,9 @@
         "./source/MiniTasker.cpp",
    		"./source/Tiny2D.cpp",
    		"./source/TinyPNG.cpp",
-        "./source/ClockDisplay.cpp",
-        "./source/TaskDisplay.cpp",
+        "./source/DisplayClock.cpp",
+        "./source/DisplayTask.cpp",
+        "./source/DisplayWeather.cpp",
         "./source/GetWeather.cpp",
         "./source/TheWeather.cpp",
         "./source/Icons.cpp"

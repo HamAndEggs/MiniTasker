@@ -13,38 +13,36 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
-   
-#ifndef CLOCK_DISPLAY_H
-#define CLOCK_DISPLAY_H
 
-#include <string>
-#include <time.h>
+#ifndef DISPLAY_WEATHER_H
+#define DISPLAY_WEATHER_H
+
+#include <vector>
 
 #include "Tiny2D.h"
+#include "TheWeather.h"
+#include "Icons.h"
 
-class ClockDisplay
+class DisplayWeather
 {
 public:
-    ClockDisplay(const std::string& pFontPath);
-    ~ClockDisplay();
+    DisplayWeather(const std::string& pIconFolder);
+    ~DisplayWeather() = default;
 
-    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
-
-    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
+    /**
+     * @brief Draws a set of icons to get a brief over view of the weather coming up.
+     * 
+     * @param pFB 
+     * @param pX 
+     * @param pY 
+     */
+    void RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
 
 private:
+    tiny2d::FreeTypeFont mIconFont;
+    tiny2d::FreeTypeFont mTemperatureFont;    
 
-    void DrawTime(tiny2d::DrawBuffer& RT,int pX,int pY,int pHour,int pMinute);
-    void DrawDay(tiny2d::DrawBuffer& RT,int pX,int pY,int pWeekDay,int pMonthDay);
 
-    tiny2d::FreeTypeFont mTimeFont;
-    tiny2d::FreeTypeFont mDateFont;
-
-	struct
-	{
-		uint8_t r,g,b;
-	}mFG,mBG;
 };
 
-#endif //#ifndef CLOCK_DISPLAY_H
+#endif //#ifndef DISPLAY_WEATHER_H
