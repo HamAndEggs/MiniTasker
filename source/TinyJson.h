@@ -361,8 +361,9 @@ public:
      * @param pJsonString 
      */
 	JsonProcessor(const std::string& pJsonString) :
-        mJson(pJsonString.c_str()),
-        mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1)
+        mStart(pJsonString.c_str()),
+        mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1),
+        mJson(pJsonString.c_str())
     {
         if( pJsonString.size() < 2 )
         {
@@ -393,8 +394,9 @@ public:
     }
 
 private:
-    const char* mJson;  //!< The current position in the data that we are at.
+    const char* const mStart; //!< The start of the data, used to help make errors more discoverable.
     const char* const mJsonEnd; //!< Used to detect when we're at the end of the data.
+    const char* mJson;  //!< The current position in the data that we are at.
     JsonValue mRoot; //!< When all is done, this contains the json as usable c++ objects.
 
     /**
@@ -411,7 +413,18 @@ private:
      */
     inline void AssertCorrectChar(char c,const char* pErrorString)
     {
-        if( *mJson != c ){throw std::runtime_error(pErrorString);}
+        if( *mJson != c )
+        {
+            throw std::runtime_error(GetErrorPos() + pErrorString);
+        }
+    }
+
+    /**
+     * @brief Returns a string used in errors to show where the error is.
+     */
+    inline std::string GetErrorPos()
+    {
+        return std::string("Error at byte ") + std::to_string(mJson - mStart) + " : ";
     }
 
     /**
@@ -444,7 +457,7 @@ private:
             SkipWhiteSpace();
             if( *mJson != '}' && *mJson != ',' )
             {
-                throw std::runtime_error("Json format error detected, did you forget a comma between key value pairs? For key " + objKey);
+                throw std::runtime_error(GetErrorPos() + "Json format error detected, did you forget a comma between key value pairs? For key " + objKey);
             }
         }while (*mJson == ',');
 
@@ -455,7 +468,7 @@ private:
         }
         else
         {
-            throw std::runtime_error("End of root object not found, invalid Json");
+            throw std::runtime_error(GetErrorPos() + "End of root object not found, invalid Json");
         }
     }
 
@@ -492,7 +505,7 @@ private:
             // Check we did get to the end.
             if( *mJson != ']' )
             {
-                throw std::runtime_error("Json format error detected, array not terminated with ']'");
+                throw std::runtime_error(GetErrorPos() + "Json format error detected, array not terminated with ']'");
             }
             mJson++;//skip ']'
             break;
@@ -504,7 +517,7 @@ private:
 
         case 'T':
         case 't':
-            if( tolower(mJson[1]) == 'u' && tolower(mJson[1]) == 'r' && tolower(mJson[1]) == 'e' )
+            if( tolower(mJson[1]) == 'r' && tolower(mJson[2]) == 'u' && tolower(mJson[3]) == 'e' )
             {
                 mJson += 4;
                 pNewValue.SetType(JTYPE_BOOLEAN);
@@ -512,13 +525,13 @@ private:
             }
             else
             {
-                throw std::runtime_error(std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading true type");
             }
             break;
 
         case 'F':
         case 'f':
-            if( tolower(mJson[1]) == 'a' && tolower(mJson[1]) == 'l' && tolower(mJson[1]) == 's' && tolower(mJson[1]) == 'e' )
+            if( tolower(mJson[1]) == 'a' && tolower(mJson[2]) == 'l' && tolower(mJson[3]) == 's' && tolower(mJson[4]) == 'e' )
             {
                 mJson += 5;
                 pNewValue.SetType(JTYPE_BOOLEAN);
@@ -526,20 +539,20 @@ private:
             }
             else
             {
-                throw std::runtime_error(std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading false type");
             }
             break;
 
         case 'N':
         case 'n':
-            if( tolower(mJson[1]) == 'u' && tolower(mJson[1]) == 'l' && tolower(mJson[1]) == 'l' )
+            if( tolower(mJson[1]) == 'u' && tolower(mJson[2]) == 'l' && tolower(mJson[3]) == 'l' )
             {
                 mJson += 4;
                 pNewValue.SetType(JTYPE_NULL);
             }
             else
             {
-                throw std::runtime_error(std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading null type");
             }
             break;
 
@@ -564,7 +577,7 @@ private:
             break;
 
         default:
-            throw std::runtime_error(std::string("Invalid character ") + std::string(mJson,10) + " found at start of json value definition");
+            throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found at start of json value definition");
             break;
         }
     }
@@ -600,7 +613,15 @@ private:
         {
         // Did we hit the end?
             AssertMoreData("Abrupt end to json whilst reading string");
+
+            // Special case, if we find a \ and then a quote.
+            if( mJson[0] == '\\' && mJson[1] == '\"' )
+            {
+                mJson++;
+            }
+
             mJson++;
+
         }
         const size_t len = mJson - stringStart;
         mJson++; // Skip "
@@ -650,15 +671,16 @@ private:
             if( *mJson == 'E' || *mJson == 'e' )
             {
                 mJson++;
-                // Now must be a sign.
-                if( *mJson == '-' || *mJson == '+' )
+
+                // Now must be a sign or a number
+                if( *mJson == '-' || *mJson == '+' || std::isdigit(*mJson) )
                 {
                     mJson++;
 
                     // after accounting the - or + there must be a number next.
                     if( isdigit(*mJson) == false )
                     {
-                        throw std::runtime_error(std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
+                        throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
                     }
 
                     // Now scan more more digits.
@@ -669,7 +691,7 @@ private:
                 }
                 else
                 {
-                    throw std::runtime_error(std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
+                    throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
                 }
             }
         }
