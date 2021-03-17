@@ -21,7 +21,7 @@
 
 DisplayClock::DisplayClock(const std::string& pFontPath):
     mTimeFont( pFontPath + "LiberationSerif-Bold.ttf",160),
-    mDateFont( pFontPath + "LiberationSerif-Regular.ttf",60)
+    mDateFont( pFontPath + "LiberationSerif-Regular.ttf",52)
 {
 }
 
