@@ -39,6 +39,7 @@ public:
 
 private:
     bool mHasWeather;
+    bool mFirstFail; //!< Sometimes just after boot the fetch fails. Normally if it does I wait an hour before trying again. But for the first time will try in one minutes time.
     std::time_t mFetchLimiter;
     std::time_t mHourlyUpdates;
     tinyweather::OpenWeatherMap mWeather;

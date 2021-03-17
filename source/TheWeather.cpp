@@ -46,6 +46,7 @@ static std::string GetTimeString(const std::time_t pTime)
 
 TheWeather::TheWeather(const std::string& pWeatherApiKey):
     mHasWeather(false),
+    mFirstFail(true),
     mFetchLimiter(0),
     mWeather(pWeatherApiKey),
     mHourlyUpdates(0)
@@ -86,7 +87,15 @@ void TheWeather::Update(const std::time_t pCurrentTime)
                 const tinyweather::WeatherTime now(pCurrentTime);
                 std::cerr << "Failed to fetched weather data! " << now.GetDate() << " " << now.GetTime() << "\n";
                 mCurrentTemperature = "Failed";
-                mFetchLimiter = pCurrentTime + (60*60);// If it fails, this will make the next attempt an hour later.
+                if( mFirstFail )
+                {
+                    mFirstFail = false;
+                    mFetchLimiter = pCurrentTime + 60;// Just booting up, try again in a minute.
+                }
+                else
+                {
+                    mFetchLimiter = pCurrentTime + (60*60);// If it fails, this will make the next attempt an hour later.
+                }
             }
         });
     }
