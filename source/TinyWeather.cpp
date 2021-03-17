@@ -14,7 +14,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
    
-   Original code base is at https://github.com/HamAndEggs/GetWeather
+   Original code base is at https://github.com/HamAndEggs/TinyWeather
 */
 
 #include <iostream>
@@ -24,10 +24,10 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-#include "GetWeather.h"
+#include "TinyWeather.h"
 #include "TinyJson.h"
 
-namespace getweather{
+namespace tinyweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 const std::time_t ONE_MINUTE = (60);
 const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
@@ -156,7 +156,7 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 	}
 }
 
-TheWeather::TheWeather(const std::string& pAPIKey):
+OpenWeatherMap::OpenWeatherMap(const std::string& pAPIKey):
 	mLatitude(0),
 	mLongitude(0),
 	mTimezoneOffset(0),
@@ -166,12 +166,12 @@ TheWeather::TheWeather(const std::string& pAPIKey):
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
-TheWeather::~TheWeather()
+OpenWeatherMap::~OpenWeatherMap()
 {
 	curl_global_cleanup();
 }
 
-void TheWeather::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction)
+void OpenWeatherMap::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const OpenWeatherMap& pWeather)> pReturnFunction)
 { 
 	assert( pReturnFunction != nullptr );
 
@@ -232,7 +232,7 @@ void TheWeather::Get(double pLatitude,double pLongitude,std::function<void(bool 
 	pReturnFunction(downloadedOk,*this);
 }
 
-const WeatherData* TheWeather::GetHourlyForcast(std::time_t pNowUTC)const
+const WeatherData* OpenWeatherMap::GetHourlyForcast(std::time_t pNowUTC)const
 {
 	const WeatherData* current = nullptr;
 	for( const auto& t : mHourly )
@@ -246,7 +246,7 @@ const WeatherData* TheWeather::GetHourlyForcast(std::time_t pNowUTC)const
 	return current;
 }
 
-HourlyIconVector TheWeather::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
+HourlyIconVector OpenWeatherMap::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
 {
 	HourlyIconVector icons;
 
@@ -263,7 +263,7 @@ HourlyIconVector TheWeather::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
 	return icons;
 }
 
-HourlyIconVector TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
+HourlyIconVector OpenWeatherMap::GetHourlyIconCodes(std::time_t pNowUTC)const
 {
 	HourlyIconVector icons;
 
@@ -283,7 +283,7 @@ HourlyIconVector TheWeather::GetHourlyIconCodes(std::time_t pNowUTC)const
 }
 
 
-bool TheWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
+bool OpenWeatherMap::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
 {
 	bool result = false;
 	CURL *curl = curl_easy_init();
@@ -327,5 +327,5 @@ bool TheWeather::DownloadWeatherReport(const std::string& pURL,std::string& rJso
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-}; //namespace getweather{
+}; //namespace tinyweather{
 

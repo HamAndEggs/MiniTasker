@@ -62,7 +62,7 @@ void TheWeather::Update(const std::time_t pCurrentTime)
    if( mFetchLimiter < pCurrentTime )
     {
         mHasWeather = false;
-        mWeather.Get(50.72824,-1.15244,[this,pCurrentTime](bool pDownloadedOk,const getweather::TheWeather &pTheWeather)
+        mWeather.Get(50.72824,-1.15244,[this,pCurrentTime](bool pDownloadedOk,const auto &pTheWeather)
         {
             if( pDownloadedOk )
             {
@@ -75,7 +75,7 @@ void TheWeather::Update(const std::time_t pCurrentTime)
                 mFetchLimiter -= (mFetchLimiter%ONE_DAY);
                 mFetchLimiter += ONE_MINUTE;
 
-                const getweather::WeatherTime nextDownload(mFetchLimiter);
+                const tinyweather::WeatherTime nextDownload(mFetchLimiter);
                 std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
 
                 // Reset this time out to force a rebuild.
@@ -83,7 +83,7 @@ void TheWeather::Update(const std::time_t pCurrentTime)
             }
             else
             {
-                const getweather::WeatherTime now(pCurrentTime);
+                const tinyweather::WeatherTime now(pCurrentTime);
                 std::cerr << "Failed to fetched weather data! " << now.GetDate() << " " << now.GetTime() << "\n";
                 mCurrentTemperature = "Failed";
                 mFetchLimiter = pCurrentTime + (60*60);// If it fails, this will make the next attempt an hour later.

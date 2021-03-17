@@ -33,7 +33,7 @@ void DisplayWeather::RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm
      // Show next six icons.
     // I could render this to an offscreen image and only update once an hour.
     // But for now, render each time.
-    const getweather::HourlyIconVector icons = pWeather.GetNextHourlyIcons();
+    const tinyweather::HourlyIconVector icons = pWeather.GetNextHourlyIcons();
     int n = 0;
     int x = (RT.GetWidth()/2) - ((pTheIcons.GetIconWidth()*6) / 2);
     int y = pY;

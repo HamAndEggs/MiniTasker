@@ -12,10 +12,14 @@
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+   
+   Original code base is at https://github.com/HamAndEggs/TinyWeather   
+   
+   */
 
-#ifndef GET_WEATHER_H
-#define GET_WEATHER_H
+#ifndef TINY_WEATHER_H
+#define TINY_WEATHER_H
 
 #include <string>
 #include <vector>
@@ -23,7 +27,7 @@
 #include <functional>
 #include <ctime>
 
-namespace getweather{
+namespace tinyweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef std::vector<std::pair<int,std::string>> HourlyIconVector;
@@ -176,7 +180,7 @@ struct MinutelyForecast
  * uses OpenWeather one-call-api https://openweathermap.org/api/one-call-api
  * You will need to make a free account and get an API key
  */
-struct TheWeather
+struct OpenWeatherMap
 {
 	double mLatitude;			//!< Geographical coordinates of the location (latitude)
 	double mLongitude;			//!< Geographical coordinates of the location (longitude)
@@ -197,10 +201,10 @@ struct TheWeather
 	//!< alerts.end Date and time of the end of the alert, Unix, UTC
 	//!< alerts.description Description of the alert
 
-	TheWeather(const std::string& pAPIKey);
-	~TheWeather();
+	OpenWeatherMap(const std::string& pAPIKey);
+	~OpenWeatherMap();
 
-	void Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const TheWeather& pWeather)> pReturnFunction);
+	void Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const OpenWeatherMap& pWeather)> pReturnFunction);
 
 	/**
 	 * @brief Get the current temperature forcast from the hourly forcast data.
@@ -236,6 +240,6 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-}; //namespace getweather{
+}; //namespace tinyweather{
 
-#endif //GET_WEATHER_H
+#endif //TINY_WEATHER_H

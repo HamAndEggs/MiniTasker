@@ -21,7 +21,7 @@
 #include <string>
 #include <map>
 
-#include "GetWeather.h"
+#include "TinyWeather.h"
 
 class TheWeather
 {
@@ -33,7 +33,7 @@ public:
     std::string GetCurrentTemperature()const{return mCurrentTemperature;}
 
     // List of the hourly icons from and including now but not before.
-    getweather::HourlyIconVector GetNextHourlyIcons()const{return mNextHourlyIcons;}
+    tinyweather::HourlyIconVector GetNextHourlyIcons()const{return mNextHourlyIcons;}
 
     void Update(const std::time_t pCurrentTime);
 
@@ -41,11 +41,11 @@ private:
     bool mHasWeather;
     std::time_t mFetchLimiter;
     std::time_t mHourlyUpdates;
-    getweather::TheWeather mWeather;
+    tinyweather::OpenWeatherMap mWeather;
 
     std::string mCurrentTemperature;
 
-    getweather::HourlyIconVector mNextHourlyIcons;
+    tinyweather::HourlyIconVector mNextHourlyIcons;
 };
 
 #endif //#ifndef THE_WEATHER_H
