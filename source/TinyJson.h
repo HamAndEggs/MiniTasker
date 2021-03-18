@@ -33,8 +33,15 @@ namespace tinyjson{ // Using a namespace to try to prevent name clashes as my cl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * @brief If debug build then make sure TRACK_LINE_AND_COLUMN is defined for debugging.
+ * Normally of for release as it costs! But you can turn on by defining TRACK_LINE_AND_COLUMN in your project.
+ */
+#if !defined TRACK_LINE_AND_COLUMN && !NDEBUG
+    #define TRACK_LINE_AND_COLUMN
+#endif
+
+/**
  * @brief Different types of json value.
- * 
  */
 #define JSON_TYPES                    \
     DEF_TYPE(JTYPE_STRING,"String")   \
@@ -146,9 +153,6 @@ struct JsonValue
     /**
      * @brief Checks that the key passed in exists without throwing an exception.
      * If you do MyJson["scores"][10].GetInt() and "scores" was not in the root the code will throw an exception.
-     * @param pKey 
-     * @return true 
-     * @return false 
      */
     bool HasValue(const std::string& pKey)const
     {
@@ -164,8 +168,6 @@ struct JsonValue
 
     /**
      * @brief Get the Type of the jason value
-     * 
-     * @return JsonValueType 
      */
     JsonValueType GetType()const
     {
@@ -175,8 +177,6 @@ struct JsonValue
 
     /**
      * @brief Fetches the size of the array, if the type is an array, else zero.
-     * 
-     * @return size_t 
      */
     size_t GetArraySize()const
     {
@@ -186,9 +186,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as a string, if it is a string type.
-     * Else throws an exception.
-     * @return const std::string& 
+     * @brief Gets the value as a string, if it is a string type. Else throws an exception.
      */
     const std::string& GetString()const
     {
@@ -197,9 +195,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as a double, if it is a number type.
-     * Else throws an exception.
-     * @return double 
+     * @brief Gets the value as a double, if it is a number type. Else throws an exception.
      */
     double GetDouble()const
     {
@@ -208,9 +204,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as a float, if it is a number type.
-     * Else throws an exception.
-     * @return float 
+     * @brief Gets the value as a float, if it is a number type. Else throws an exception.
      */
     float GetFloat()const
     {
@@ -219,9 +213,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an int, if it is a number type.
-     * Else throws an exception.
-     * @return int 
+     * @brief Gets the value as an int, if it is a number type. Else throws an exception.
      */
     int GetInt()const
     {
@@ -229,9 +221,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an uint64_t, if it is a number type.
-     * Else throws an exception.
-     * @return uint64_t 
+     * @brief Gets the value as an uint64_t, if it is a number type. Else throws an exception.
      */
     uint64_t GetUInt64()const
     {
@@ -240,9 +230,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an uint32_t, if it is a number type.
-     * Else throws an exception.
-     * @return uint32_t 
+     * @brief Gets the value as an uint32_t, if it is a number type. Else throws an exception.
      */
     uint32_t GetUInt32()const
     {
@@ -251,9 +239,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an int64_t, if it is a number type.
-     * Else throws an exception.
-     * @return int64_t 
+     * @brief Gets the value as an int64_t, if it is a number type. Else throws an exception.
      */
     int64_t GetInt64()const
     {
@@ -262,9 +248,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an int32_t, if it is a number type.
-     * Else throws an exception.
-     * @return int32_t 
+     * @brief Gets the value as an int32_t, if it is a number type. Else throws an exception.
      */
     int32_t GetInt32()const
     {
@@ -273,9 +257,7 @@ struct JsonValue
     }
 
     /**
-     * @brief Gets the value as an boolean, if it is a boolean type.
-     * Else throws an exception.
-     * @return bool 
+     * @brief Gets the value as an boolean, if it is a boolean type. Else throws an exception.
      */
     bool GetBoolean()const
     {
@@ -285,9 +267,6 @@ struct JsonValue
 
     /**
      * @brief Returns true if the type is a NULL.
-     * 
-     * @return true 
-     * @return false 
      */
     bool GetIsNull()const
     {// We don't assert here as the false is an ok answer.
@@ -303,10 +282,10 @@ struct JsonValue
      * @brief These functions will return the value found if the key is present and the value type is correct, else will return the default.
      * @param pKey The Key of the value to look for.
      * @param pDefault The default value to use if there was a problem.
-     * @return
+     * @return The value if there or the default
      * 
      ***************************************************/
-    #define MAKE_SAFE_FUNCTION(FUNC_NAME__,FUNC_TYPE__,DEFAULT_VALUE__)                             \
+#define MAKE_SAFE_FUNCTION(FUNC_NAME__,FUNC_TYPE__,DEFAULT_VALUE__)                                 \
     FUNC_TYPE__ FUNC_NAME__(const std::string& pKey,FUNC_TYPE__ pDefault = DEFAULT_VALUE__)const    \
     {                                                                                               \
         try{return (*this)[pKey].FUNC_NAME__();}                                                    \
@@ -326,27 +305,32 @@ struct JsonValue
     MAKE_SAFE_FUNCTION(GetBoolean,bool,false);
     MAKE_SAFE_FUNCTION(GetIsNull,bool,false);
     MAKE_SAFE_FUNCTION(GetType,JsonValueType,JTYPE_INVALID);
- 
-    #undef MAKE_SAFE_FUNCTION
-
+#undef MAKE_SAFE_FUNCTION
 
 private:
 	JsonValueType mType;
 
     /**
      * @brief Throws an exception if the type is not a match.
-     * 
-     * @param pType 
      */
-    void AssertType(JsonValueType pType)const
+    inline void AssertType(JsonValueType pType)const
     {
         if( mType != pType )
         {
             throw std::runtime_error("Json Type is not what is expected, the type is " + JsonValueTypeToString(mType) +" looking for " + JsonValueTypeToString(pType));
         }
     }
-
 };
+
+/**
+ * @brief This defines the code that advances to the current character.
+ * Done like this so that for debugging we can track line and column of a file. Although really json should be all on one line.
+ */
+#ifdef TRACK_LINE_AND_COLUMN
+    #define NEXT_CHAR {mPos++;if(*mPos == '\n'){mRow++;mColumn=1;}else{mColumn++;}}
+#else
+    #define NEXT_CHAR (mPos++)
+#endif
 
 /**
  * @brief This is the work horse that builds our data structure that mirrors the json data.
@@ -358,13 +342,16 @@ public:
     /**
      * @brief Construct a new Json Processor object and parse the json data.
      * throws std::runtime_error if the json is not constructed correctly.
-     * @param pJsonString 
      */
 	JsonProcessor(const std::string& pJsonString) :
         mStart(pJsonString.c_str()),
         mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1),
-        mJson(pJsonString.c_str())
+        mPos(pJsonString.c_str())
     {
+#ifdef TRACK_LINE_AND_COLUMN
+        mRow = mColumn = 1;
+#endif 
+
         if( pJsonString.size() < 2 )
         {
             throw std::runtime_error("Empty string passed into ParseJson");
@@ -377,7 +364,7 @@ public:
         SkipWhiteSpace();
 
         // Now should be at the end
-        if( mJson >= mJsonEnd )
+        if( mPos >= mJsonEnd )
         {
             throw std::runtime_error("Data found after root object, invalid Json");
         }
@@ -385,8 +372,6 @@ public:
 
     /**
      * @brief Get the Root object
-     * 
-     * @return const JsonValue& 
      */
     const JsonValue& GetRoot()const
     {
@@ -396,16 +381,23 @@ public:
 private:
     const char* const mStart; //!< The start of the data, used to help make errors more discoverable.
     const char* const mJsonEnd; //!< Used to detect when we're at the end of the data.
-    const char* mJson;  //!< The current position in the data that we are at.
+    const char* mPos;  //!< The current position in the data that we are at.  
     JsonValue mRoot; //!< When all is done, this contains the json as usable c++ objects.
+
+/**
+ * @brief Used in the tracking of where we are in the file when debugging.
+ */
+#ifdef TRACK_LINE_AND_COLUMN
+    uint32_t mRow,mColumn;
+#endif 
 
     /**
      * @brief This is used in several place whilst parsing the data to detect json data that is not complete.
-     * For safety does not test for NULL but checks that the mJson pointer has not gone past the end of the data.
+     * For safety does not test for NULL but checks that the mPos pointer has not gone past the end of the data.
      */
     inline void AssertMoreData(const char* pErrorString)
     {
-        if( mJson >= mJsonEnd ){throw std::runtime_error(pErrorString);}
+        if( mPos >= mJsonEnd ){throw std::runtime_error(pErrorString);}
     }
 
     /**
@@ -413,7 +405,7 @@ private:
      */
     inline void AssertCorrectChar(char c,const char* pErrorString)
     {
-        if( *mJson != c )
+        if( *mPos != c )
         {
             throw std::runtime_error(GetErrorPos() + pErrorString);
         }
@@ -424,7 +416,11 @@ private:
      */
     inline std::string GetErrorPos()
     {
-        return std::string("Error at byte ") + std::to_string(mJson - mStart) + " : ";
+#ifdef TRACK_LINE_AND_COLUMN
+        return std::string("Error at Line ") + std::to_string(mRow) + " column " + std::to_string(mColumn) + " : ";
+#else
+        return std::string("Error at byte ") + std::to_string(mPos - mStart) + " : ";
+#endif
     }
 
     /**
@@ -437,16 +433,15 @@ private:
         // Search for the start of the object.
         SkipWhiteSpace();
         AssertCorrectChar('{',"Start of object not found, invalid Json");
-
         do
         {
-            mJson++;// Skip object start char or comma for more key value pairs.
+            NEXT_CHAR;// Skip object start char or comma for more key value pairs.
             const std::string objKey = ReadString();
 
             // Now parse it's value.
             SkipWhiteSpace();
             AssertCorrectChar(':',"Json format error detected, seperator character ':'");
-            mJson++;
+            NEXT_CHAR;
 
             MakeValue(rObject[objKey]);
 
@@ -455,16 +450,16 @@ private:
             // We leave the pointer there and drop out the function.
             // Down to the caller to test if they carry on or finish the current object.
             SkipWhiteSpace();
-            if( *mJson != '}' && *mJson != ',' )
+            if( *mPos != '}' && *mPos != ',' )
             {
                 throw std::runtime_error(GetErrorPos() + "Json format error detected, did you forget a comma between key value pairs? For key " + objKey);
             }
-        }while (*mJson == ',');
+        }while (*mPos == ',');
 
         // Validate end of object.
-        if( *mJson == '}' )
+        if( *mPos == '}' )
         {
-            mJson++;
+            NEXT_CHAR;
         }
         else
         {
@@ -474,14 +469,13 @@ private:
 
     /**
      * @brief Builds the core value structure that powers Json.
-     * 
      * @param pNewValue As with MakeObject, we don't return the new value but initialise the one passed in.
      */
     void MakeValue(JsonValue& pNewValue)
     {
         SkipWhiteSpace();// skip space and then see if it's an object, string, value or special state (TRUE,FALSE,NULL).
 
-        switch( *mJson )
+        switch( *mPos )
         {
         case 0:
             break;
@@ -495,19 +489,19 @@ private:
             pNewValue.SetType(JTYPE_ARRAY);
             do
             {
-                mJson++;//skip ']' or the ','
+                NEXT_CHAR;//skip ']' or the ','
                 // Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
                 pNewValue.mArray.resize(pNewValue.mArray.size()+1);
                 MakeValue(pNewValue.mArray.back());
                 SkipWhiteSpace();
-            }while(*mJson == ',');
+            }while(*mPos == ',');
 
             // Check we did get to the end.
-            if( *mJson != ']' )
+            if( *mPos != ']' )
             {
                 throw std::runtime_error(GetErrorPos() + "Json format error detected, array not terminated with ']'");
             }
-            mJson++;//skip ']'
+            NEXT_CHAR;//skip ']'
             break;
 
         case '\"':
@@ -517,42 +511,42 @@ private:
 
         case 'T':
         case 't':
-            if( tolower(mJson[1]) == 'r' && tolower(mJson[2]) == 'u' && tolower(mJson[3]) == 'e' )
+            if( tolower(mPos[1]) == 'r' && tolower(mPos[2]) == 'u' && tolower(mPos[3]) == 'e' )
             {
-                mJson += 4;
+                mPos += 4;
                 pNewValue.SetType(JTYPE_BOOLEAN);
                 pNewValue.mBoolean = true;
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading true type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading true type");
             }
             break;
 
         case 'F':
         case 'f':
-            if( tolower(mJson[1]) == 'a' && tolower(mJson[2]) == 'l' && tolower(mJson[3]) == 's' && tolower(mJson[4]) == 'e' )
+            if( tolower(mPos[1]) == 'a' && tolower(mPos[2]) == 'l' && tolower(mPos[3]) == 's' && tolower(mPos[4]) == 'e' )
             {
-                mJson += 5;
+                mPos += 5;
                 pNewValue.SetType(JTYPE_BOOLEAN);
                 pNewValue.mBoolean = false;
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading false type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading false type");
             }
             break;
 
         case 'N':
         case 'n':
-            if( tolower(mJson[1]) == 'u' && tolower(mJson[2]) == 'l' && tolower(mJson[3]) == 'l' )
+            if( tolower(mPos[1]) == 'u' && tolower(mPos[2]) == 'l' && tolower(mPos[3]) == 'l' )
             {
-                mJson += 4;
+                mPos += 4;
                 pNewValue.SetType(JTYPE_NULL);
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found in json value definition reading null type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading null type");
             }
             break;
 
@@ -569,15 +563,15 @@ private:
         case '9':
             // Scan to white space, comma or object end.
             {
-                const char* valueStart = mJson;
+                const char* valueStart = mPos;
                 FindEndOfNumber();
                 pNewValue.SetType(JTYPE_NUMBER);
-                pNewValue.mValue.assign(valueStart,mJson-valueStart);
+                pNewValue.mValue.assign(valueStart,mPos-valueStart);
             }
             break;
 
         default:
-            throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mJson,10) + " found at start of json value definition");
+            throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found at start of json value definition");
             break;
         }
     }
@@ -587,44 +581,42 @@ private:
      */
     void SkipWhiteSpace()
     {
-        while( isspace(*mJson) )
+        while( isspace(*mPos) )
         {// As per Json spec, look for characters that are not a space, linefeed, carrage return or horizontal tab. isspace does this.
             AssertMoreData("Abrupt end to json whilst skipping white space");
-            mJson++;
+            NEXT_CHAR;
         }
     }
 
     /**
      * @brief Reads a string value.
-     * 
-     * @return std::string 
      */
     std::string ReadString()
     {
         // First find the start of the string
         SkipWhiteSpace();
         AssertCorrectChar('\"',"Json format error detected, expected start of string, did you forget to put the string in quotes?");
-
-        mJson++; // Skip "
-        const char* stringStart = mJson;
-
+        NEXT_CHAR; // Skip "
+        const char* stringStart = mPos;
         // Now scan till we hit the next "
-        while( *mJson != '\"' )
+        while( *mPos != '\"' )
         {
-        // Did we hit the end?
+            // Did we hit the end?
             AssertMoreData("Abrupt end to json whilst reading string");
-
-            // Special case, if we find a \ and then a quote.
-            if( mJson[0] == '\\' && mJson[1] == '\"' )
+            // Special case, if we find a \ and then a special character code.
+            if( mPos[0] == '\\' )
             {
-                mJson++;
+                if( mPos[1] == '\0' || mPos[1] == '\a' || mPos[1] == '\b' || mPos[1] == '\t' ||
+                    mPos[1] == '\n' || mPos[1] == '\v' || mPos[1] == '\f' || mPos[1] == '\r' ||
+                    mPos[1] == '\e' || mPos[1] == '\"' || mPos[1] == '\\' )
+                {
+                    NEXT_CHAR;
+                }
             }
-
-            mJson++;
-
+            NEXT_CHAR;
         }
-        const size_t len = mJson - stringStart;
-        mJson++; // Skip "
+        const size_t len = mPos - stringStart;
+        NEXT_CHAR; // Skip "
         if( len > 0 )
         {
             return std::string(stringStart,len);
@@ -635,71 +627,67 @@ private:
 
     /**
      * @brief Scans for the end of the number that we just found the start too.
-     * mJson is set to the end of the number.
+     * mPos is set to the end of the number.
      */
     void FindEndOfNumber()
     {
         // As per Json spec, keep going to we see end of accepted number components.
         // There is an order that you do this in, see https://www.json.org/json-en.html
-        if( *mJson == '-' )
+        if( *mPos == '-' )
         {
-            mJson++;
+            NEXT_CHAR;
         }
 
         // after accounting the - there must be a number next.
-        if( isdigit(*mJson) == false )
+        if( isdigit(*mPos) == false )
         {
-            throw std::runtime_error(std::string("Malformed number ") + std::string(mJson-1,20) );
+            throw std::runtime_error(std::string("Malformed number ") + std::string(mPos-1,20) );
         }
 
         // Scan for end of digits.
-        while( isdigit(*mJson) )
+        while( isdigit(*mPos) )
         {
-            mJson++;
+            NEXT_CHAR;
         }
 
         // Do we have a decimal?
-        if( *mJson == '.' )
+        if( *mPos == '.' )
         {
-            mJson++;
+            NEXT_CHAR;
             // Now scan more more digits.
-            while( isdigit(*mJson) )
+            while( isdigit(*mPos) )
             {
-                mJson++;
+                NEXT_CHAR;
             }
             // now see if there is an exponent. 
-            if( *mJson == 'E' || *mJson == 'e' )
+            if( *mPos == 'E' || *mPos == 'e' )
             {
-                mJson++;
-
+                NEXT_CHAR;
                 // Now must be a sign or a number
-                if( *mJson == '-' || *mJson == '+' || std::isdigit(*mJson) )
+                if( *mPos == '-' || *mPos == '+' || std::isdigit(*mPos) )
                 {
-                    mJson++;
-
+                    NEXT_CHAR;
                     // after accounting the - or + there must be a number next.
-                    if( isdigit(*mJson) == false )
+                    if( isdigit(*mPos) == false )
                     {
-                        throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
+                        throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
                     }
 
                     // Now scan more more digits.
-                    while( isdigit(*mJson) )
+                    while( isdigit(*mPos) )
                     {
-                        mJson++;
+                        NEXT_CHAR;
                     }
                 }
                 else
                 {
-                    throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mJson-1,20) );
+                    throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
                 }
             }
         }
         AssertMoreData("Abrupt end to json whilst reading number");
     }
 };//end of struct JsonProcessor
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };// namespace tinyjson
-
 #endif //TINY_JSON_H
