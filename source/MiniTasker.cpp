@@ -196,12 +196,13 @@ int main(int argc, char *argv[])
             {
                 const int y = 2;
                 const int border = 4;
-                const int Height = 80;
+                const int Height = 100;
                 RT.FillRoundedRectangle(650,y,RT.GetWidth()-2,y + Height,20,255,255,255);
                 RT.FillRoundedRectangle(654,y+border,RT.GetWidth()-6,y + Height - border,18,20,30,180);
                 StatsFont.Printf(RT,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
 
-                StatsFontSmall.Print(RT,680,70,tinytools::GetLocalIP().c_str());
+                StatsFontSmall.Print(RT,680,70,tinytools::network::GetLocalIP());
+                StatsFontSmall.Print(RT,680,90,tinytools::network::GetHostName());
             }
         }
 

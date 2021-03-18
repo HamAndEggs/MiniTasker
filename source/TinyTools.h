@@ -123,6 +123,7 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace network{
 
 /**
  * @brief 
@@ -175,6 +176,18 @@ inline std::string GetLocalIP()
 
 	return ip;
 }
+
+/**
+ * @brief Get Host Name, handy little wrapper.
+ */
+inline std::string GetHostName()
+{
+    char buf[256];
+    ::gethostname(buf,256);
+	return std::string(buf);
+}
+
+};// namespace network
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d
