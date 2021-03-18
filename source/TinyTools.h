@@ -21,9 +21,16 @@
 #include <string>
 #include <functional>
 #include <cmath>
+#include <cstring>
+#include <iostream>
 
 #include <assert.h>
 #include <time.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 
 namespace tinytools{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +121,60 @@ private:
     clock_t mTrigger;
 
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief 
+ * Used the excellent answer by SpectreVert from the topic below.
+ * https://stackoverflow.com/questions/49335001/get-local-ip-address-in-c
+ * A little restructure to minimise typo bugs. (e.g fogetting close on socket)
+ * @return std::string 
+ */
+inline std::string GetLocalIP()
+{
+    int sock = socket(PF_INET, SOCK_DGRAM, 0);
+    sockaddr_in loopback;
+ 
+	std::string ip = "Could not socket";
+    if( sock > 0 )
+	{
+		std::memset(&loopback, 0, sizeof(loopback));
+		loopback.sin_family = AF_INET;
+		loopback.sin_addr.s_addr = 1;   // can be any IP address. Odd, but works. :/
+		loopback.sin_port = htons(9);   // using debug port
+
+		if( connect(sock, reinterpret_cast<sockaddr*>(&loopback), sizeof(loopback)) == 0 )
+		{
+			socklen_t addrlen = sizeof(loopback);
+			if( getsockname(sock, reinterpret_cast<sockaddr*>(&loopback), &addrlen) == 0 )
+			{
+				char buf[INET_ADDRSTRLEN];
+				if (inet_ntop(AF_INET, &loopback.sin_addr, buf, INET_ADDRSTRLEN) == 0x0)
+				{
+					ip = "Could not inet_ntop";
+				}
+				else
+				{
+					ip = buf;
+				}
+			}
+			else
+			{
+				ip = "Could not getsockname";
+			}
+		}
+		else
+		{
+			ip = "Could not connect";
+		}
+
+		// All paths that happen after opening sock will come past here. Less chance of accidentally leaving it open.
+		close(sock);
+	}
+
+	return ip;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d

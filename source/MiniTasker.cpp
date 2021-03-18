@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
     DisplayWeather theWeather(path);
     
     tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
+    tiny2d::FreeTypeFont StatsFontSmall(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);
 
     DisplayClock theClock(path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
@@ -190,9 +191,14 @@ int main(int argc, char *argv[])
             uint64_t upDays,upHours,upMinutes;
             if( GetUptime(upDays,upHours,upMinutes) )
             {
-                RT.FillRoundedRectangle(650,2,RT.GetWidth()-2,80,20,255,255,255);
-                RT.FillRoundedRectangle(654,6,RT.GetWidth()-6,76,18,20,30,180);
-                StatsFont.Printf(RT,700,50,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+                const int y = 2;
+                const int border = 4;
+                const int Height = 80;
+                RT.FillRoundedRectangle(650,y,RT.GetWidth()-2,y + Height,20,255,255,255);
+                RT.FillRoundedRectangle(654,y+border,RT.GetWidth()-6,y + Height - border,18,20,30,180);
+                StatsFont.Printf(RT,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+
+                StatsFontSmall.Print(RT,680,70,tinytools::GetLocalIP().c_str());
             }
         }
 
