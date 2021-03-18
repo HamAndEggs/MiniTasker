@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
     int lastMinute = -1;// Only redraw once a minute.
+
     while( FB->GetKeepGoing() )
     {
         // See if day has changed.
@@ -174,6 +175,8 @@ int main(int argc, char *argv[])
             currentTime = *now;
         }
 
+        // I redraw on the minute, not every minute. That is at 00 seconds. Important for time looking right!
+        // I will need to change this to draw when something changes. Like the minute or net work status.
         if( lastMinute != currentTime.tm_min )
         {
             // Redraw the off screen display buffer

@@ -36,8 +36,10 @@ namespace tinyjson{ // Using a namespace to try to prevent name clashes as my cl
  * @brief If debug build then make sure TRACK_LINE_AND_COLUMN is defined for debugging.
  * Normally of for release as it costs! But you can turn on by defining TRACK_LINE_AND_COLUMN in your project.
  */
-#if !defined TRACK_LINE_AND_COLUMN && !NDEBUG
-    #define TRACK_LINE_AND_COLUMN
+#ifndef NDEBUG
+    #ifndef TRACK_LINE_AND_COLUMN
+        #define TRACK_LINE_AND_COLUMN
+    #endif
 #endif
 
 /**
@@ -99,7 +101,9 @@ struct JsonValue
 	/**
 	 * @brief I hold all number values as a string, this is because until the user asks I do not know what type they want it as.
 	 * I also put the strings in here.
-	 * I do not put objects or arrays as could take up a lot of space and also not needed.
+     * I am not using any memory fancy tricks. I prefer the code to be ledgable and maintainable.
+     * Also, it has been shown, some tricks that should work, like, polymorphic memory resources are slower.
+     * https://stackoverflow.com/questions/55028447/why-is-pmrstring-so-slow-in-these-benchmarks
 	 */
 	std::string mValue;
 
@@ -289,7 +293,7 @@ struct JsonValue
     FUNC_TYPE__ FUNC_NAME__(const std::string& pKey,FUNC_TYPE__ pDefault = DEFAULT_VALUE__)const    \
     {                                                                                               \
         try{return (*this)[pKey].FUNC_NAME__();}                                                    \
-        catch( const std::runtime_error& ){}/* Ignore exception and return the default.*/           \
+        catch(...){}/* Ignore exception and return the default.*/                                   \
         return pDefault;                                                                            \
     }
 
@@ -340,32 +344,17 @@ public:
     {
 #ifdef TRACK_LINE_AND_COLUMN
         mRow = mColumn = 1;
-#endif 
-
+#endif
         if( pJsonString.size() < 2 )
         {
             throw std::runtime_error("Empty string passed into ParseJson");
         }
 
-        // There was a specification change, the root can also be a string. So catch that.
+        SkipWhiteSpace();
+            MakeValue(mRoot); // Now lets get going. :D
         SkipWhiteSpace();
 
-        // Is it an object start or string start?
-        if( *mPos == '{' )
-        {
-            mRoot.SetType(JTYPE_OBJECT);
-            MakeObject(mRoot.mObject);// This function will leave json pointing to the next non white space.
-        }
-        else
-        {
-            MakeValue(mRoot);
-        }
-
-        // Skip white space that maybe after it.
-        SkipWhiteSpace();
-
-        // Now should be at the end
-        if( mPos >= mJsonEnd )
+        if( mPos >= mJsonEnd )// Now should be at the end
         {
             throw std::runtime_error("Data found after root object, invalid Json");
         }
@@ -525,7 +514,7 @@ private:
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading true type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character \"") + *mPos + "\" found in json value definition reading true type");
             }
             break;
 
@@ -539,7 +528,7 @@ private:
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading false type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character \"") + *mPos + "\" found in json value definition reading false type");
             }
             break;
 
@@ -552,7 +541,7 @@ private:
             }
             else
             {
-                throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found in json value definition reading null type");
+                throw std::runtime_error(GetErrorPos() + std::string("Invalid character \"") + *mPos + "\" found in json value definition reading null type");
             }
             break;
 
@@ -577,7 +566,7 @@ private:
             break;
 
         default:
-            throw std::runtime_error(GetErrorPos() + std::string("Invalid character ") + std::string(mPos,10) + " found at start of json value definition");
+            throw std::runtime_error(GetErrorPos() + std::string("Invalid character \"") + *mPos + "\" found at start of json value definition");
             break;
         }
     }
