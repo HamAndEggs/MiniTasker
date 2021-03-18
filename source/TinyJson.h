@@ -323,16 +323,6 @@ private:
 };
 
 /**
- * @brief This defines the code that advances to the current character.
- * Done like this so that for debugging we can track line and column of a file. Although really json should be all on one line.
- */
-#ifdef TRACK_LINE_AND_COLUMN
-    #define NEXT_CHAR {mPos++;if(*mPos == '\n'){mRow++;mColumn=1;}else{mColumn++;}}
-#else
-    #define NEXT_CHAR (mPos++)
-#endif
-
-/**
  * @brief This is the work horse that builds our data structure that mirrors the json data.
  * 
  */
@@ -357,8 +347,19 @@ public:
             throw std::runtime_error("Empty string passed into ParseJson");
         }
 
-        mRoot.SetType(JTYPE_OBJECT);
-        MakeObject(mRoot.mObject);// This function will leave json pointing to the next non white space.
+        // There was a specification change, the root can also be a string. So catch that.
+        SkipWhiteSpace();
+
+        // Is it an object start or string start?
+        if( *mPos == '{' )
+        {
+            mRoot.SetType(JTYPE_OBJECT);
+            MakeObject(mRoot.mObject);// This function will leave json pointing to the next non white space.
+        }
+        else
+        {
+            MakeValue(mRoot);
+        }
 
         // Skip white space that maybe after it.
         SkipWhiteSpace();
@@ -386,9 +387,14 @@ private:
 
 /**
  * @brief Used in the tracking of where we are in the file when debugging.
+ * Remember, trust your compiler.
+ * NextChar will compile into a single add instruction. This has been check in compiler explorer.  https://godbolt.org/
  */
 #ifdef TRACK_LINE_AND_COLUMN
     uint32_t mRow,mColumn;
+    inline void NextChar(){mPos++;if(*mPos == '\n'){mRow++;mColumn=1;}else{mColumn++;}}
+#else
+    inline void NextChar(){mPos++;}
 #endif 
 
     /**
@@ -435,13 +441,13 @@ private:
         AssertCorrectChar('{',"Start of object not found, invalid Json");
         do
         {
-            NEXT_CHAR;// Skip object start char or comma for more key value pairs.
+            NextChar();// Skip object start char or comma for more key value pairs.
             const std::string objKey = ReadString();
 
             // Now parse it's value.
             SkipWhiteSpace();
             AssertCorrectChar(':',"Json format error detected, seperator character ':'");
-            NEXT_CHAR;
+            NextChar();
 
             MakeValue(rObject[objKey]);
 
@@ -459,7 +465,7 @@ private:
         // Validate end of object.
         if( *mPos == '}' )
         {
-            NEXT_CHAR;
+            NextChar();
         }
         else
         {
@@ -489,7 +495,7 @@ private:
             pNewValue.SetType(JTYPE_ARRAY);
             do
             {
-                NEXT_CHAR;//skip ']' or the ','
+                NextChar();//skip ']' or the ','
                 // Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
                 pNewValue.mArray.resize(pNewValue.mArray.size()+1);
                 MakeValue(pNewValue.mArray.back());
@@ -501,7 +507,7 @@ private:
             {
                 throw std::runtime_error(GetErrorPos() + "Json format error detected, array not terminated with ']'");
             }
-            NEXT_CHAR;//skip ']'
+            NextChar();//skip ']'
             break;
 
         case '\"':
@@ -584,7 +590,7 @@ private:
         while( isspace(*mPos) )
         {// As per Json spec, look for characters that are not a space, linefeed, carrage return or horizontal tab. isspace does this.
             AssertMoreData("Abrupt end to json whilst skipping white space");
-            NEXT_CHAR;
+            NextChar();
         }
     }
 
@@ -596,7 +602,7 @@ private:
         // First find the start of the string
         SkipWhiteSpace();
         AssertCorrectChar('\"',"Json format error detected, expected start of string, did you forget to put the string in quotes?");
-        NEXT_CHAR; // Skip "
+        NextChar(); // Skip "
         const char* stringStart = mPos;
         // Now scan till we hit the next "
         while( *mPos != '\"' )
@@ -610,13 +616,13 @@ private:
                     mPos[1] == '\n' || mPos[1] == '\v' || mPos[1] == '\f' || mPos[1] == '\r' ||
                     mPos[1] == '\e' || mPos[1] == '\"' || mPos[1] == '\\' )
                 {
-                    NEXT_CHAR;
+                    NextChar();
                 }
             }
-            NEXT_CHAR;
+            NextChar();
         }
         const size_t len = mPos - stringStart;
-        NEXT_CHAR; // Skip "
+        NextChar(); // Skip "
         if( len > 0 )
         {
             return std::string(stringStart,len);
@@ -635,7 +641,7 @@ private:
         // There is an order that you do this in, see https://www.json.org/json-en.html
         if( *mPos == '-' )
         {
-            NEXT_CHAR;
+            NextChar();
         }
 
         // after accounting the - there must be a number next.
@@ -647,26 +653,26 @@ private:
         // Scan for end of digits.
         while( isdigit(*mPos) )
         {
-            NEXT_CHAR;
+            NextChar();
         }
 
         // Do we have a decimal?
         if( *mPos == '.' )
         {
-            NEXT_CHAR;
+            NextChar();
             // Now scan more more digits.
             while( isdigit(*mPos) )
             {
-                NEXT_CHAR;
+                NextChar();
             }
             // now see if there is an exponent. 
             if( *mPos == 'E' || *mPos == 'e' )
             {
-                NEXT_CHAR;
+                NextChar();
                 // Now must be a sign or a number
                 if( *mPos == '-' || *mPos == '+' || std::isdigit(*mPos) )
                 {
-                    NEXT_CHAR;
+                    NextChar();
                     // after accounting the - or + there must be a number next.
                     if( isdigit(*mPos) == false )
                     {
@@ -676,7 +682,7 @@ private:
                     // Now scan more more digits.
                     while( isdigit(*mPos) )
                     {
-                        NEXT_CHAR;
+                        NextChar();
                     }
                 }
                 else
