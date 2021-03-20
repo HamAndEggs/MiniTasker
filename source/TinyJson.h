@@ -33,16 +33,6 @@ namespace tinyjson{ // Using a namespace to try to prevent name clashes as my cl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief If debug build then make sure TRACK_LINE_AND_COLUMN is defined for debugging.
- * Normally of for release as it costs! But you can turn on by defining TRACK_LINE_AND_COLUMN in your project.
- */
-#ifndef NDEBUG
-    #ifndef TRACK_LINE_AND_COLUMN
-        #define TRACK_LINE_AND_COLUMN
-    #endif
-#endif
-
-/**
  * @brief Different types of json value.
  */
 #define JSON_TYPES                    \
@@ -83,6 +73,12 @@ inline std::string JsonValueTypeToString(JsonValueType pType)
 }
 
 /**
+ * @brief The key value pairs of a json object.
+ */
+typedef std::map<std::string,struct JsonValue> JsonKeyValue;
+typedef std::vector<struct JsonValue> JsonArray;
+
+/**
  * @brief This represents the core data structure that drives Json.
  * It forms the second part of 1 or more the key value pair that represents a Json object.
  */
@@ -110,12 +106,12 @@ struct JsonValue
     /**
      * @brief A json object is a list of 1 or more key, value pairs.
      */
-    std::map<std::string,JsonValue> mObject;
+    JsonKeyValue mObject;
 
     /**
      * @brief The storage for an array, which is just an array of json values.
      */
-	std::vector<JsonValue> mArray;
+	JsonArray mArray;
 
     /**
      * @brief This is a handy overload that allows you to do ["key1"]["key2"]["key3"].GetInt() type of thing.
@@ -342,9 +338,8 @@ public:
         mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1),
         mPos(pJsonString.c_str())
     {
-#ifdef TRACK_LINE_AND_COLUMN
         mRow = mColumn = 1;
-#endif
+
         if( pJsonString.size() < 2 )
         {
             throw std::runtime_error("Empty string passed into ParseJson");
@@ -373,18 +368,16 @@ private:
     const char* const mJsonEnd; //!< Used to detect when we're at the end of the data.
     const char* mPos;  //!< The current position in the data that we are at.  
     JsonValue mRoot; //!< When all is done, this contains the json as usable c++ objects.
+    uint32_t mRow,mColumn;  //!< Keeps track of where we are in the file for error reporting to the user.
 
-/**
- * @brief Used in the tracking of where we are in the file when debugging.
- * Remember, trust your compiler.
- * NextChar will compile into a single add instruction. This has been check in compiler explorer.  https://godbolt.org/
- */
-#ifdef TRACK_LINE_AND_COLUMN
-    uint32_t mRow,mColumn;
+    /**
+     * @brief This will advance to next char and deal with line and colum tracking as we go.
+     * It was optional, with a version that just incremented mPos. Made little difference to speed when reading massive 2MB file.
+     * So is on all the time now as makes code cleaning and the class easier to use.
+     * Remember, trust your compiler.
+     * NextChar will compile into a few instructions. This has been check in compiler explorer.  https://godbolt.org/
+     */
     inline void NextChar(){mPos++;if(*mPos == '\n'){mRow++;mColumn=1;}else{mColumn++;}}
-#else
-    inline void NextChar(){mPos++;}
-#endif 
 
     /**
      * @brief This is used in several place whilst parsing the data to detect json data that is not complete.
@@ -411,11 +404,7 @@ private:
      */
     inline std::string GetErrorPos()
     {
-#ifdef TRACK_LINE_AND_COLUMN
         return std::string("Error at Line ") + std::to_string(mRow) + " column " + std::to_string(mColumn) + " : ";
-#else
-        return std::string("Error at byte ") + std::to_string(mPos - mStart) + " : ";
-#endif
     }
 
     /**
@@ -423,7 +412,7 @@ private:
      * Constructed in this way to reduce copy by value which is what you would get by returning the completed object. That would be horrendous.
      * @param rObject The json object that is to be built.
      */
-    void MakeObject(std::map<std::string,JsonValue>& rObject)
+    void MakeObject(JsonKeyValue& rObject)
     {
         // Search for the start of the object.
         SkipWhiteSpace();
@@ -431,7 +420,8 @@ private:
         do
         {
             NextChar();// Skip object start char or comma for more key value pairs.
-            const std::string objKey = ReadString();
+            std::string objKey;
+            ReadString(objKey);
 
             // Now parse it's value.
             SkipWhiteSpace();
@@ -484,8 +474,13 @@ private:
             pNewValue.SetType(JTYPE_ARRAY);
             do
             {
-                NextChar();//skip ']' or the ','
+                NextChar();// skip '[' or the ','
                 // Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
+                // The problem is that we have to make the object before adding to the vector.
+                // This means we can't use emplace_back as we don't have all that we need.
+                // I would have to duplicate the code for MakeValue for when adding to an array. And that just makes everything hard to maintain!
+                // In c++17 you can use PMR and reduce memory allocations. I may look at that.
+                // But for now this code compiles for c++11 which is good for some old systems. Remember, minimun requirements!
                 pNewValue.mArray.resize(pNewValue.mArray.size()+1);
                 MakeValue(pNewValue.mArray.back());
                 SkipWhiteSpace();
@@ -501,7 +496,7 @@ private:
 
         case '\"':
             pNewValue.SetType(JTYPE_STRING);
-            pNewValue.mValue = ReadString();
+            ReadString(pNewValue.mValue);
             break;
 
         case 'T':
@@ -561,6 +556,9 @@ private:
                 const char* valueStart = mPos;
                 FindEndOfNumber();
                 pNewValue.SetType(JTYPE_NUMBER);
+                // This is a big win in the reading. I don't convert the type now, it is done when the user needs it.
+                // I've tested string_view. It reduces memory allocations by 40% but complicates the code as I have to insert NULLs into the data.
+                // Reading is so fast, even on low end arm chips, it's a pointless optimisation! Remember, I'm going for clean code.
                 pNewValue.mValue.assign(valueStart,mPos-valueStart);
             }
             break;
@@ -586,7 +584,7 @@ private:
     /**
      * @brief Reads a string value.
      */
-    std::string ReadString()
+    void ReadString(std::string& rString)
     {
         // First find the start of the string
         SkipWhiteSpace();
@@ -610,14 +608,14 @@ private:
             }
             NextChar();
         }
+
+        // Did we read a string?
         const size_t len = mPos - stringStart;
-        NextChar(); // Skip "
         if( len > 0 )
         {
-            return std::string(stringStart,len);
+            rString.assign(stringStart,len);
         }
-        // Empty string valid.
-        return "";
+        NextChar(); // Skip "
     }
 
     /**

@@ -24,6 +24,7 @@
 
 #include <linux/fb.h>
 #include <linux/videodev2.h>
+#include <linux/input.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -213,6 +214,8 @@ DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
 {
 	assert( pFB );
 	Resize(pFB->GetWidth(),pFB->GetHeight(),pFB->GetPixelSize(),false,false);
+	// Make sure my code created an optimal native format draw buffer.
+	assert( pFB->GetIsNativeFormat(*this) );
 }
 
 DrawBuffer::DrawBuffer() :
@@ -1061,11 +1064,17 @@ struct X11FrameBufferEmulation
 	bool Open(bool pVerbose);
 
 	/**
+	 * @brief Processes the X11 events then exits when all are done.
+	 * 
+	 * @param pEventHandler 
+	 */
+	void ProcessSystemEvents(FrameBuffer::SystemEventHandler pEventHandler);
+
+	/**
 	 * @brief Draws the frame buffer to the X11 window.
 	 * 
 	 */
-	void Present();
-
+	void RedrawWindow();
 };
 #endif //#ifdef USE_X11_EMULATION
 	
@@ -1166,8 +1175,34 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 	mVerbose(pVerbose)
 {
 	FrameBuffer::mKeepGoing = true;
+
 	// Lets hook ctrl + c.
 	mUsersSignalAction = signal(SIGINT,CtrlHandler);
+
+	// Try to connect to a mouse. But only if not X11
+#ifndef USE_X11_EMULATION
+	const char* MouseDeviceName = "/dev/input/event0";
+	mPointer.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
+	if( pVerbose )
+	{
+		if(  mPointer.mDevice >  0 )
+		{
+			char name[256] = "Unknown";
+			if( ioctl(mPointer.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
+			{
+				std::clog << "Reading mouse from: handle = " << mPointer.mDevice << " name = " << name << "\n";
+			}
+			else
+			{
+				std::clog << "Open mouse device" << MouseDeviceName << "\n" ;
+			}
+		}
+		else
+		{
+			std::clog << "Failed to open mouse device " << MouseDeviceName << "\n";
+		}
+	}
+#endif
 }
 
 FrameBuffer::~FrameBuffer()
@@ -1188,6 +1223,16 @@ FrameBuffer::~FrameBuffer()
 #endif //#ifdef USE_X11_EMULATION
 }
 
+void FrameBuffer::OnApplicationExitRequest()
+{
+	FrameBuffer::mKeepGoing = false;
+	if( FrameBuffer::mSystemEventHandler )
+	{
+		SystemEventData data(SYSTEM_EVENT_EXIT_REQUEST);
+		FrameBuffer::mSystemEventHandler(data);
+	}
+}
+
 void FrameBuffer::Present(const DrawBuffer& pImage)
 {
 	// When optimized by compiler these const vars will
@@ -1197,13 +1242,18 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 	const size_t GreenShift = mVariableScreenInfo.green.offset;
 	const size_t BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mDisplayBufferPixelSize == pImage.GetPixelSize() &&
-		mDisplayBufferStride == pImage.GetStride() &&
-		mDisplayBufferSize <= pImage.mPixels.size() )
+	if( GetIsNativeFormat(pImage) )
 	{// Early out...
 		// Copy mDisplayBufferSize bytes, not the number of source, then we can't over flow what we have to write to.
-		// May read more, no big deal.
 		memcpy(mDisplayBuffer,pImage.mPixels.data(),mDisplayBufferSize);
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Optimal frame buffer copy mode taken\n";
+		}
+#endif
 	}
 	else if( mDisplayBufferPixelSize == 2 )
 	{
@@ -1224,6 +1274,14 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				dst[x] = pixel;
 			}
 		}
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Slow 16Bit frame buffer copy mode taken\n";
+		}
+#endif
 	}
 	else
 	{
@@ -1248,19 +1306,89 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				pixel[ RED_OFFSET ]		= src[2];
 			}
 		}
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Sub optimal scanline frame buffer copy mode taken\n";
+		}
+#endif
 	}
 
+	// Now do event processing.
+	ProcessSystemEvents();
+}
 
+void FrameBuffer::ProcessSystemEvents()
+{
 #ifdef USE_X11_EMULATION
-	mX11->Present();
+	if( mX11 )
+	{
+		mX11->ProcessSystemEvents(mSystemEventHandler);
+		if( mX11->mWindowReady )
+		{
+			mX11->RedrawWindow();
+		}
+	}
+#else
+	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
+	if( mPointer.mDevice > 0 && mSystemEventHandler )
+	{
+		struct input_event ev;
+		// Grab all messages and process befor going to next frame.
+		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
+		{
+			// EV_SYN is a seperator of events.
+			if( mVerbose && ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
+			{// Anything I missed? 
+				std::cout << std::hex << ev.type << " " << ev.code << " " << ev.value << "\n";
+			}
+
+			switch( ev.type )
+			{
+			case EV_KEY:
+				switch (ev.code)
+				{
+				case BTN_TOUCH:
+					SystemEventData data((ev.value != 0) ? SYSTEM_EVENT_POINTER_DOWN : SYSTEM_EVENT_POINTER_UP);
+					data.mPointer.X = mPointer.mCurrent.x;
+					data.mPointer.Y = mPointer.mCurrent.y;
+					mSystemEventHandler(data);
+					break;
+				}
+				break;
+
+			case EV_ABS:
+				switch (ev.code)
+				{
+				case ABS_X:
+					mPointer.mCurrent.x = ev.value;
+					break;
+
+				case ABS_Y:
+					mPointer.mCurrent.y = ev.value;
+					break;
+				}
+				SystemEventData data(SYSTEM_EVENT_POINTER_MOVE);
+				data.mPointer.X = mPointer.mCurrent.x;
+				data.mPointer.Y = mPointer.mCurrent.y;
+				mSystemEventHandler(data);
+				break;
+			}
+		}   
+	}
 #endif //#ifdef USE_X11_EMULATION
 }
 
 sighandler_t FrameBuffer::mUsersSignalAction = NULL;
+FrameBuffer::SystemEventHandler FrameBuffer::mSystemEventHandler = nullptr;
 bool FrameBuffer::mKeepGoing = false;
 void FrameBuffer::CtrlHandler(int SigNum)
 {
 	static int numTimesAskedToExit = 0;
+
+	// Propergate to someone elses handler, if they felt they wanted to add one too.
 	if( mUsersSignalAction != NULL )
 	{
 		mUsersSignalAction(SigNum);
@@ -1271,7 +1399,8 @@ void FrameBuffer::CtrlHandler(int SigNum)
 		std::cerr << "Asked to quit to many times, forcing exit in bad way\n";
 		exit(1);
 	}
-	FrameBuffer::mKeepGoing = false;
+
+	OnApplicationExitRequest();
 	std::cout << '\n'; // without this the command prompt may be at the end of the ^C char.
 }
 
@@ -1355,7 +1484,7 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 					BlackPixel(mDisplay, 0),
 					WhitePixel(mDisplay, 0));
 
-	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask );
+	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask );
 	XMapWindow(mDisplay, mWindow);
 
 	mDisplayBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
@@ -1383,14 +1512,14 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
   	timespec SleepTime = {0,1000000};
 	while( !mWindowReady )
 	{
-		Present();
+		ProcessSystemEvents(nullptr);
 		nanosleep(&SleepTime,NULL);
 	}
 
 	return true;
 }
 
-void X11FrameBufferEmulation::Present()
+void X11FrameBufferEmulation::ProcessSystemEvents(FrameBuffer::SystemEventHandler pEventHandler)
 {
 	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
 	// This is dispite what the documentation stated.
@@ -1415,7 +1544,7 @@ void X11FrameBufferEmulation::Present()
 			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
 			{
 				mWindowReady = false;
-				FrameBuffer::SetKeepGoingFalse();
+				FrameBuffer::OnApplicationExitRequest();
 			}
 			break;
 
@@ -1424,38 +1553,70 @@ void X11FrameBufferEmulation::Present()
 			if ( e.xkey.keycode == 0x09 )
 			{
 				mWindowReady = false;
-				FrameBuffer::SetKeepGoingFalse();
+				FrameBuffer::OnApplicationExitRequest();
+			}
+			break;
+
+		case MotionNotify:// Mouse movement
+			if( pEventHandler )
+			{
+				SystemEventData data(SYSTEM_EVENT_POINTER_MOVE);
+				data.mPointer.X = e.xmotion.x;
+				data.mPointer.Y = e.xmotion.y;
+				pEventHandler(data);
+			}
+			break;
+
+		case ButtonPress:
+			if( pEventHandler )
+			{
+				SystemEventData data(SYSTEM_EVENT_POINTER_DOWN);
+				data.mPointer.X = e.xbutton.x;
+				data.mPointer.Y = e.xbutton.y;
+				pEventHandler(data);
+			}
+			break;
+
+		case ButtonRelease:
+			if( pEventHandler )
+			{
+				SystemEventData data(SYSTEM_EVENT_POINTER_UP);
+				data.mPointer.X = e.xbutton.x;
+				data.mPointer.Y = e.xbutton.y;
+				pEventHandler(data);
 			}
 			break;
 		}
 	}
+}
 
-	if( mWindowReady )
+void X11FrameBufferEmulation::RedrawWindow()
+{
+	assert( mWindowReady );
+
+	GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
+	const int ret = XPutImage(mDisplay, mWindow,defGC,mDisplayBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+
+	switch (ret)
 	{
-		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
-		const int ret = XPutImage(mDisplay, mWindow,defGC,mDisplayBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+	case BadDrawable:
+		std::cerr << "XPutImage failed BadDrawable\n";
+		break;
 
-		switch (ret)
-		{
-		case BadDrawable:
-			std::cerr << "XPutImage failed BadDrawable\n";
-			break;
+	case BadGC:
+		std::cerr << "XPutImage failed BadGC\n";
+		break;
 
-		case BadGC:
-			std::cerr << "XPutImage failed BadGC\n";
-			break;
+	case BadMatch:
+		std::cerr << "XPutImage failed BadMatch\n";
+		break;
 
-		case BadMatch:
-			std::cerr << "XPutImage failed BadMatch\n";
-			break;
+	case BadValue:
+		std::cerr << "XPutImage failed BadValue\n";
+		break;
 
-		case BadValue:
-			std::cerr << "XPutImage failed BadValue\n";
-			break;
-
-		default:
-			break;
-		}
+	default:
+		break;
 	}
 }
 
