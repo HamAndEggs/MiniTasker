@@ -96,7 +96,7 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 	rDaily.mRain = pJson.GetFloat("rain");						//!< (where available) Precipitation volume, mm
 	rDaily.mSnow = pJson.GetFloat("snow");						//!< (where available) Snow volume, mm
 
-	if( pJson.GetType("temp") == tinyjson::JTYPE_OBJECT  )
+	if( pJson.GetType("temp") == tinyjson::JsonValueType::OBJECT  )
 	{
 		const tinyjson::JsonValue& temp = pJson["temp"];
 		rDaily.mTemperature.Set
@@ -109,7 +109,7 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 			temp.GetFloat("max")
 		);
 	}
-	else if( pJson.GetType("temp") == tinyjson::JTYPE_NUMBER  )
+	else if( pJson.GetType("temp") == tinyjson::JsonValueType::NUMBER  )
 	{
 		const float k = pJson.GetFloat("temp");
 		rDaily.mTemperature.Set
@@ -123,7 +123,7 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 		);
 	}
 
-	if( pJson.GetType("feels_like") == tinyjson::JTYPE_OBJECT  )
+	if( pJson.GetType("feels_like") == tinyjson::JsonValueType::OBJECT  )
 	{
 		const tinyjson::JsonValue& feels_like = pJson["feels_like"];
 		rDaily.mFeelsLike.Set
@@ -134,7 +134,7 @@ static void ReadDailyWeatherData(const tinyjson::JsonValue pJson,DailyWeatherDat
 			feels_like.GetFloat("night")
 		);
 	}
-	else if( pJson.GetType("feels_like") == tinyjson::JTYPE_NUMBER  )
+	else if( pJson.GetType("feels_like") == tinyjson::JsonValueType::NUMBER  )
 	{
 		const float k = pJson.GetFloat("temp");
 		rDaily.mFeelsLike.Set
@@ -190,7 +190,7 @@ void OpenWeatherMap::Get(double pLatitude,double pLongitude,std::function<void(b
 		// I would have used rapid json but that is a lot of files to add to this project.
 		// My intention is for someone to beable to drop these two files into their project and continue.
 		// And so I will make my own json reader, it's easy but not the best solution.
-		tinyjson::JsonProcessor json(jsonData);
+		tinyjson::JsonProcessor json(jsonData,true);
 		const tinyjson::JsonValue weather = json.GetRoot();
 
 		mTimeZone = weather.GetString("timezone");

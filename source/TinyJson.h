@@ -35,17 +35,17 @@ namespace tinyjson{ // Using a namespace to try to prevent name clashes as my cl
 /**
  * @brief Different types of json value.
  */
-#define JSON_TYPES                    \
-    DEF_TYPE(JTYPE_STRING,"String")   \
-    DEF_TYPE(JTYPE_NUMBER,"Number")   \
-    DEF_TYPE(JTYPE_OBJECT,"Object")   \
-    DEF_TYPE(JTYPE_ARRAY,"Array")     \
-    DEF_TYPE(JTYPE_BOOLEAN,"Boolean") \
-    DEF_TYPE(JTYPE_NULL,"NULL")
+#define JSON_TYPES              \
+    DEF_TYPE(STRING,"String")   \
+    DEF_TYPE(NUMBER,"Number")   \
+    DEF_TYPE(OBJECT,"Object")   \
+    DEF_TYPE(ARRAY,"Array")     \
+    DEF_TYPE(BOOLEAN,"Boolean") \
+    DEF_TYPE(NULL_VALUE,"NULL")
     
-enum JsonValueType
+enum struct JsonValueType
 {
-    JTYPE_INVALID,
+    INVALID,
 #define DEF_TYPE(JSON_ENUM__,JSON_NAME__) JSON_ENUM__,
     JSON_TYPES
 #undef DEF_TYPE
@@ -61,10 +61,10 @@ inline std::string JsonValueTypeToString(JsonValueType pType)
 {
     switch(pType)
     {
-#define DEF_TYPE(JSON_ENUM__,JSON_NAME__) case JSON_ENUM__:return JSON_NAME__;
+#define DEF_TYPE(JSON_ENUM__,JSON_NAME__) case JsonValueType::JSON_ENUM__:return JSON_NAME__;
     JSON_TYPES
 #undef DEF_TYPE
-    case JTYPE_INVALID:
+    case JsonValueType::INVALID:
         throw std::runtime_error("JsonValueTypeToString passed an uninitialized type value");    
         break;
     };
@@ -84,13 +84,13 @@ typedef std::vector<struct JsonValue> JsonArray;
  */
 struct JsonValue
 {
-    JsonValue():mBoolean(false),mType(JTYPE_INVALID)
+    JsonValue():mBoolean(false),mType(JsonValueType::INVALID)
     {}
 
     /**
      * @brief This holds the true or false value if the json value is TRUE or FALSE
      * The json spec defines types, one for false and one for true. That is daft.
-     * So I define a boolean type and set my type to JTYPE_BOOLEAN and store the value.
+     * So I define a boolean type and set my type to BOOLEAN and store the value.
      */
     bool mBoolean;
 
@@ -121,7 +121,7 @@ struct JsonValue
      */
     const JsonValue& operator [](const std::string& pKey)const
     {
-        AssertType(JTYPE_OBJECT);
+        AssertType(JsonValueType::OBJECT);
         const auto found = mObject.find(pKey);
         if( found != mObject.end() )
             return found->second;
@@ -136,7 +136,7 @@ struct JsonValue
      */
     const JsonValue& operator [](size_t pIndex)const
     {
-        AssertType(JTYPE_ARRAY);
+        AssertType(JsonValueType::ARRAY);
         return mArray[pIndex];
     }
 
@@ -156,7 +156,7 @@ struct JsonValue
      */
     bool HasValue(const std::string& pKey)const
     {
-        if( mType == JTYPE_OBJECT )
+        if( mType == JsonValueType::OBJECT )
         {
             const auto found = mObject.find(pKey);
             if( found != mObject.end() )
@@ -180,7 +180,7 @@ struct JsonValue
      */
     size_t GetArraySize()const
     {
-        if( mType == JTYPE_ARRAY )
+        if( mType == JsonValueType::ARRAY )
             return mArray.size();
         return 0;
     }
@@ -190,7 +190,7 @@ struct JsonValue
      */
     const std::string& GetString()const
     {
-        AssertType(JTYPE_STRING);
+        AssertType(JsonValueType::STRING);
         return mValue;
     }
 
@@ -199,7 +199,7 @@ struct JsonValue
      */
     double GetDouble()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stod(mValue);
     }
 
@@ -208,7 +208,7 @@ struct JsonValue
      */
     float GetFloat()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stof(mValue);
     }
 
@@ -225,7 +225,7 @@ struct JsonValue
      */
     uint64_t GetUInt64()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stoull(mValue);
     }
 
@@ -234,7 +234,7 @@ struct JsonValue
      */
     uint32_t GetUInt32()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stoul(mValue);
     }
 
@@ -243,7 +243,7 @@ struct JsonValue
      */
     int64_t GetInt64()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stoll(mValue);
     }
 
@@ -252,7 +252,7 @@ struct JsonValue
      */
     int32_t GetInt32()const
     {
-        AssertType(JTYPE_NUMBER);
+        AssertType(JsonValueType::NUMBER);
         return std::stol(mValue);
     }
 
@@ -261,7 +261,7 @@ struct JsonValue
      */
     bool GetBoolean()const
     {
-        AssertType(JTYPE_BOOLEAN);
+        AssertType(JsonValueType::BOOLEAN);
         return mBoolean;
     }
 
@@ -270,7 +270,7 @@ struct JsonValue
      */
     bool GetIsNull()const
     {// We don't assert here as the false is an ok answer.
-        return mType == JTYPE_NULL;
+        return mType == JsonValueType::NULL_VALUE;
     }
 
     /***************************************************
@@ -304,7 +304,7 @@ struct JsonValue
     MAKE_SAFE_FUNCTION(GetInt32,int32_t,0);
     MAKE_SAFE_FUNCTION(GetBoolean,bool,false);
     MAKE_SAFE_FUNCTION(GetIsNull,bool,false);
-    MAKE_SAFE_FUNCTION(GetType,JsonValueType,JTYPE_INVALID);
+    MAKE_SAFE_FUNCTION(GetType,JsonValueType,JsonValueType::INVALID);
 #undef MAKE_SAFE_FUNCTION
 
 private:
@@ -332,8 +332,10 @@ public:
     /**
      * @brief Construct a new Json Processor object and parse the json data.
      * throws std::runtime_error if the json is not constructed correctly.
+     * If pFailOnDuplicateKeys is true and two keys at the same level are found to have the same name then we'll throw an exception.
      */
-	JsonProcessor(const std::string& pJsonString) :
+	JsonProcessor(const std::string& pJsonString,bool pFailOnDuplicateKeys = false) :
+        mFailOnDuplicateKeys(pFailOnDuplicateKeys),
         mStart(pJsonString.c_str()),
         mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1),
         mPos(pJsonString.c_str())
@@ -364,11 +366,12 @@ public:
     }
 
 private:
-    const char* const mStart; //!< The start of the data, used to help make errors more discoverable.
-    const char* const mJsonEnd; //!< Used to detect when we're at the end of the data.
-    const char* mPos;  //!< The current position in the data that we are at.  
-    JsonValue mRoot; //!< When all is done, this contains the json as usable c++ objects.
-    uint32_t mRow,mColumn;  //!< Keeps track of where we are in the file for error reporting to the user.
+    const bool mFailOnDuplicateKeys;    //!< If true and two keys at the same level are found to have the same name then we'll throw an exception.
+    const char* const mStart;           //!< The start of the data, used to help make errors more discoverable.
+    const char* const mJsonEnd;         //!< Used to detect when we're at the end of the data.
+    const char* mPos;                   //!< The current position in the data that we are at.  
+    JsonValue mRoot;                    //!< When all is done, this contains the json as usable c++ objects.
+    uint32_t mRow,mColumn;              //!< Keeps track of where we are in the file for error reporting to the user.
 
     /**
      * @brief This will advance to next char and deal with line and colum tracking as we go.
@@ -428,6 +431,14 @@ private:
             AssertCorrectChar(':',"Json format error detected, seperator character ':'");
             NextChar();
 
+            if( mFailOnDuplicateKeys )
+            {
+                if( rObject.find(objKey) != rObject.end() )
+                {
+                    throw std::runtime_error(GetErrorPos() + "Json format error detected, two objects at the same level have the same key, " + objKey);
+                }
+            }
+
             MakeValue(rObject[objKey]);
 
             // Now see if there are more key valuer pairs to add to the object or if we're done.
@@ -466,12 +477,12 @@ private:
             break;
 
         case '{':
-            pNewValue.SetType(JTYPE_OBJECT);
+            pNewValue.SetType(JsonValueType::OBJECT);
             MakeObject(pNewValue.mObject);
             break;
 
         case '[':
-            pNewValue.SetType(JTYPE_ARRAY);
+            pNewValue.SetType(JsonValueType::ARRAY);
             do
             {
                 NextChar();// skip '[' or the ','
@@ -495,7 +506,7 @@ private:
             break;
 
         case '\"':
-            pNewValue.SetType(JTYPE_STRING);
+            pNewValue.SetType(JsonValueType::STRING);
             ReadString(pNewValue.mValue);
             break;
 
@@ -504,7 +515,7 @@ private:
             if( tolower(mPos[1]) == 'r' && tolower(mPos[2]) == 'u' && tolower(mPos[3]) == 'e' )
             {
                 mPos += 4;
-                pNewValue.SetType(JTYPE_BOOLEAN);
+                pNewValue.SetType(JsonValueType::BOOLEAN);
                 pNewValue.mBoolean = true;
             }
             else
@@ -518,7 +529,7 @@ private:
             if( tolower(mPos[1]) == 'a' && tolower(mPos[2]) == 'l' && tolower(mPos[3]) == 's' && tolower(mPos[4]) == 'e' )
             {
                 mPos += 5;
-                pNewValue.SetType(JTYPE_BOOLEAN);
+                pNewValue.SetType(JsonValueType::BOOLEAN);
                 pNewValue.mBoolean = false;
             }
             else
@@ -532,7 +543,7 @@ private:
             if( tolower(mPos[1]) == 'u' && tolower(mPos[2]) == 'l' && tolower(mPos[3]) == 'l' )
             {
                 mPos += 4;
-                pNewValue.SetType(JTYPE_NULL);
+                pNewValue.SetType(JsonValueType::NULL_VALUE);
             }
             else
             {
@@ -555,7 +566,7 @@ private:
             {
                 const char* valueStart = mPos;
                 FindEndOfNumber();
-                pNewValue.SetType(JTYPE_NUMBER);
+                pNewValue.SetType(JsonValueType::NUMBER);
                 // This is a big win in the reading. I don't convert the type now, it is done when the user needs it.
                 // I've tested string_view. It reduces memory allocations by 40% but complicates the code as I have to insert NULLs into the data.
                 // Reading is so fast, even on low end arm chips, it's a pointless optimisation! Remember, I'm going for clean code.

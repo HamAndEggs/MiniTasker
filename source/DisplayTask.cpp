@@ -57,7 +57,7 @@ bool DisplayTask::LoadTaskList(const std::string& pFilename)
         std::stringstream jsonStream;
         jsonStream << jsonFile.rdbuf();// Read the whole file in...
 
-   		tinyjson::JsonProcessor json(jsonStream.str());
+   		tinyjson::JsonProcessor json(jsonStream.str(),true);
 		const tinyjson::JsonValue projectRoot = json.GetRoot();
 
         mWeatherApiKey = projectRoot.GetString("weather-api-key");
