@@ -347,9 +347,7 @@ public:
             throw std::runtime_error("Empty string passed into ParseJson");
         }
 
-        SkipWhiteSpace();
-            MakeValue(mRoot); // Now lets get going. :D
-        SkipWhiteSpace();
+        MakeValue(mRoot); // Now lets get going. :D
 
         if( mPos >= mJsonEnd )// Now should be at the end
         {
@@ -425,8 +423,7 @@ private:
             NextChar();// Skip object start char or comma for more key value pairs.
             std::string objKey;
             ReadString(objKey);
-
-            // Now parse it's value.
+        // Now parse it's value.
             SkipWhiteSpace();
             AssertCorrectChar(':',"Json format error detected, seperator character ':'");
             NextChar();
@@ -440,19 +437,14 @@ private:
             }
 
             MakeValue(rObject[objKey]);
-
-            // Now see if there are more key valuer pairs to add to the object or if we're done.
-            // Skip white space, then see if next char is a } (for end of object) or a , for more key value pairs.
-            // We leave the pointer there and drop out the function.
-            // Down to the caller to test if they carry on or finish the current object.
-            SkipWhiteSpace();
+            
+            // Now see if there are more key value pairs to add to the object or if we're done.
             if( *mPos != '}' && *mPos != ',' )
             {
                 throw std::runtime_error(GetErrorPos() + "Json format error detected, did you forget a comma between key value pairs? For key " + objKey);
             }
         }while (*mPos == ',');
-
-        // Validate end of object.
+    // Validate end of object.    
         if( *mPos == '}' )
         {
             NextChar();
@@ -469,8 +461,7 @@ private:
      */
     void MakeValue(JsonValue& pNewValue)
     {
-        SkipWhiteSpace();// skip space and then see if it's an object, string, value or special state (TRUE,FALSE,NULL).
-
+        SkipWhiteSpace();// skip space and then see if it's an object, string, value or special state (TRUE,FALSE,NULL). We also skip white space before exit.
         switch( *mPos )
         {
         case 0:
@@ -494,7 +485,6 @@ private:
                 // But for now this code compiles for c++11 which is good for some old systems. Remember, minimun requirements!
                 pNewValue.mArray.resize(pNewValue.mArray.size()+1);
                 MakeValue(pNewValue.mArray.back());
-                SkipWhiteSpace();
             }while(*mPos == ',');
 
             // Check we did get to the end.
@@ -562,22 +552,16 @@ private:
         case '7':
         case '8':
         case '9':
-            // Scan to white space, comma or object end.
-            {
-                const char* valueStart = mPos;
-                FindEndOfNumber();
-                pNewValue.SetType(JsonValueType::NUMBER);
-                // This is a big win in the reading. I don't convert the type now, it is done when the user needs it.
-                // I've tested string_view. It reduces memory allocations by 40% but complicates the code as I have to insert NULLs into the data.
-                // Reading is so fast, even on low end arm chips, it's a pointless optimisation! Remember, I'm going for clean code.
-                pNewValue.mValue.assign(valueStart,mPos-valueStart);
-            }
+            pNewValue.SetType(JsonValueType::NUMBER);
+            ReadNumber(pNewValue.mValue);
             break;
 
         default:
             throw std::runtime_error(GetErrorPos() + std::string("Invalid character \"") + *mPos + "\" found at start of json value definition");
             break;
         }
+        // Skip any human readble characters. We exit leaving pos on the next meaningful character.
+        SkipWhiteSpace();
     }
 
     /**
@@ -619,8 +603,7 @@ private:
             }
             NextChar();
         }
-
-        // Did we read a string?
+    // Did we read a string?
         const size_t len = mPos - stringStart;
         if( len > 0 )
         {
@@ -633,8 +616,9 @@ private:
      * @brief Scans for the end of the number that we just found the start too.
      * mPos is set to the end of the number.
      */
-    void FindEndOfNumber()
+    void ReadNumber(std::string& rString)
     {
+        const char* valueStart = mPos;
         // As per Json spec, keep going to we see end of accepted number components.
         // There is an order that you do this in, see https://www.json.org/json-en.html
         if( *mPos == '-' )
@@ -671,12 +655,10 @@ private:
                 if( *mPos == '-' || *mPos == '+' || std::isdigit(*mPos) )
                 {
                     NextChar();
-                    // after accounting the - or + there must be a number next.
-                    if( isdigit(*mPos) == false )
+                    if( isdigit(*mPos) == false )// after accounting the - or + there must be a number next.
                     {
                         throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
                     }
-
                     // Now scan more more digits.
                     while( isdigit(*mPos) )
                     {
@@ -689,6 +671,12 @@ private:
                 }
             }
         }
+
+        // This is a big win in the reading. I don't convert the type now, it is done when the user needs it.
+        // I've tested string_view. It reduces memory allocations by 40% but complicates the code as I have to insert NULLs into the data.
+        // Reading is so fast, even on low end arm chips, it's a pointless optimisation! Remember, I'm going for clean code.
+        rString.assign(valueStart,mPos-valueStart);
+
         AssertMoreData("Abrupt end to json whilst reading number");
     }
 };//end of struct JsonProcessor

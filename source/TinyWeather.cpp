@@ -190,7 +190,7 @@ void OpenWeatherMap::Get(double pLatitude,double pLongitude,std::function<void(b
 		// I would have used rapid json but that is a lot of files to add to this project.
 		// My intention is for someone to beable to drop these two files into their project and continue.
 		// And so I will make my own json reader, it's easy but not the best solution.
-		tinyjson::JsonProcessor json(jsonData,true);
+		tinyjson::JsonProcessor json(jsonData);
 		const tinyjson::JsonValue weather = json.GetRoot();
 
 		mTimeZone = weather.GetString("timezone");
