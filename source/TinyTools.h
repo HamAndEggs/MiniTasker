@@ -329,37 +329,40 @@ inline std::string GetUptime()
 	uint64_t upDays,upHours,upMinutes;
 	GetUptime(upDays,upHours,upMinutes);
 	std::string upTime;
+	std::string space;
 	if( upDays > 0 )
 	{
 		if( upDays == 1 )
 		{
-			upTime = "1 Day ";
+			upTime = "1 Day";
 		}
 		else
 		{
-			upTime = std::to_string(upDays) + " Days ";
+			upTime = std::to_string(upDays) + " Days";
 		}
+		space = " ";
 	}
 
 	if( upHours > 0 )
 	{
 		if( upHours == 1 )
 		{
-			upTime += "1 Hour ";
+			upTime += space + "1 Hour";
 		}
 		else
 		{
-			upTime += std::to_string(upHours) + " Hours ";
+			upTime += space + std::to_string(upHours) + " Hours";
 		}
+		space = " ";
 	}
 
 	if( upMinutes == 1 )
 	{
-		upTime += "1 Minute ";
+		upTime += "1 Minute";
 	}
 	else
 	{
-		upTime += std::to_string(upMinutes) + " Minutes ";
+		upTime += space + std::to_string(upMinutes) + " Minutes";
 	}
 
 	return upTime;

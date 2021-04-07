@@ -14,19 +14,6 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include <cstdlib>
-#include <time.h>
-#include <signal.h>
-#include <unistd.h>
-#include <cstdarg>
-#include <string.h>
-#include <sys/stat.h>
-
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-
 #include "Tiny2D.h"
 #include "TinyTools.h"
 
@@ -39,51 +26,19 @@
 
 #include "TinyPNG.h"
 
-/**
- * @brief Gets the uptime of the system
- * 
- * @return true If it found all the data.
- * @return false Something is missing.
- */
-static bool GetUptime(uint64_t& rUpDays,uint64_t& rUpHours,uint64_t& rUpMinutes)
-{
-    rUpDays = 0;
-    rUpHours = 0;
-    rUpMinutes = 0;
+#include <cstdlib>
+#include <time.h>
+#include <signal.h>
+#include <unistd.h>
+#include <cstdarg>
+#include <string.h>
+#include <sys/stat.h>
 
-    std::ifstream upTimeFile("/proc/uptime");
-    if( upTimeFile.is_open() )
-    {
-        rUpDays = 999;
-        char buf[256];
-        buf[255] = 0;
-        if( upTimeFile.getline(buf,255,' ') )
-        {
-            const uint64_t secondsInADay = 60 * 60 * 24;
-            const uint64_t secondsInAnHour = 60 * 60;
-            const uint64_t secondsInAMinute = 60;
-
-            const uint64_t totalSeconds = std::stoull(buf);
-            rUpDays = totalSeconds / secondsInADay;
-            rUpHours = (totalSeconds - (rUpDays*secondsInADay)) / secondsInAnHour;
-            rUpMinutes = (totalSeconds - (rUpDays*secondsInADay) - (rUpHours * secondsInAnHour) ) / secondsInAMinute;
-            return true;
-        }
-    }
-
-    return true;
-}
-
-static bool DirectoryExists(const char* pDirname)
-{
-// Had and issue where a path had an odd char at the end of it. So do this to make sure it's clean.
-    struct stat dir_info;
-    if( stat(pDirname, &dir_info) == 0 )
-    {
-        return S_ISDIR(dir_info.st_mode);
-    }
-    return false;
-}
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <filesystem>
 
 int main(int argc, char *argv[])
 {
@@ -97,7 +52,7 @@ int main(int argc, char *argv[])
     std::string path = "./";
 
     std::string taskFile = "task-file.json";
-    if( (argc == 2 || argc == 3) && DirectoryExists(argv[1]) )
+    if( (argc == 2 || argc == 3) && std::filesystem::directory_entry(argv[1]).exists() )
     {
         path = argv[1];
         if( path.back() != '/' )
@@ -192,7 +147,7 @@ int main(int argc, char *argv[])
 
             // Render the uptime
             uint64_t upDays,upHours,upMinutes;
-            if( GetUptime(upDays,upHours,upMinutes) )
+            if( tinytools::system::GetUptime(upDays,upHours,upMinutes) )
             {
                 const int y = 2;
                 const int border = 4;

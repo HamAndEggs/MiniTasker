@@ -48,8 +48,8 @@ TheWeather::TheWeather(const std::string& pWeatherApiKey):
     mHasWeather(false),
     mFirstFail(true),
     mFetchLimiter(0),
-    mWeather(pWeatherApiKey),
-    mHourlyUpdates(0)
+    mHourlyUpdates(0),
+    mWeather(pWeatherApiKey)
 {
 
 }
