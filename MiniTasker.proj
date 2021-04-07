@@ -30,7 +30,8 @@
                 "pthread",
                 "freetype",
                 "curl",
-                "z"
+                "z",
+                "stdc++fs"
             ],
             "define": [
                 "NDEBUG",
