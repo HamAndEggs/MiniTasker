@@ -104,7 +104,6 @@ int main(int argc, char *argv[])
     theClock.SetBackground(0,0,0);
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
-    int lastMinute = -1;// Only redraw once a minute.
 
     while( GL.BeginFrame() )
     {
@@ -116,42 +115,36 @@ int main(int argc, char *argv[])
             currentTime = *now;
         }
 
-        // I redraw on the minute, not every minute. That is at 00 seconds. Important for time looking right!
-        // I will need to change this to draw when something changes. Like the minute or net work status.
-//        if( lastMinute != currentTime.tm_min )
+        GL.Clear(background);
+
+        weatherData.Update(theTimeUTC);
+        theClock.Update(GL,20,20,currentTime);
+        theTasks.Update(GL,20,450,currentTime);
+
+        // Render the weather forcast.
+        theWeather.RenderWeatherForcast(GL,280,currentTime,weatherData,someIcons);
+
+        // Render the uptime
+        uint64_t upDays,upHours,upMinutes;
+        if( tinytools::system::GetUptime(upDays,upHours,upMinutes) )
         {
-            // Redraw the off screen display buffer
-            lastMinute = currentTime.tm_min;
-            GL.FillRectangle(0,0,GL.GetWidth(),GL.GetHeight(),background);
+            const int y = 2;
+            const int border = 4;
+            const int Height = 100;
+            GL.FillRoundedRectangle(650,y,GL.GetWidth()-2,y + Height,20,255,255,255);
+            GL.FillRoundedRectangle(654,y+border,GL.GetWidth()-6,y + Height - border,18,20,30,180);
+            GL.FontPrintf(statsFont,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
 
-            weatherData.Update(theTimeUTC);
-            theClock.Update(GL,20,20,currentTime);
-            theTasks.Update(GL,20,450,currentTime);
-
-            // Render the weather forcast.
-            theWeather.RenderWeatherForcast(GL,280,currentTime,weatherData,someIcons);
-
-            // Render the uptime
-            uint64_t upDays,upHours,upMinutes;
-            if( tinytools::system::GetUptime(upDays,upHours,upMinutes) )
-            {
-                const int y = 2;
-                const int border = 4;
-                const int Height = 100;
-                GL.FillRoundedRectangle(650,y,GL.GetWidth()-2,y + Height,20,255,255,255);
-                GL.FillRoundedRectangle(654,y+border,GL.GetWidth()-6,y + Height - border,18,20,30,180);
-                GL.FontPrintf(statsFont,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
-
-                GL.FontPrint(statsFontSmall,680,70,tinytools::network::GetLocalIP());
-                GL.FontPrint(statsFontSmall,680,90,tinytools::network::GetHostName());
-            }
+            GL.FontPrint(statsFontSmall,680,70,tinytools::network::GetLocalIP());
+            GL.FontPrint(statsFontSmall,680,90,tinytools::network::GetHostName());
         }
 
         // Always redraw FB, something on the OS may have don't something I can't stop.
         // Also handles user input.
         GL.EndFrame();
 
-        // Check again in a second. Do doing big wait here as I need to be able to quit in a timely fashion.
+        // Check again in a second. Not doing big wait here as I need to be able to quit in a timely fashion.
+        // Also OS could correct display. But one second means system not pegged 100% rendering as fast as possible.
         sleep(1);
     }
 
