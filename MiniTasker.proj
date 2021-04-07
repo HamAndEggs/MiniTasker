@@ -1,13 +1,13 @@
 {
     "source_files": [
         "./source/MiniTasker.cpp",
-   		"./source/Tiny2D.cpp",
-   		"./source/TinyPNG.cpp",
-        "./source/TinyWeather.cpp",
         "./source/DisplayClock.cpp",
         "./source/DisplayTask.cpp",
         "./source/DisplayWeather.cpp",
         "./source/TheWeather.cpp",
+   		"./source/TinyGLES.cpp",
+   		"./source/TinyPNG.cpp",
+        "./source/TinyWeather.cpp",
         "./source/Icons.cpp"
     ],
     "configurations": {
@@ -20,7 +20,7 @@
             "fatal_errors": true,
             "standard": "c++17",
             "include": [
-                "/usr/include/",
+                "/opt/vc/include/",
                 "/usr/include/freetype2",
                 "./"
             ],
@@ -31,11 +31,16 @@
                 "freetype",
                 "curl",
                 "z",
+                "brcmGLESv2",
+                "brcmEGL",
+                "bcm_host",
                 "stdc++fs"
             ],
             "define": [
                 "NDEBUG",
                 "RELEASE_BUILD",
+                "BROADCOM_NATIVE_WINDOW",
+                "PLATFORM_GLES",
                 "USE_FREETYPEFONTS"
             ]
         },
@@ -47,23 +52,22 @@
             "fatal_errors": false,
             "standard": "c++17",
             "include": [
-                "/usr/include/",
                 "/usr/include/freetype2",
-                "./",
-				"../../"
+                "./"
             ],
             "libs": [
                 "m",
                 "stdc++",
                 "pthread",
                 "X11",
+                "GL",
                 "freetype",
                 "curl",
                 "z"
             ],
             "define": [
                 "DEBUG_BUILD",
-                "USE_X11_EMULATION",
+                "PLATFORM_X11_GL",
                 "USE_FREETYPEFONTS",
                 "DEVELOPMENT_TASK_FILE=\"/usr/share/mini-tasker/task-file.json\""
             ]

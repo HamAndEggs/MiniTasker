@@ -17,16 +17,16 @@
 #ifndef DISPLAY_WEATHER_H
 #define DISPLAY_WEATHER_H
 
-#include <vector>
-
-#include "Tiny2D.h"
+#include "TinyGLES.h"
 #include "TheWeather.h"
 #include "Icons.h"
+
+#include <vector>
 
 class DisplayWeather
 {
 public:
-    DisplayWeather(const std::string& pIconFolder);
+    DisplayWeather(tinygles::GLES& GL,const std::string& pIconFolder);
     ~DisplayWeather() = default;
 
     /**
@@ -36,13 +36,11 @@ public:
      * @param pX 
      * @param pY 
      */
-    void RenderWeatherForcast(tiny2d::DrawBuffer& RT,int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
+    void RenderWeatherForcast(tinygles::GLES& GL,int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
 
 private:
-    tiny2d::FreeTypeFont mIconFont;
-    tiny2d::FreeTypeFont mTemperatureFont;    
-
-
+    const uint32_t mIconFont = 0;
+    const uint32_t mTemperatureFont = 0;
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H
