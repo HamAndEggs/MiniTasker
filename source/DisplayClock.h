@@ -17,29 +17,29 @@
 #ifndef DISPLAY_CLOCK_H
 #define DISPLAY_CLOCK_H
 
+#include "TinyGLES.h"
+
 #include <string>
 #include <time.h>
-
-#include "Tiny2D.h"
 
 class DisplayClock
 {
 public:
-    DisplayClock(const std::string& pFontPath);
+    DisplayClock(tinygles::GLES& GL,const std::string& pFontPath);
     ~DisplayClock();
 
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
     void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
 
-    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
+    void Update(tinygles::GLES& RT,int pX,int pY,const tm& pCurrentTime);
 
 private:
 
-    void DrawTime(tiny2d::DrawBuffer& RT,int pX,int pY,int pHour,int pMinute);
-    void DrawDay(tiny2d::DrawBuffer& RT,int pX,int pY,int pWeekDay,int pMonthDay);
+    void DrawTime(tinygles::GLES& RT,int pX,int pY,int pHour,int pMinute);
+    void DrawDay(tinygles::GLES& RT,int pX,int pY,int pWeekDay,int pMonthDay);
 
-    tiny2d::FreeTypeFont mTimeFont;
-    tiny2d::FreeTypeFont mDateFont;
+    const uint32_t mTimeFont = 0;
+    const uint32_t mDateFont = 0;
 
 	struct
 	{

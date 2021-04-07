@@ -17,18 +17,14 @@
 
 #include "Icons.h"
 #include "TheWeather.h"
+#include <iostream>
 
-
-Icons::Icons(const std::string& pPath)
+Icons::Icons(tinygles::GLES& GL,const std::string& pPath) :
+    mIconFolder(pPath + "icons/")
 {    
-    const int sizeY = 160;
-    const int rounded = 15;
-    const int padding = 2;
-    mIconBG.Resize(GetIconWidth(),sizeY,true);
-    mIconBG.Clear(0,0,0,0);
-    mIconBG.FillRoundedRectangle(padding,padding,GetIconWidth()-padding-1,sizeY-padding-1,rounded,0,0,0,200);
-    mIconBG.DrawRoundedRectangle(padding,padding,GetIconWidth()-padding-1,sizeY-padding-1,rounded,255,255,255);
-    
+    tinypng::Loader loader;
+
+    mIconBG = LoadIconTexture(GL,loader,"square-rounded");
 
     // Load the images.
     const std::vector<std::string> files =
@@ -53,18 +49,14 @@ Icons::Icons(const std::string& pPath)
         "50n",
     }; 
 
-    tinypng::Loader bg;
     for( std::string f : files )
     {
-        if( bg.LoadFromFile(pPath + "icons/" + f + ".png") )
-        {
-            BuildIcon(bg,f);
-        }
+        mIcons[f] = LoadIconTexture(GL,loader,f);
     }
 }
 
 
-const tiny2d::DrawBuffer& Icons::GetIcon(const std::string& pName)const
+const uint32_t Icons::GetIcon(const std::string& pName)const
 {
     auto found = mIcons.find(pName);
     if( found != mIcons.end() )
@@ -73,22 +65,19 @@ const tiny2d::DrawBuffer& Icons::GetIcon(const std::string& pName)const
     return mIconBG;
 }
 
-void Icons::BuildIcon(tinypng::Loader& bg,const std::string pName)
+uint32_t Icons::LoadIconTexture(tinygles::GLES& GL,tinypng::Loader& pLoader,const std::string pName)
 {
-    tiny2d::DrawBuffer& icon = mIcons[pName];
-    icon.Resize(bg.GetWidth(),bg.GetHeight(),bg.GetHasAlpha());
-
-    std::vector<uint8_t> pixels;
-
-    if( bg.GetHasAlpha() )
+    if( pLoader.LoadFromFile(mIconFolder + pName + ".png") )
     {
-        bg.GetRGBA(pixels);
-        icon.BlitRGBA(pixels.data(),0,0,bg.GetWidth(),bg.GetHeight());
-        icon.PreMultiplyAlpha();
+        std::vector<uint8_t> pixels;
+        pLoader.GetRGBA(pixels);
+        return GL.CreateTexture(pLoader.GetWidth(),pLoader.GetHeight(),pixels.data(),tinygles::TextureFormat::FORMAT_RGBA);
     }
     else
     {
-        bg.GetRGB(pixels);
-        icon.BlitRGB(pixels.data(),0,0,bg.GetWidth(),bg.GetHeight());
+        throw std::runtime_error("Failed to load icon " + pName);
     }
+
+    return GL.GetDiagnosticsTexture();
 }
+

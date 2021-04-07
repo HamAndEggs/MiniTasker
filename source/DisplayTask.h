@@ -17,9 +17,9 @@
 #ifndef DISPLAY_TASK_H
 #define DISPLAY_TASK_H
 
-#include <vector>
+#include "TinyGLES.h"
 
-#include "Tiny2D.h"
+#include <vector>
 
 struct Task
 {
@@ -32,7 +32,7 @@ struct Task
 class DisplayTask
 {
 public:
-    DisplayTask(const std::string& pFontPath);
+    DisplayTask(tinygles::GLES& GL,const std::string& pFontPath);
     ~DisplayTask();
 
     /**
@@ -51,7 +51,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime);
+    void Update(tinygles::GLES& RT,int pX,int pY,const tm& pCurrentTime);
 
     const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
 
@@ -59,7 +59,7 @@ private:
 
     const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint8_t& rTillR,uint8_t& rTillG,uint8_t& rTillB);
 
-    tiny2d::FreeTypeFont mFont;
+    const uint32_t mFont = 0;
 
     std::vector<const Task*> mTheTasks;
 

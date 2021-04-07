@@ -14,14 +14,13 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "TinyTools.h"
+#include "TheWeather.h"
 
 #include <string>
 #include <array>
 #include <iostream>
 #include <cmath>
-
-#include "TinyTools.h"
-#include "TheWeather.h"
 
 const std::time_t ONE_MINUTE = (60);
 const std::time_t ONE_HOUR = (ONE_MINUTE * 60);

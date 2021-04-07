@@ -14,7 +14,7 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "Tiny2D.h"
+#include "TinyGLES.h"
 #include "TinyTools.h"
 
 #include "DisplayClock.h"
@@ -67,7 +67,10 @@ int main(int argc, char *argv[])
     std::time_t result = std::time(nullptr);
     tm currentTime = *localtime(&result);
 
-    DisplayTask theTasks(path + "liberation_serif_font/");
+    tinygles::GLES GL(true);
+    GL.SetFontMaximumAllowedGlyph(256);
+
+    DisplayTask theTasks(GL,path + "liberation_serif_font/");
     
     if( theTasks.LoadTaskList(path + taskFile) == false )
     {
@@ -75,52 +78,35 @@ int main(int argc, char *argv[])
        	return EXIT_FAILURE;
     }
 
-    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open();
-	if( !FB )
-    	return EXIT_FAILURE;
-
-    tiny2d::DrawBuffer RT(FB);
-
     // Load a background, later I'll make this configurable.
-    tiny2d::DrawBuffer Background;
+    uint32_t background = 0;
 
     tinypng::Loader bg;
     if( bg.LoadFromFile(path + "images/bg-pastal-01.png") )
     {
-        Background.Resize(bg.GetWidth(),bg.GetHeight());
-
         std::vector<uint8_t> RGB;
         bg.GetRGB(RGB);
-
-        Background.BlitRGB(RGB.data(),0,0,bg.GetWidth(),bg.GetHeight());
+        background = GL.CreateTexture(bg.GetWidth(),bg.GetHeight(),RGB.data(),tinygles::TextureFormat::FORMAT_RGB);
     }
     else
     {
-        // Do something default.
-        Background.Resize(RT.GetWidth(),RT.GetHeight());
-        uint8_t* pixels = Background.mPixels.data();
-        for(size_t n = 0 ; n < Background.mPixels.size() ; n += 3, pixels += 3 )
-        {
-            pixels[0] = 100;
-            pixels[1] = 100;
-            pixels[2] = 100;
-        }
+        background = GL.GetDiagnosticsTexture(); // used default development texture
     }
 
-    Icons someIcons(path);
-    DisplayWeather theWeather(path);
+    Icons someIcons(GL,path);
+    DisplayWeather theWeather(GL,path);
     
-    tiny2d::FreeTypeFont StatsFont(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
-    tiny2d::FreeTypeFont StatsFontSmall(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);
+    uint32_t statsFont = GL.FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
+    uint32_t statsFontSmall = GL.FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);
 
-    DisplayClock theClock(path + "liberation_serif_font/");
+    DisplayClock theClock(GL,path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
     theClock.SetBackground(0,0,0);
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
     int lastMinute = -1;// Only redraw once a minute.
 
-    while( FB->GetKeepGoing() )
+    while( GL.BeginFrame() )
     {
         // See if day has changed.
         std::time_t theTimeUTC = std::time(nullptr);
@@ -132,18 +118,18 @@ int main(int argc, char *argv[])
 
         // I redraw on the minute, not every minute. That is at 00 seconds. Important for time looking right!
         // I will need to change this to draw when something changes. Like the minute or net work status.
-        if( lastMinute != currentTime.tm_min )
+//        if( lastMinute != currentTime.tm_min )
         {
             // Redraw the off screen display buffer
             lastMinute = currentTime.tm_min;
-            RT.Blit(Background,0,0);
+            GL.FillRectangle(0,0,GL.GetWidth(),GL.GetHeight(),background);
 
             weatherData.Update(theTimeUTC);
-            theClock.Update(RT,20,20,currentTime);
-            theTasks.Update(RT,20,450,currentTime);
+            theClock.Update(GL,20,20,currentTime);
+            theTasks.Update(GL,20,450,currentTime);
 
             // Render the weather forcast.
-            theWeather.RenderWeatherForcast(RT,280,currentTime,weatherData,someIcons);
+            theWeather.RenderWeatherForcast(GL,280,currentTime,weatherData,someIcons);
 
             // Render the uptime
             uint64_t upDays,upHours,upMinutes;
@@ -152,24 +138,22 @@ int main(int argc, char *argv[])
                 const int y = 2;
                 const int border = 4;
                 const int Height = 100;
-                RT.FillRoundedRectangle(650,y,RT.GetWidth()-2,y + Height,20,255,255,255);
-                RT.FillRoundedRectangle(654,y+border,RT.GetWidth()-6,y + Height - border,18,20,30,180);
-                StatsFont.Printf(RT,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+                GL.FillRoundedRectangle(650,y,GL.GetWidth()-2,y + Height,20,255,255,255);
+                GL.FillRoundedRectangle(654,y+border,GL.GetWidth()-6,y + Height - border,18,20,30,180);
+                GL.FontPrintf(statsFont,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
 
-                StatsFontSmall.Print(RT,680,70,tinytools::network::GetLocalIP());
-                StatsFontSmall.Print(RT,680,90,tinytools::network::GetHostName());
+                GL.FontPrint(statsFontSmall,680,70,tinytools::network::GetLocalIP());
+                GL.FontPrint(statsFontSmall,680,90,tinytools::network::GetHostName());
             }
         }
 
         // Always redraw FB, something on the OS may have don't something I can't stop.
         // Also handles user input.
-        FB->Present(RT);
+        GL.EndFrame();
 
         // Check again in a second. Do doing big wait here as I need to be able to quit in a timely fashion.
         sleep(1);
     }
-
-    delete FB;
 
     return EXIT_SUCCESS;
 }

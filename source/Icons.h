@@ -17,28 +17,29 @@
 #ifndef ICONS_H
 #define ICONS_H
 
+#include "TinyGLES.h"
+#include "TinyPNG.h"
+
 #include <map>
 #include <string>
-
-#include "Tiny2D.h"
-#include "TinyPNG.h"
 
 class TheWeather;
 
 class Icons
 {
 public:
-    Icons(const std::string& pIconFolder);
+    Icons(tinygles::GLES& GL,const std::string& pIconFolder);
 
-    const tiny2d::DrawBuffer& GetIcon(const std::string& pName)const;
-    const tiny2d::DrawBuffer& GetIconBG()const{return mIconBG;}
-    int GetIconWidth()const{return 160;}
+    const uint32_t GetIcon(const std::string& pName)const;
+    const uint32_t GetIconBG()const{return mIconBG;}
+    int GetIconWidth()const{return 166;}
 
 private:
-    tiny2d::DrawBuffer mIconBG;
-    std::map<std::string,tiny2d::DrawBuffer>mIcons;
+    const std::string mIconFolder;
+    uint32_t mIconBG;
+    std::map<std::string,uint32_t>mIcons;
 
-    void BuildIcon(tinypng::Loader& bg,const std::string pName);
+    uint32_t LoadIconTexture(tinygles::GLES& GL,tinypng::Loader& pLoader,const std::string pName);
 };
 
 #endif //#ifndef ICONS_H

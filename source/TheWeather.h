@@ -17,11 +17,11 @@
 #ifndef THE_WEATHER_H
 #define THE_WEATHER_H
 
+#include "TinyWeather.h"
+
 #include <ctime>
 #include <string>
 #include <map>
-
-#include "TinyWeather.h"
 
 class TheWeather
 {

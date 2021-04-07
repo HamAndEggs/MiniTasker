@@ -14,20 +14,20 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
+#include "TinyJson.h"
+#include "DisplayTask.h"
+
 #include <ctime>
 #include <string>
 #include <array>
 #include <algorithm>    // std::sort
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
-#include "TinyJson.h"
-#include "DisplayTask.h"
 
-DisplayTask::DisplayTask(const std::string& pFontPath):
-    mFont(pFontPath + "/LiberationSerif-Bold.ttf",50)
+DisplayTask::DisplayTask(tinygles::GLES& GL,const std::string& pFontPath):
+    mFont(GL.FontLoad(pFontPath + "/LiberationSerif-Bold.ttf",50))
 {
 }
 
@@ -94,7 +94,7 @@ bool DisplayTask::LoadTaskList(const std::string& pFilename)
     return false;
 }
 
-void DisplayTask::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrentTime)
+void DisplayTask::Update(tinygles::GLES& GL,int pX,int pY,const tm& pCurrentTime)
 {
     const int hour = pCurrentTime.tm_hour;
     const int minute = pCurrentTime.tm_min;
@@ -105,11 +105,11 @@ void DisplayTask::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
     const Task* theTask = GetCurrentTask(hour,minute,tillHour,tillMinute,rTillR,rTillG,rTillB);
     if( theTask != NULL )
     {
-        mFont.SetPenColour(theTask->fg_r,theTask->fg_g,theTask->fg_b);
-        mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
+//        mFont.SetPenColour(theTask->fg_r,theTask->fg_g,theTask->fg_b);
+//        mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw box for all the text
-        RT.FillRoundedRectangle(Xpadding,pY,RT.GetWidth()-1-Xpadding,RT.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        GL.FillRoundedRectangle(Xpadding,pY,GL.GetWidth()-1-Xpadding,GL.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw the progress line.
         const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
@@ -123,15 +123,15 @@ void DisplayTask::Update(tiny2d::DrawBuffer& RT,int pX,int pY,const tm& pCurrent
             progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
         }
 
-        const int progressX = Xpadding + 4 + ((RT.GetWidth()-1-Xpadding-Xpadding-8) * progress);
-        const int progressY = RT.GetHeight();
-        RT.FillRectangle(Xpadding,progressY-8,progressX,progressY,rTillR,rTillG,rTillB);
-        RT.FillRectangle(progressX,progressY-8,RT.GetWidth()-1-Xpadding,progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
-        RT.FillRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b);// the tick
+        const int progressX = Xpadding + 4 + ((GL.GetWidth()-1-Xpadding-Xpadding-8) * progress);
+        const int progressY = GL.GetHeight();
+        GL.FillRectangle(Xpadding,progressY-8,progressX,progressY,rTillR,rTillG,rTillB);
+        GL.FillRectangle(progressX,progressY-8,GL.GetWidth()-1-Xpadding,progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        GL.FillRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b);// the tick
 
         // Draw the text.
-        mFont.Print(RT,pX + 4 + Xpadding,RT.GetHeight() - 28,theTask->what.c_str());
-        mFont.Printf(RT,pX + 4 + Xpadding,pY + 50,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
+        GL.FontPrint(mFont,pX + 4 + Xpadding,GL.GetHeight() - 28,theTask->what.c_str());
+        GL.FontPrintf(mFont,pX + 4 + Xpadding,pY + 50,"%d:%02d to %d:%02d",theTask->whenHour,theTask->whenMinute,tillHour,tillMinute);
     }
 }
 

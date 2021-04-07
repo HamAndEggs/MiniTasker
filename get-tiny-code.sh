@@ -1,5 +1,5 @@
 #/bin/bash
-cp ../Tiny2D/Tiny2D.* ./source
+cp ../TinyGLES/TinyGLES.* ./source
 cp ../TinyJson/TinyJson.* ./source
 cp ../TinyPNG/TinyPNG.* ./source
 cp ../TinyTools/TinyTools.* ./source
