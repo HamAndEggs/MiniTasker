@@ -25,21 +25,21 @@
 class DisplayClock
 {
 public:
-    DisplayClock(tinygles::GLES& GL,const std::string& pFontPath);
+    DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath);
     ~DisplayClock();
 
     void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void SetBackground(uint8_t pR,uint8_t pG,uint8_t pB);
-
-    void Update(tinygles::GLES& RT,int pX,int pY,const tm& pCurrentTime);
+    void Update(int pX,int pY,const tm& pCurrentTime);
 
 private:
 
-    void DrawTime(tinygles::GLES& RT,int pX,int pY,int pHour,int pMinute);
-    void DrawDay(tinygles::GLES& RT,int pX,int pY,int pWeekDay,int pMonthDay);
-
+    void DrawTime(int pX,int pY,int pHour,int pMinute);
+    void DrawDay(int pX,int pY,int pWeekDay,int pMonthDay);
+    
     const uint32_t mTimeFont = 0;
     const uint32_t mDateFont = 0;
+
+    tinygles::GLES& GL;
 
 	struct
 	{

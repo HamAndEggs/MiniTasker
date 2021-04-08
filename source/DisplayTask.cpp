@@ -26,8 +26,9 @@
 #include <sstream>
 
 
-DisplayTask::DisplayTask(tinygles::GLES& GL,const std::string& pFontPath):
-    mFont(GL.FontLoad(pFontPath + "/LiberationSerif-Bold.ttf",50))
+DisplayTask::DisplayTask(tinygles::GLES& pGL,const std::string& pFontPath):
+    mFont(pGL.FontLoad(pFontPath + "/LiberationSerif-Bold.ttf",50)),
+    GL(pGL)
 {
 }
 
@@ -94,7 +95,7 @@ bool DisplayTask::LoadTaskList(const std::string& pFilename)
     return false;
 }
 
-void DisplayTask::Update(tinygles::GLES& GL,int pX,int pY,const tm& pCurrentTime)
+void DisplayTask::Update(int pX,int pY,const tm& pCurrentTime)
 {
     const int hour = pCurrentTime.tm_hour;
     const int minute = pCurrentTime.tm_min;

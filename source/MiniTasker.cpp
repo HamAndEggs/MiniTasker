@@ -101,7 +101,6 @@ int main(int argc, char *argv[])
 
     DisplayClock theClock(GL,path + "liberation_serif_font/");
     theClock.SetForground(255,255,255);
-    theClock.SetBackground(0,0,0);
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
 
@@ -118,11 +117,11 @@ int main(int argc, char *argv[])
         GL.Clear(background);
 
         weatherData.Update(theTimeUTC);
-        theClock.Update(GL,20,20,currentTime);
-        theTasks.Update(GL,20,450,currentTime);
+        theClock.Update(20,20,currentTime);
+        theTasks.Update(20,450,currentTime);
 
         // Render the weather forcast.
-        theWeather.RenderWeatherForcast(GL,280,currentTime,weatherData,someIcons);
+        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);
 
         // Render the uptime
         uint64_t upDays,upHours,upMinutes;

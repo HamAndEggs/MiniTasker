@@ -22,13 +22,14 @@
 #include <array>
 
 
-DisplayWeather::DisplayWeather(tinygles::GLES& GL,const std::string& pPath) : 
-    mIconFont(GL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",30)),
-    mTemperatureFont(GL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Regular.ttf",60))
+DisplayWeather::DisplayWeather(tinygles::GLES& pGL,const std::string& pPath) : 
+    mIconFont(pGL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",30)),
+    mTemperatureFont(pGL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",60)),
+    GL(pGL)
 {
 }
 
-void DisplayWeather::RenderWeatherForcast(tinygles::GLES& GL,int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons)
+void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons)
 {
      // Show next six icons.
     // I could render this to an offscreen image and only update once an hour.
@@ -76,6 +77,13 @@ void DisplayWeather::RenderWeatherForcast(tinygles::GLES& GL,int pY,const tm& pC
     const std::string temperature = pWeather.GetCurrentTemperature();
     if( temperature.size() > 0 )
     {
+        GL.FontSetColour(mTemperatureFont,0,0,0,120);
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 162,y - 20,temperature.c_str());
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 158,y - 20,temperature.c_str());
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 22,temperature.c_str());
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 18,temperature.c_str());
+
+        GL.FontSetColour(mTemperatureFont,255,255,255);
         GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 20,temperature.c_str());
     }
 }

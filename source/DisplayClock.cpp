@@ -20,9 +20,10 @@
 #include <array>
 
 
-DisplayClock::DisplayClock(tinygles::GLES& GL,const std::string& pFontPath):
-    mTimeFont( GL.FontLoad( pFontPath + "LiberationSerif-Bold.ttf",160)),
-    mDateFont( GL.FontLoad( pFontPath + "LiberationSerif-Regular.ttf",52))
+DisplayClock::DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath):
+    mTimeFont( pGL.FontLoad( pFontPath + "LiberationSerif-Bold.ttf",160)),
+    mDateFont( pGL.FontLoad( pFontPath + "LiberationSerif-Regular.ttf",52)),
+    GL(pGL)
 {
 }
 
@@ -36,34 +37,25 @@ void DisplayClock::SetForground(uint8_t pR,uint8_t pG,uint8_t pB)
     mFG.r = pR;
     mFG.g = pG;
     mFG.b = pB;
-//    mTimeFont.SetPenColour(pR,pG,pB);
-//    mDateFont.SetPenColour(pR,pG,pB);
+    GL.FontSetColour(mTimeFont,pR,pG,pB);
+    GL.FontSetColour(mDateFont,pR,pG,pB);
 }
 
-void DisplayClock::SetBackground(uint8_t pR,uint8_t pG,uint8_t pB)
-{
-    mBG.r = pR;
-    mBG.g = pG;
-    mBG.b = pB;
- //   mTimeFont.SetBackgroundColour(pR,pG,pB);
-//    mDateFont.SetBackgroundColour(pR,pG,pB);
-}
-
-void DisplayClock::Update(tinygles::GLES& GL,int pX,int pY,const tm& pCurrentTime)
+void DisplayClock::Update(int pX,int pY,const tm& pCurrentTime)
 {
     GL.FillRoundedRectangle(pX-8,pY-8,pX + 400,pY + 230,35,255,255,255);
     GL.FillRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 230-4,32,0,0,0);
 
-    DrawTime(GL,pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
-    DrawDay(GL,pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);
+    DrawTime(pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
+    DrawDay(pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);
 }
 
-void DisplayClock::DrawTime(tinygles::GLES& GL,int pX,int pY,int pHour,int pMinute)
+void DisplayClock::DrawTime(int pX,int pY,int pHour,int pMinute)
 {
     GL.FontPrintf(mTimeFont,pX + 4,pY + 120,"%02d:%02d",pHour,pMinute);
 }
 
-void DisplayClock::DrawDay(tinygles::GLES& GL,int pX,int pY,int pWeekDay,int pMonthDay)
+void DisplayClock::DrawDay(int pX,int pY,int pWeekDay,int pMonthDay)
 {
     static const std::array<std::string,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 

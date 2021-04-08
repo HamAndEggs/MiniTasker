@@ -32,7 +32,7 @@ struct Task
 class DisplayTask
 {
 public:
-    DisplayTask(tinygles::GLES& GL,const std::string& pFontPath);
+    DisplayTask(tinygles::GLES& pGL,const std::string& pFontPath);
     ~DisplayTask();
 
     /**
@@ -51,7 +51,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void Update(tinygles::GLES& RT,int pX,int pY,const tm& pCurrentTime);
+    void Update(int pX,int pY,const tm& pCurrentTime);
 
     const std::string& GetWeatherApiKey()const{return mWeatherApiKey;}
 
@@ -60,6 +60,8 @@ private:
     const Task* GetCurrentTask(int pHour,int pMinute,int& rTillHour,int& rTillMinute,uint8_t& rTillR,uint8_t& rTillG,uint8_t& rTillB);
 
     const uint32_t mFont = 0;
+    tinygles::GLES& GL;
+
 
     std::vector<const Task*> mTheTasks;
 

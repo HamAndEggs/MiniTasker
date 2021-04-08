@@ -26,7 +26,7 @@
 class DisplayWeather
 {
 public:
-    DisplayWeather(tinygles::GLES& GL,const std::string& pIconFolder);
+    DisplayWeather(tinygles::GLES& pGL,const std::string& pIconFolder);
     ~DisplayWeather() = default;
 
     /**
@@ -36,11 +36,13 @@ public:
      * @param pX 
      * @param pY 
      */
-    void RenderWeatherForcast(tinygles::GLES& GL,int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
+    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
 
 private:
     const uint32_t mIconFont = 0;
     const uint32_t mTemperatureFont = 0;
+    tinygles::GLES& GL;
+
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H
