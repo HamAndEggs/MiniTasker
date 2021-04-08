@@ -8,7 +8,8 @@
    		"./source/TinyGLES.cpp",
    		"./source/TinyPNG.cpp",
         "./source/TinyWeather.cpp",
-        "./source/Icons.cpp"
+        "./source/Icons.cpp",
+        "./source/DisplaySystemStatus.cpp"
     ],
     "configurations": {
         "release": {

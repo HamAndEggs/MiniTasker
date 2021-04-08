@@ -14,33 +14,33 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
    
-#ifndef DISPLAY_CLOCK_H
-#define DISPLAY_CLOCK_H
+#ifndef DISPLAY_SYSTEM_STATUS_H
+#define DISPLAY_SYSTEM_STATUS_H
 
 #include "TinyGLES.h"
+
+#include "TinyTools.h"
+
 
 #include <string>
 #include <time.h>
 
-class DisplayClock
+class DisplaySystemStatus
 {
 public:
-    DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath);
-    ~DisplayClock();
+    DisplaySystemStatus(tinygles::GLES& pGL,const std::string& pFontPath);
+    ~DisplaySystemStatus();
 
-    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void Update(int pX,int pY,const tm& pCurrentTime);
+    void Render(int pX,int pY);
 
 private:
 
-    void DrawTime(int pX,int pY,int pHour,int pMinute);
-    void DrawDay(int pX,int pY,int pWeekDay,int pMonthDay);
-    
-    const uint32_t mTimeFont = 0;
-    const uint32_t mDateFont = 0;
+    const uint32_t mFont = 0;
+    const uint32_t mSmallFont = 0;
 
     tinygles::GLES& GL;
+    std::map<int,tinytools::system::CPULoadTracking> mTrackingData;
 
 };
 
-#endif //#ifndef DISPLAY_CLOCK_H
+#endif //#ifndef DISPLAY_SYSTEM_STATUS_H

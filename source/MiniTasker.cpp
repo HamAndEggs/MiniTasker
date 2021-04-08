@@ -20,6 +20,7 @@
 #include "DisplayClock.h"
 #include "DisplayTask.h"
 #include "DisplayWeather.h"
+#include "DisplaySystemStatus.h"
 
 #include "TheWeather.h"
 #include "Icons.h"
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
     tm currentTime = *localtime(&result);
 
     tinygles::GLES GL(true);
-    GL.SetFontMaximumAllowedGlyph(256);
+    GL.FontSetMaximumAllowedGlyph(256);
 
     DisplayTask theTasks(GL,path + "liberation_serif_font/");
     
@@ -95,11 +96,10 @@ int main(int argc, char *argv[])
 
     Icons someIcons(GL,path);
     DisplayWeather theWeather(GL,path);
+    DisplaySystemStatus systemStatus(GL,path);
     
-    uint32_t statsFont = GL.FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf");
-    uint32_t statsFontSmall = GL.FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",20);
 
-    DisplayClock theClock(GL,path + "liberation_serif_font/");
+    DisplayClock theClock(GL,path);
     theClock.SetForground(255,255,255);
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
@@ -123,20 +123,8 @@ int main(int argc, char *argv[])
         // Render the weather forcast.
         theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);
 
-        // Render the uptime
-        uint64_t upDays,upHours,upMinutes;
-        if( tinytools::system::GetUptime(upDays,upHours,upMinutes) )
-        {
-            const int y = 2;
-            const int border = 4;
-            const int Height = 100;
-            GL.FillRoundedRectangle(650,y,GL.GetWidth()-2,y + Height,20,255,255,255);
-            GL.FillRoundedRectangle(654,y+border,GL.GetWidth()-6,y + Height - border,18,20,30,180);
-            GL.FontPrintf(statsFont,680,40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
-
-            GL.FontPrint(statsFontSmall,680,70,tinytools::network::GetLocalIP());
-            GL.FontPrint(statsFontSmall,680,90,tinytools::network::GetHostName());
-        }
+        // Draw some intresting system status stuff.
+        systemStatus.Render(650,2);
 
         // Always redraw FB, something on the OS may have don't something I can't stop.
         // Also handles user input.

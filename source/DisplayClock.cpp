@@ -21,8 +21,8 @@
 
 
 DisplayClock::DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath):
-    mTimeFont( pGL.FontLoad( pFontPath + "LiberationSerif-Bold.ttf",160)),
-    mDateFont( pGL.FontLoad( pFontPath + "LiberationSerif-Regular.ttf",52)),
+    mTimeFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Bold.ttf",160)),
+    mDateFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Regular.ttf",52)),
     GL(pGL)
 {
 }
@@ -34,9 +34,6 @@ DisplayClock::~DisplayClock()
 
 void DisplayClock::SetForground(uint8_t pR,uint8_t pG,uint8_t pB)
 {
-    mFG.r = pR;
-    mFG.g = pG;
-    mFG.b = pB;
     GL.FontSetColour(mTimeFont,pR,pG,pB);
     GL.FontSetColour(mDateFont,pR,pG,pB);
 }
