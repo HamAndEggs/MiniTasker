@@ -24,7 +24,7 @@
 
 DisplayWeather::DisplayWeather(tinygles::GLES& pGL,const std::string& pPath) : 
     mIconFont(pGL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",30)),
-    mTemperatureFont(pGL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",60)),
+    mTemperatureFont(pGL.FontLoad(pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",70)),
     GL(pGL)
 {
 }
@@ -77,13 +77,9 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
     const std::string temperature = pWeather.GetCurrentTemperature();
     if( temperature.size() > 0 )
     {
-        GL.FontSetColour(mTemperatureFont,0,0,0,120);
-        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 162,y - 20,temperature.c_str());
-        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 158,y - 20,temperature.c_str());
-        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 22,temperature.c_str());
-        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 18,temperature.c_str());
-
-        GL.FontSetColour(mTemperatureFont,255,255,255);
-        GL.FontPrint(mTemperatureFont,GL.GetWidth() - 160,y - 20,temperature.c_str());
+        const int width = 140 + ((temperature.size()-2)*22);
+        GL.RoundedRectangle(GL.GetWidth() - width,y - 80,GL.GetWidth()-20,y-10,12,255,255,255,130,true);
+        GL.FontSetColour(mTemperatureFont,0,0,0);
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - width + 10,y - 20,temperature.c_str());
     }
 }
