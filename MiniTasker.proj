@@ -36,6 +36,10 @@
                 "bcm_host",
                 "stdc++fs"
             ],
+            "libpaths":
+            [
+                "/opt/vc/lib"
+            ],
             "define": [
                 "NDEBUG",
                 "RELEASE_BUILD",
