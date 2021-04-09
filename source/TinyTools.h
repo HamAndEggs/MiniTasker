@@ -383,10 +383,9 @@ struct CPULoadTracking
  * @brief Will return N + 1 entries for each hardware thread, +1 for total avarage.
  * First call expects pTrackingData to be zero in length, and will initialise the vector. Don't mess with the vector as you're break it all. ;)
  * Index of map is core ID, The ID of the CPU core (including HW threading, so a 8 core 16 thread system will have 17 entries, 16 for threads and one for total)
- * The core ID for the total system load is -1. The rest are zero based.
  * The load is the load of user space and virtual guests on the system. Does not include system time load.
  */
-inline bool GetCPULoad(std::map<int,CPULoadTracking>& pTrackingData,std::map<int,int>& pCPULoads)
+inline bool GetCPULoad(std::map<int,CPULoadTracking>& pTrackingData,int& rTotalSystemLoad,std::map<int,int>& rCoreLoads)
 {
 	// If pTrackingData is empty then we're initalising the state so lets build our starting point.
 	const bool initalising = pTrackingData.size() ==  0;
@@ -467,33 +466,50 @@ inline bool GetCPULoad(std::map<int,CPULoadTracking>& pTrackingData,std::map<int
 					#undef WRAP_SUBTRACT
 					core->second.mUserTime = userTime;
 					core->second.mTotalTime = totalTime;
+					std::cout << " [cpuID " << cpuID << " deltaTotal " << deltaTotal << " deltaUser " << deltaUser << "] ";
 					if( deltaTotal > 0 )
 					{
-						const uint64_t percentage = deltaUser / deltaTotal * 100;
-						pCPULoads[cpuID] = (int)percentage;
+						const uint64_t percentage = deltaUser * 100 / deltaTotal;
+						if( cpuID == -1 )
+						{
+							rTotalSystemLoad = (int)percentage;
+						}
+						else
+						{
+							rCoreLoads[cpuID] = (int)percentage;
+						}
 					}
 					else
 					{
-						pCPULoads[cpuID] = 0;
+						if( cpuID == -1 )
+						{
+							rTotalSystemLoad = 0;
+						}
+						else
+						{
+							rCoreLoads[cpuID] = 0;
+						}
 					}
 				}
 			}
 		}
+		std::cout << "\n";
 		return true;
 	}
 	return false;
 }
 
 /**
- * @brief Get the Memory Usage, all values passed back in bytes. So you can make it what you want.
+ * @brief Get the Memory Usage, all values passed back in 1K units because that is what the OS sends back.
+ * Used https://gitlab.com/procps-ng/procps as reference as it's not as simple as reading the file. :-? Thanks Linus.....
  */
-inline bool GetMemoryUsage(size_t& rTotalMemory,size_t& rFreeMemory,size_t& rTotalSwap,size_t& rFreeSwap)
+inline bool GetMemoryUsage(size_t& rMemoryUsedKB,size_t& rMemAvailableKB,size_t& rMemTotalKB,size_t& rSwapUsedKB)
 {
-	rTotalMemory = rFreeMemory = rTotalSwap = rFreeSwap = 0;
 	std::ifstream memFile("/proc/meminfo");
 	if( memFile.is_open() )
 	{
-		// Written so that it'll read the lines in any order. Easy to do and safe.
+		// We'll build a map of the data lines that have key: value combination.
+		std::map<std::string,size_t> keyValues;
 		while( memFile.eof() == false )
 		{
 			std::string memLine;
@@ -506,25 +522,50 @@ inline bool GetMemoryUsage(size_t& rTotalMemory,size_t& rFreeMemory,size_t& rTot
 					TINYTOOLS_THROW("Failed to correctly read a line from /proc/meminfo did the format change? Found line \"" + memLine + "\" and split it into " + std::to_string(memParts.size()) + " parts");
 				}
 
-				if( string::CompareNoCase(memParts[0],"MemTotal:") )
+				if( memParts[0].back() == ':' )
 				{
-					rTotalMemory = std::stoull(memParts[1]) * 1024;
-				}
-				else if( string::CompareNoCase(memParts[0],"MemFree:") )
-				{
-					rFreeMemory = std::stoull(memParts[1]) * 1024;
-				}
-				else if( string::CompareNoCase(memParts[0],"SwapTotal:") )
-				{
-					rTotalSwap = std::stoull(memParts[1]) * 1024;
-				}
-				else if( string::CompareNoCase(memParts[0],"SwapFree:") )
-				{
-					rFreeSwap = std::stoull(memParts[1]) * 1024;
+					memParts[0].pop_back();
+					keyValues[memParts[0]] = std::stoull(memParts[1]);
 				}
 			}
 		}
-		return true;
+
+		try
+		{
+			const size_t Buffers = keyValues.at("Buffers");
+			const size_t Cached = keyValues["Cached"];
+			const size_t SReclaimable = keyValues["SReclaimable"];
+			const size_t MemAvailable = keyValues["MemAvailable"];
+			const size_t MemTotal = keyValues["MemTotal"];
+			const size_t MemFree = keyValues["MemFree"];
+			const size_t SwapFree = keyValues["SwapFree"];
+			const size_t SwapTotal = keyValues["SwapTotal"];
+
+			const size_t mainCached = Cached + SReclaimable;
+			// if kb_main_available is greater than kb_main_total or our calculation of
+			// mem_used overflows, that's symptomatic of running within a lxc container
+			// where such values will be dramatically distorted over those of the host.
+			if (MemAvailable > MemTotal)
+			{
+				rMemAvailableKB = MemFree;
+			}
+			else
+			{
+				rMemAvailableKB = MemAvailable;
+			}
+
+			rMemoryUsedKB = MemTotal - MemFree - mainCached - Buffers;
+			if (rMemoryUsedKB < 0)
+			{
+				rMemoryUsedKB = MemTotal - MemFree;
+			}
+
+			rMemTotalKB = MemTotal;
+			rSwapUsedKB = SwapTotal - SwapFree;
+
+			return true;
+		}
+		catch( std::out_of_range& e ){std::cerr << " failed to read all the data needed from /proc/meminfo " << e.what();}// We'll return false so they know something went wrong.
 	}
 	return false;
 }

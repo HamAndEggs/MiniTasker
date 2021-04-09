@@ -25,7 +25,8 @@ DisplaySystemStatus::DisplaySystemStatus(tinygles::GLES& pGL,const std::string& 
     GL(pGL)
 {
     std::map<int,int> CPULoads;
-    tinytools::system::GetCPULoad(mTrackingData,CPULoads);
+    int totalSystemLoad;
+    tinytools::system::GetCPULoad(mTrackingData,totalSystemLoad,CPULoads);
 }
 
 DisplaySystemStatus::~DisplaySystemStatus()
@@ -58,20 +59,21 @@ void DisplaySystemStatus::Render(int pX,int pY)
     }
 
     std::map<int,int> CPULoads;
-    tinytools::system::GetCPULoad(mTrackingData,CPULoads);
+    int totalSystemLoad;
+    tinytools::system::GetCPULoad(mTrackingData,totalSystemLoad,CPULoads);
     if(CPULoads.size() > 0)
     {
-        GL.FontPrintf(mSmallFont,pX + fontBorder,pY + 90,"CPU:%d%%",CPULoads[0]);
+        GL.FontPrintf(mSmallFont,pX + fontBorder,pY + 90,"CPU:%d%%",totalSystemLoad);
     }
     else
     {
-        GL.FontPrint(mSmallFont,pX + fontBorder,pY + 90,"CPU:--\%");
+        GL.FontPrint(mSmallFont,pX + fontBorder,pY + 90,"CPU:--%");
     }
 
-    size_t totalMemory,freeMemory,totalSwap,freeSwap;
-    if( tinytools::system::GetMemoryUsage(totalMemory,freeMemory,totalSwap,freeSwap) )
+    size_t memoryUsedKB,memAvailableKB,memTotalKB,swapUsedKB;
+    if( tinytools::system::GetMemoryUsage(memoryUsedKB,memAvailableKB,memTotalKB,swapUsedKB) )
     {
-        const std::string memory = std::to_string(freeMemory * 100 / totalMemory) + "% Free Memory"; 
+        const std::string memory = "Mem:" + std::to_string(memoryUsedKB * 100 / memTotalKB) + "%"; 
         const int textWidth = GL.FontGetPrintWidth(mSmallFont,memory);
 
         GL.FontPrint(mSmallFont,pX + Width - textWidth - fontBorder,pY + 90,memory);
