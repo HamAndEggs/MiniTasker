@@ -466,7 +466,7 @@ inline bool GetCPULoad(std::map<int,CPULoadTracking>& pTrackingData,int& rTotalS
 					#undef WRAP_SUBTRACT
 					core->second.mUserTime = userTime;
 					core->second.mTotalTime = totalTime;
-					std::cout << " [cpuID " << cpuID << " deltaTotal " << deltaTotal << " deltaUser " << deltaUser << "] ";
+
 					if( deltaTotal > 0 )
 					{
 						const uint64_t percentage = deltaUser * 100 / deltaTotal;
@@ -493,7 +493,6 @@ inline bool GetCPULoad(std::map<int,CPULoadTracking>& pTrackingData,int& rTotalS
 				}
 			}
 		}
-		std::cout << "\n";
 		return true;
 	}
 	return false;

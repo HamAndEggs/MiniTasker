@@ -27,6 +27,7 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <array>
 #include <string_view>
 #include <stdexcept>
 #include <cstring>
@@ -39,17 +40,9 @@
  * This define allows that. But is expected to be used ONLY for development.
  * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT in your build settings.
  * These below are here for default behaviour.
- * Doing this saves on params that are not needed 99% of the time.
+ * Doing this saves on params that are not needed 99% of the time. Only has an affect when building for X11 and GLES emulation.
  */
 #ifdef PLATFORM_X11_GL
-	#define GL_GLEXT_PROTOTYPES
-	#include <X11/Xlib.h>
-	#include <X11/Xutil.h>
-	#include <GL/gl.h>
-	#include <GL/glext.h>
-	#include <GL/glx.h>
-	#include <GL/glu.h>
-
 	#ifndef X11_EMULATION_WIDTH
 		#define X11_EMULATION_WIDTH 1024
 	#endif
@@ -57,25 +50,6 @@
 	#ifndef X11_EMULATION_HEIGHT
 		#define X11_EMULATION_HEIGHT 600
 	#endif
-	/**
-	 * @brief Emulate GLES with GL and X11, some defines to make the implementation cleaner, this is for development, I hate it adds loads of #ifdef's this should stop that.
-	 */
-	#define eglSwapBuffers(DISPLAY__,SURFACE__)			{if(mNativeWindow){mNativeWindow->RedrawWindow();}}
-	#define eglDestroyContext(DISPLAY__, CONTEXT__)
-	#define eglDestroySurface(DISPLAY__, SURFACE__)
-	#define eglTerminate(DISPLAY__)						{delete mNativeWindow;}
-	#define eglSwapInterval(DISPLAY__,INTERVAL__)
-	#define glColorMask(RED__,GREEN__,BLUE__,ALPHA__)
-
-#endif
-
-#ifdef BROADCOM_NATIVE_WINDOW // All included from /opt/vc/include
-	#include "bcm_host.h"
-#endif
-
-#ifdef PLATFORM_GLES
-	#include "GLES2/gl2.h"
-	#include "EGL/egl.h"
 #endif
 
 /**
@@ -109,24 +83,6 @@ enum struct SystemEventType
 };
 
 /**
- * @brief The texture formats that I expose and support. Don't want to get too silly here, these are more than enough.
- */
-enum struct TextureFormat
-{
-	FORMAT_RGBA,
-	FORMAT_RGB,
-	FORMAT_ALPHA
-};
-
-enum struct StreamIndex
-{
-	VERTEX				= 0,		//!< Vertex positional data.
-	TEXCOORD			= 1,		//!< Texture coordinate information.
-	COLOUR				= 2,		//!< Colour type is in the format RGBA.
-};
-
-
-/**
  * @brief The data relating to a system event.
  * I've implemented some very basic events. Not going to over do it. Just passes on some common ones.
  * If you need to track the last know state of something then you'll have to do that. If I try it may not be how you expect it to work.
@@ -145,172 +101,38 @@ struct SystemEventData
 	SystemEventData(SystemEventType pType) : mType(pType){}
 };
 
+/**
+ * @brief The texture formats that I expose and support. Don't want to get too silly here, these are more than enough.
+ */
+enum struct TextureFormat
+{
+	FORMAT_RGBA,
+	FORMAT_RGB,
+	FORMAT_ALPHA
+};
+
 // Forward decleration of internal types.
 typedef std::shared_ptr<struct GLShader> TinyShader;
-struct X11GLEmulation;
 struct FreeTypeFont;
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-constexpr float GetPI()
-{
-	return std::acos(-1);
-}
-
-constexpr float GetRadian()
-{
-	return 2.0f * GetPI();
-}
-
-constexpr float DegreeToRadian(float pDegree)
-{
-	return pDegree * (GetPI()/180.0f);
-}
-
-struct Vec2Df
-{
-	float x,y;
-};
-
-struct Vec2Ds
-{
-	Vec2Ds() = default;
-	Vec2Ds(int16_t pX,int16_t pY):x(pX),y(pY){};
-	int16_t x,y;
-};
-
-struct Vec3Df
-{
-	float x,y,z;
-};
-
-
-struct Matrix4x4
-{
-	float m[4][4];
-};
+struct GLTexture;			//!< Because we can't query the values used to create a gl texture we have to store them. horrid API GLES 2.0
+struct NinePatch;			//!< Internal data used to draw the nine patch objects.
+struct WorkBuffers;			//!< Internal work buffers for building temporay render data.
+struct PlatformInterface;	//!< Abstraction of the rendering platform we use to get the work done.
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// scratch memory buffer utility
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<typename SCRATCH_MEMORY_TYPE,int START_TYPE_COUNT,int GROWN_TYPE_COUNT,int MAXIMUN_GROWN_COUNT> struct ScratchBuffer
-{
-	ScratchBuffer():mMemory(new SCRATCH_MEMORY_TYPE[START_TYPE_COUNT]),mCount(START_TYPE_COUNT),mNextIndex(0){}
-	~ScratchBuffer(){delete []mMemory;}
-	
-	/**
-	 * @brief Start filling your data from the start of the buffer, overwriting what maybe there. This is the core speed up we get.
-	 */
-	void Restart(){mNextIndex = 0;}
-
-	/**
-	 * @brief For when you know in advance how much space you need.
-	 */
-	SCRATCH_MEMORY_TYPE* Restart(size_t pCount)
-	{
-		mNextIndex = 0;
-		return Next(pCount);
-	}
-
-	/**
-	 * @brief Return enough memory to put the next N items into, you can only safety write the number of items requested.
-	 */
-	SCRATCH_MEMORY_TYPE* Next(size_t pCount = 1)
-	{
-		EnsureSpace(pCount);
-		SCRATCH_MEMORY_TYPE* next = mMemory + mNextIndex;
-		mNextIndex += pCount;
-		return next;
-	}
-
-	/**
-	 * @brief How many items have been written since Restart was called.
-	 */
-	const size_t Used()const{return mNextIndex;}
-
-	/**
-	 * @brief Diagnostics tool, how many bytes we're using.
-	 */
-	const size_t MemoryUsed()const{return mCount * sizeof(SCRATCH_MEMORY_TYPE);}
-
-	/**
-	 * @brief The root of our memory, handy for when you've finished filling the buffer and need to now do work with it.
-	 * You should fetch this memory pointer AFTER you have done your work as it may change as you fill the data.
-	 */
-	const SCRATCH_MEMORY_TYPE* Data()const{return mMemory;}
-
-private:
-	SCRATCH_MEMORY_TYPE* mMemory; //<! Our memory, only reallocated when it's too small. That is the speed win!
-	size_t mCount; //<! How many there are available to write too.
-	size_t mNextIndex; //<! Where we can write to next.
-
-	/**
-	 * @brief Makes sure we always have space.
-	 */
-	void EnsureSpace(size_t pExtraSpaceNeeded)
-	{
-		if( pExtraSpaceNeeded > MAXIMUN_GROWN_COUNT )
-		{
-			throw std::runtime_error("Scratch memory type tried to grow too large in one go, you may have a memory bug. Tried to add " + std::to_string(pExtraSpaceNeeded) + " items");
-		}
-
-		if( (mNextIndex + pExtraSpaceNeeded) >= mCount )
-		{
-			const size_t newCount = mCount + pExtraSpaceNeeded + GROWN_TYPE_COUNT;
-			SCRATCH_MEMORY_TYPE* newMemory = new SCRATCH_MEMORY_TYPE[newCount];
-			std::memmove(newMemory,mMemory,mCount);
-			delete []mMemory;
-			mMemory = newMemory;
-			mCount = newCount;
-		}
-	}
-};
 
 /**
- * @brief Simple utility for building quads on the fly.
+ * @brief Temperary data on where and how a nine patch was drawn so that content can be drawn on top of it.
  */
-struct Vec2DShortScratchBuffer : public ScratchBuffer<Vec2Ds,256,64,1024>
+struct NinePatchDrawInfo
 {
-	/**
-	 * @brief Writes six vertices to the buffer.
-	 */
-	inline void BuildQuad(int pX,int pY,int pWidth,int pHeight)
+	struct
 	{
-		Vec2Ds* verts = Next(6);
-		verts[0].x = pX;			verts[0].y = pY;
-		verts[1].x = pX + pWidth;	verts[1].y = pY;
-		verts[2].x = pX + pWidth;	verts[2].y = pY + pHeight;
-
-		verts[3].x = pX;			verts[3].y = pY;
-		verts[4].x = pX + pWidth;	verts[4].y = pY + pHeight;
-		verts[5].x = pX;			verts[5].y = pY + pHeight;
-	}
-
-	/**
-	 * @brief Writes the UV's to six vertices in the correct order to match the quad built above.
-	 */
-	inline void AddUVRect(int U0,int V0,int U1,int V1)
-	{
-		Vec2Ds* verts = Next(6);
-		verts[0].x = U0;	verts[0].y = V0;
-		verts[1].x = U1;	verts[1].y = V0;
-		verts[2].x = U1;	verts[2].y = V1;
-
-		verts[3].x = U0;	verts[3].y = V0;
-		verts[4].x = U1;	verts[4].y = V1;
-		verts[5].x = U0;	verts[5].y = V1;
-	}
-
-	/**
-	 * @brief Adds a number of quads to the buffer, moving STEP for each one.
-	 */
-	inline void BuildQuads(int pX,int pY,int pWidth,int pHeight,int pCount,int pXStep,int pYStep)
-	{
-		for(int n = 0 ; n < pCount ; n++, pX += pXStep, pY += pYStep )
+		struct
 		{
-			BuildQuad(pX,pY,pWidth,pHeight);
-		}
-	}
+			int x,y;
+		}top,bottom;
+	}outerRectangle,innerRectangle; // outerRectangle is it's total rendered area. innerRectangle is where you may safely draw over the nine patch. 
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -443,19 +265,7 @@ public:
 	 * @brief Splats the texture on the screen at it's native size, no scaling etc.
 	 * Handy for when you just want to draw a texture to the display as is.
 	 */
-	inline void Blit(uint32_t pTexture,int pX,int pY,uint8_t pRed = 255,uint8_t pGreen = 255,uint8_t pBlue = 255,uint8_t pAlpha = 255)
-	{
-		const auto& tex = mTextures.find(pTexture);
-		if( tex == mTextures.end() )
-		{
-			Rectangle(pX,pY,pX+128,pY+128,pRed,pGreen,pBlue,pAlpha,true,mDiagnostics.texture);
-		}
-		else
-		{
-
-			Rectangle(pX,pY,pX+tex->second.mWidth-1,pY+tex->second.mHeight-1,pRed,pGreen,pBlue,pAlpha,true,pTexture);
-		}
-	}
+	void Blit(uint32_t pTexture,int pX,int pY,uint8_t pRed = 255,uint8_t pGreen = 255,uint8_t pBlue = 255,uint8_t pAlpha = 255);
 
 //*******************************************
 // Texture commands.
@@ -488,6 +298,30 @@ public:
 	 * @brief Get the Pixel Font Texture object
 	 */
 	uint32_t GetPixelFontTexture()const{return mPixelFont.texture;}
+
+//*******************************************
+// 9 Patch rendering for buttons. Unity calls them 9-slicing. I'm using the Android specification as that is where most of the UI resources are.
+
+	/**
+	 * @brief Create a Nine Patch texture with embedded information about scale and fill area.
+	 * Nine patch uses transparency to define areas that are and are not scaled as well as areas that are safe to be drawn on.
+	 * The guides are straight, 1-pixel black lines drawn on the edge of your image that define the scaling and fill of your image.
+	 * The returned as a normal texture with above rendering functions. The outer pixels are removed.
+	 * When used with DrawNinePatch then will do correct scaling. If handle passed is not a nine patch object code will throw an exception.
+	 * Format of pixels has to be RGBA. The outer edge pixels must be either 0x00 (no alpha) or 0xff (full alpha). If not will throw an excpetion.
+	 */
+	uint32_t CreateNinePatch(int pWidth,int pHeight,const uint8_t* pPixels,bool pFiltered = false);
+
+	/**
+	 * @brief Delete the nine patch, will throw an exception is texture not found.
+	 */
+	void DeleteNinePatch(uint32_t pNinePatch);
+
+	/**
+	 * @brief 
+	 * @return const NinePatchDrawInfo& Don't hold onto this, will go away / change. Returned to help with rending of content in the fillable area of the nine patch.
+	 */
+	const NinePatchDrawInfo& DrawNinePatch(uint32_t pNinePatch,int pX,int pY,float pXScale,float pYScale);
 
 //*******************************************
 // Pixel font, low res, mainly for debugging.
@@ -573,43 +407,23 @@ private:
 	void BuildPixelFontTexture();
 	void InitFreeTypeFont();
 
-	void VertexPtr(GLint pNum_coord, GLenum pType, GLsizei pStride,const void* pPointer);
-	void TexCoordPtr(GLint pNum_coord, GLenum pType, GLsizei pStride,const void* pPointer);
-	void ColourPtr(GLint pNum_coord, GLsizei pStride,const uint8_t* pPointer);
-	void SetUserSpaceStreamPtr(StreamIndex pStream,GLint pNum_coord, GLenum pType, GLsizei pStride,const void* pPointer);
+	void VertexPtr(int pNum_coord, uint32_t pType, int pStride,const void* pPointer);
+	void TexCoordPtr(int pNum_coord, uint32_t pType, int pStride,const void* pPointer);
+	void ColourPtr(int pNum_coord, int pStride,const uint8_t* pPointer);
+	void SetUserSpaceStreamPtr(uint32_t pStream,int pNum_coord, uint32_t pType, int pStride,const void* pPointer);
 
 	const bool mVerbose;
+	bool mKeepGoing = true;								//!< Set to false by the application requesting to exit or the user doing ctrl + c.
 
 	int mWidth = 0;
 	int mHeight = 0;
 
-#ifdef PLATFORM_GLES
-	EGLDisplay mDisplay = nullptr;				//!<GL display
-	EGLSurface mSurface = nullptr;				//!<GL rendering surface
-	EGLContext mContext = nullptr;				//!<GL rendering context
-	EGLConfig mConfig = nullptr;				//!<Configuration of the display.
-    EGLint mMajorVersion = 0;					//!<Major version number of GLES we are running on.
-	EGLint mMinorVersion = 0;					//!<Minor version number of GLES we are running on.
-	#ifdef BROADCOM_NATIVE_WINDOW
-		EGL_DISPMANX_WINDOW_T mNativeWindow;		//!<The RPi window object needed to create the render surface.
-	#else 
-		EGLNativeWindowType mNativeWindow;
-	#endif
-#endif
-
-#ifdef PLATFORM_X11_GL
-	X11GLEmulation* mNativeWindow;
-#endif
-
-	struct
-	{
-		ScratchBuffer<Vec2Df,128,16,128> vec2Df;
-		Vec2DShortScratchBuffer vec2Ds;
-		Vec2DShortScratchBuffer uvShort;
-	}mWorkBuffers;
-
-	SystemEventHandler mSystemEventHandler = nullptr; //!< Where all events that we are intrested in are routed.
-	bool mKeepGoing = true; //!< Set to false by the application requesting to exit or the user doing ctrl + c.
+	std::unique_ptr<PlatformInterface> mPlatform;				//!< This is all the data needed to drive the rendering platform that this code sits on and used to render with.
+	std::unique_ptr<WorkBuffers> mWorkBuffers;					//!< Handy set of internal work buffers used when rendering so we don't blow the stack or thrash the heap. Easy speed up.
+	SystemEventHandler mSystemEventHandler = nullptr;			//!< Where all events that we are intrested in are routed.
+	std::map<uint32_t,std::unique_ptr<GLTexture>> mTextures; 	//!< Our textures. I reuse the GL texture index (handle) for my own. A handy value and works well.
+	std::map<uint32_t,std::unique_ptr<NinePatch>> mNinePatchs;	//!< Our nine patch data, image data is also into the textures map. I reuse the GL texture index (handle) for my own. A handy value and works well.
+	NinePatchDrawInfo mNinePatchDrawInfo;						//!< Temporary buffer used to pass back rending information to the caller of the DrawNinePatch so they can draw in the safe area.
 
 	/**
 	 * @brief Some data used for diagnostics/
@@ -620,18 +434,6 @@ private:
 		uint32_t frameNumber = 0; //!< What frame we're on. incremented in BeginFrame() So first frame will be 1
 	}mDiagnostics;
 	
-
-	/**
-	 * @brief This is a pain in the arse, because we can't query the values used to create a gl texture we have to store them. horrid API GLES 2.0
-	 */
-	struct GLTexture
-	{
-		uint32_t mHandle;
-		TextureFormat mFormat;
-		int mWidth;
-		int mHeight;
-	};
-	std::map<uint32_t,GLTexture> mTextures; //!< Our textures
 
 	static const std::array<uint32_t,8192> mFont16x16Data;	//!< used to rebuild font texture.
 	struct
@@ -669,7 +471,7 @@ private:
 
 	struct
 	{
-		Matrix4x4 projection;
+		float projection[4][4];
 	}mMatrices;
 
 #ifdef USE_FREETYPEFONTS
@@ -678,7 +480,6 @@ private:
 	std::map<uint32_t,std::unique_ptr<FreeTypeFont>> mFreeTypeFonts;
 
 	FT_Library mFreetype = nullptr;	
-
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
