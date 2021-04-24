@@ -208,11 +208,15 @@ struct OpenWeatherMap
 
 	/**
 	 * @brief Get the current temperature forcast from the hourly forcast data.
-	 * 
-	 * @param pNowUTC 
-	 * @return const Temperature* 
+	 * @param pNowUTC When the forcast is for.
 	 */
 	const WeatherData* GetHourlyForcast(std::time_t pNowUTC)const;
+
+	/**
+	 * @brief Get the hourly temperature forcast.
+	 * @param pNowUTC When the forcast is for.
+	 */
+	float GetHourlyTemperature(std::time_t pNowUTC)const;
 
 	/**
 	 * @brief For the day passed in UTC time you'll get a map of weather icon names for each hour.

@@ -246,6 +246,20 @@ const WeatherData* OpenWeatherMap::GetHourlyForcast(std::time_t pNowUTC)const
 	return current;
 }
 
+float OpenWeatherMap::GetHourlyTemperature(std::time_t pNowUTC)const
+{
+	float current = -99.99f;
+	for( const auto& t : mHourly )
+	{
+		if( t.mTime.mUTC < pNowUTC )
+		{
+			current = t.mTemperature.c;
+		}
+	}
+
+	return current;
+}
+
 HourlyIconVector OpenWeatherMap::GetTodaysHourlyIconCodes(std::time_t pNowUTC)const
 {
 	HourlyIconVector icons;

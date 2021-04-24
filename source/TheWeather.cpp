@@ -18,6 +18,7 @@
 #include "TheWeather.h"
 
 #include <string>
+#include <sstream>
 #include <array>
 #include <iostream>
 #include <cmath>
@@ -104,19 +105,29 @@ void TheWeather::Update(const std::time_t pCurrentTime)
         // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
         if( mHourlyUpdates < pCurrentTime )
         {
-            std::clog << "Updating icons " << GetTimeString(mHourlyUpdates) << "\n";
+            std::stringstream log;
+
+            if( mHourlyUpdates == 0 )
+                log << "Updating icons after fetching new weather data. ";
+            else
+                log << "Updating icons " << GetTimeString(mHourlyUpdates) << ". ";
+
             // Update in an hour and on the hour.
             mHourlyUpdates = NextHour(pCurrentTime);
-            std::clog << "Next icon update at " << GetTimeString(mHourlyUpdates) << "\n";
+            log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
 
             mNextHourlyIcons = mWeather.GetHourlyIconCodes(pCurrentTime);
 
             // Not building for C++20 so can't use std::format yet.... So go old school.
-            char buf[64];
-            const auto t = mWeather.GetHourlyForcast(pCurrentTime);
+            const float temperature = mWeather.GetHourlyTemperature(pCurrentTime);
 
-            snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(t->mTemperature.c));
+            char buf[64];
+            snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
             mCurrentTemperature = buf;
+            log << "This hours temperature is " << buf << " ";
+
+            // Output as one line.
+            std::clog << log.str();
         }
     }
 
