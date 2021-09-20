@@ -164,9 +164,10 @@ void MQTTData::Subscribe(const std::string& pTopic)
     case MOSQ_ERR_MALFORMED_UTF8:
         std::cout << "MQTT Subscribe Error: [" << pTopic << "]the topic is not valid UTF-8\n";
         break;
-
+#if LIBMOSQUITTO_REVISION > 7
     case MOSQ_ERR_OVERSIZE_PACKET:
         std::cout << "MQTT Subscribe Error: [" << pTopic << "] Over sized packet\n";
         break;
+#endif
     }
 }
