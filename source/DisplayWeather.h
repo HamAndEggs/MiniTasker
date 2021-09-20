@@ -36,7 +36,16 @@ public:
      * @param pX 
      * @param pY 
      */
-    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons,const std::string&outsideTemperature);
+    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
+
+    /**
+     * @brief Renders a box with the temprature in it.
+     * 
+     * @param pY 
+     * @param pTemperature
+     * @param pIsOnline True if the data is valid, false if it's a bit too old. Just changes the render colour.
+     */
+    void RenderTemperature(int pY,const std::string& pTemperature,bool pIsOnline);
 
 private:
     const uint32_t mIconFont = 0;

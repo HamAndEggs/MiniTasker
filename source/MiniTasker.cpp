@@ -144,15 +144,11 @@ int main(int argc, char *argv[])
         theClock.Update(20,20,currentTime);
         theTasks.Update(20,450,currentTime);
 
-        // If been an hour since last update put an marker at end of string..
-        std::string outTemp = outsideTemperature + "C";
-        if( outsideTemperatureDelivered + (60*60) < theTimeUTC )
-        {
-            outTemp += "*";
-        }
+        // draw atchal outside temperature.
+        theWeather.RenderTemperature(120,outsideTemperature,(outsideTemperatureDelivered + (60*60) > theTimeUTC));
 
         // Render the weather forcast.
-        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons,outsideTemperature);
+        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);
 
         // Draw some intresting system status stuff.
         systemStatus.Render(650,2);
