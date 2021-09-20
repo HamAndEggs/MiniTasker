@@ -29,7 +29,7 @@ DisplayWeather::DisplayWeather(tinygles::GLES& pGL,const std::string& pPath) :
 {
 }
 
-void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons)
+void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons,const std::string&outsideTemperature)
 {
      // Show next six icons.
     // I could render this to an offscreen image and only update once an hour.
@@ -73,7 +73,7 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
         }
     }
 
-    // Draw temperature, if we have one.
+    // Draw temperature forcast, if we have one.
     const std::string temperature = pWeather.GetCurrentTemperature();
     if( temperature.size() > 0 )
     {
@@ -81,5 +81,14 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
         GL.RoundedRectangle(GL.GetWidth() - width,y - 80,GL.GetWidth()-20,y-10,12,255,255,255,130,true);
         GL.FontSetColour(mTemperatureFont,0,0,0);
         GL.FontPrint(mTemperatureFont,GL.GetWidth() - width + 10,y - 20,temperature.c_str());
+    }
+
+    // draw atchal outside temperature.
+    if( outsideTemperature.size() > 0 )
+    {
+        const int width = 140 + ((outsideTemperature.size()-2)*22);
+        GL.RoundedRectangle(GL.GetWidth() - width,y - 160,GL.GetWidth()-20,y-90,12,255,255,255,130,true);
+        GL.FontSetColour(mTemperatureFont,0,0,0);
+        GL.FontPrint(mTemperatureFont,GL.GetWidth() - width + 10,y - 100,outsideTemperature.c_str());
     }
 }

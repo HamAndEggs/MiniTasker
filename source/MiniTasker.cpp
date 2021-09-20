@@ -27,6 +27,8 @@
 
 #include "TinyPNG.h"
 
+#include "MQTTData.h"
+
 #include <cstdlib>
 #include <time.h>
 #include <signal.h>
@@ -104,6 +106,27 @@ int main(int argc, char *argv[])
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
 
+    // Get our MQTT data stream so we can collect stuff from other systems.
+    std::string outsideTemperature = "Unknown";
+    const std::vector<std::string>& topics =
+    {
+        "/outside/temperature"
+    };
+
+    MQTTData MQTT("server",1883,topics,[&outsideTemperature](const std::string &pTopic,const std::string &pData)
+    {
+        if( pTopic == "/outside/temperature" )
+        {
+            outsideTemperature = pData;
+        }
+    });
+
+    if( MQTT.GetOK() == false )
+    {
+        std::cerr << "Failed to start MQTT\n";
+       	return EXIT_FAILURE;
+    }
+
     while( GL.BeginFrame() )
     {
         // See if day has changed.
@@ -121,7 +144,7 @@ int main(int argc, char *argv[])
         theTasks.Update(20,450,currentTime);
 
         // Render the weather forcast.
-        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);
+        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons,outsideTemperature);
 
         // Draw some intresting system status stuff.
         systemStatus.Render(650,2);

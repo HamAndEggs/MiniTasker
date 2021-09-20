@@ -9,6 +9,7 @@
    		"./source/TinyPNG.cpp",
         "./source/TinyWeather.cpp",
         "./source/Icons.cpp",
+        "./source/MQTTData.cpp",
         "./source/DisplaySystemStatus.cpp"
     ],
     "configurations": {
@@ -35,7 +36,8 @@
                 "brcmGLESv2",
                 "brcmEGL",
                 "bcm_host",
-                "stdc++fs"
+                "stdc++fs",
+                "mosquitto"
             ],
             "libpaths":
             [
@@ -68,7 +70,8 @@
                 "GL",
                 "freetype",
                 "curl",
-                "z"
+                "z",
+                "mosquitto"
             ],
             "define": [
                 "DEBUG_BUILD",

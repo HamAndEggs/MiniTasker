@@ -36,7 +36,7 @@ public:
      * @param pX 
      * @param pY 
      */
-    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
+    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons,const std::string&outsideTemperature);
 
 private:
     const uint32_t mIconFont = 0;
