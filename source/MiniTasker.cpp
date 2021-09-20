@@ -108,16 +108,18 @@ int main(int argc, char *argv[])
 
     // Get our MQTT data stream so we can collect stuff from other systems.
     std::string outsideTemperature = "Unknown";
+    std::time_t outsideTemperatureDelivered = 0;
     const std::vector<std::string>& topics =
     {
         "/outside/temperature"
     };
 
-    MQTTData MQTT("server",1883,topics,[&outsideTemperature](const std::string &pTopic,const std::string &pData)
+    MQTTData MQTT("server",1883,topics,[&outsideTemperature,&outsideTemperatureDelivered](const std::string &pTopic,const std::string &pData)
     {
         if( pTopic == "/outside/temperature" )
         {
             outsideTemperature = pData;
+            outsideTemperatureDelivered = std::time(nullptr);
         }
     });
 
@@ -129,7 +131,6 @@ int main(int argc, char *argv[])
 
     while( GL.BeginFrame() )
     {
-        // See if day has changed.
         std::time_t theTimeUTC = std::time(nullptr);
         const tm *now = localtime(&theTimeUTC);
         if( now != nullptr )
@@ -142,6 +143,13 @@ int main(int argc, char *argv[])
         weatherData.Update(theTimeUTC);
         theClock.Update(20,20,currentTime);
         theTasks.Update(20,450,currentTime);
+
+        // If been an hour since last update put an marker at end of string..
+        std::string outTemp = outsideTemperature + "C";
+        if( outsideTemperatureDelivered + (60*60) < theTimeUTC )
+        {
+            outTemp += "*";
+        }
 
         // Render the weather forcast.
         theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons,outsideTemperature);
