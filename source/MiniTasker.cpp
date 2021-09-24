@@ -107,20 +107,18 @@ int main(int argc, char *argv[])
     TheWeather weatherData(theTasks.GetWeatherApiKey());
 
     // Get our MQTT data stream so we can collect stuff from other systems.
-    std::string outsideTemperature = "Unknown";
+    std::map<std::string,std::string> outsideData;
     std::time_t outsideTemperatureDelivered = 0;
     const std::vector<std::string>& topics =
     {
-        "/outside/temperature"
+        "/outside/temperature",
+        "/outside/battery",
     };
 
-    MQTTData MQTT("server",1883,topics,[&outsideTemperature,&outsideTemperatureDelivered](const std::string &pTopic,const std::string &pData)
+    MQTTData MQTT("server",1883,topics,[&outsideData,&outsideTemperatureDelivered](const std::string &pTopic,const std::string &pData)
     {
-        if( pTopic == "/outside/temperature" )
-        {
-            outsideTemperature = pData;
-            outsideTemperatureDelivered = std::time(nullptr);
-        }
+        outsideData[pTopic] = pData;
+        outsideTemperatureDelivered = std::time(nullptr);
     });
 
     if( MQTT.GetOK() == false )
@@ -145,7 +143,8 @@ int main(int argc, char *argv[])
         theTasks.Update(20,450,currentTime);
 
         // draw atchal outside temperature.
-        theWeather.RenderTemperature(120,outsideTemperature,(outsideTemperatureDelivered + (60*60) > theTimeUTC));
+        int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"],(outsideTemperatureDelivered + (60*60) > theTimeUTC));
+        theWeather.RenderTemperature(x,120,outsideData["/outside/battery"]);
 
         // Render the weather forcast.
         theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);

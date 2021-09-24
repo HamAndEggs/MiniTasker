@@ -45,7 +45,7 @@ public:
      * @param pTemperature
      * @param pIsOnline True if the data is valid, false if it's a bit too old. Just changes the render colour.
      */
-    void RenderTemperature(int pY,const std::string& pTemperature,bool pIsOnline);
+    int RenderTemperature(int pX,int pY,const std::string& pTemperature,bool pIsOnline = true);
 
 private:
     const uint32_t mIconFont = 0;
