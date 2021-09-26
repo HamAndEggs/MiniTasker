@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
     TheWeather weatherData(theTasks.GetWeatherApiKey());
 
     // Get our MQTT data stream so we can collect stuff from other systems.
+    const auto OUTSIDE_SENSOR_TIMEOUT_ALARM = (20*60); //Warn when nothing data for 20 minutes 
     std::map<std::string,std::string> outsideData;
     std::time_t outsideTemperatureDelivered = 0;
     const std::vector<std::string>& topics =
@@ -143,7 +144,7 @@ int main(int argc, char *argv[])
         theTasks.Update(20,450,currentTime);
 
         // draw atchal outside temperature.
-        int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"],(outsideTemperatureDelivered + (60*60) > theTimeUTC));
+        int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"],(outsideTemperatureDelivered + OUTSIDE_SENSOR_TIMEOUT_ALARM > theTimeUTC));
         theWeather.RenderTemperature(x,120,outsideData["/outside/battery"]);
 
         // Render the weather forcast.
