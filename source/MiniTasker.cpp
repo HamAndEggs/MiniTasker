@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     std::time_t result = std::time(nullptr);
     tm currentTime = *localtime(&result);
 
-    tinygles::GLES GL(true);
+    tinygles::GLES GL(tinygles::ROTATE_FRAME_LANDSCAPE);
     GL.FontSetMaximumAllowedGlyph(256);
 
     DisplayTask theTasks(GL,path + "liberation_serif_font/");

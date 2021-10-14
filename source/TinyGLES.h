@@ -90,6 +90,41 @@ constexpr float ColourToFloat(uint8_t pColour)
 	return (float)pColour / 255.0f;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Some basic matrix operations. Very basic, will get you by...
+struct Matrix
+{
+	float m[4][4];
+
+	void SetIdentity();
+	void SetTranslation(float pX,float pY,float pZ);// Sets as identity with translation set to x,y,z.
+	void SetRotationX(float pPitch);	// In angles. 0 -> 360.0f
+	void SetRotationY(float pYaw);		// In angles. 0 -> 360.0f
+	void SetRotationZ(float pRoll);		// In angles. 0 -> 360.0f
+
+	void Translate(float pX,float pY,float pZ)// Does not change anything byt the translation.
+	{
+		m[3][0] = pX;
+		m[3][1] = pY;
+		m[3][2] = pZ;
+	}
+
+	void Mul(const Matrix &pA,const Matrix &pB);	// Does this = pA * pB
+	void Mul(const Matrix &pA)						// Does this = this * pA
+	{
+		Matrix t;
+		t.Mul(*this,pA);
+		*this = t;
+	}
+
+	const Matrix operator = (const Matrix &pIn)
+	{
+		memcpy(m,pIn.m,sizeof(m));
+		return *this;
+	}
+};
+
+
 /**
  * @brief The different type of events that the application can respond to.
  * See setSystemEventHandler function in GLES class.
@@ -105,6 +140,20 @@ enum struct SystemEventType
 	POINTER_MOVE,
 	POINTER_DOWN,
 	POINTER_UP
+};
+
+/**
+ * @brief Flags to alter the way the GLES code creates it's environment.
+ * 
+ */
+enum CreateFlags
+{
+	ROTATE_FRAME_BUFFER_90		= (1<<0),		//!< Rotates clockwise.
+	ROTATE_FRAME_BUFFER_180		= (1<<1),		//!< Rotates clockwise.
+	ROTATE_FRAME_BUFFER_270		= (1<<2),		//!< Rotates clockwise.
+
+	ROTATE_FRAME_PORTRATE		= (1<<3),		//!< If the hardware reports a landscape mode (width > height)  will apply a 90 degree rotation
+	ROTATE_FRAME_LANDSCAPE		= (1<<4),		//!< If the hardware reports a portrate mode (width < height) will apply a 90 degree rotation
 };
 
 /**
@@ -191,11 +240,53 @@ struct NinePatchDrawInfo
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Render primitive types for rendering user defined shapes.
+
+// Basic 3D vertex with x,y,z and 32bit colour value.
+struct VertXYZC
+{
+	float x,y,z;
+    uint32_t argb;
+};
+typedef std::vector<VertXYZC> VerticesXYZC;
+
+// Basic 3D vertex with x,y,z and 16bit texture coords that are normalised. So 0x7fff is 1.0f. Used the texture coordinate scale option to get tiling. When I put that in...
+struct VertXYZUV
+{
+	float x,y,z;
+    int16_t u,v;
+
+	void SetUV(float pU,float pV)
+	{
+		const float SCALE = (float)0x7fff;
+
+		assert( pU >= -1.0f && pU <= 1.0f );
+		assert( pV >= -1.0f && pV <= 1.0f );
+
+		u = (int16_t)(pU * SCALE);
+		v = (int16_t)(pV * SCALE);
+	}
+
+};
+typedef std::vector<VertXYZUV> VerticesXYZUV;
+
+// List of points, expected to be in screen space, mainly used for drawing line lists. Compressed into 16 bits per element.
+struct VertShortXY
+{
+	VertShortXY() = default;
+	VertShortXY(int16_t pX,int16_t pY):x(pX),y(pY){};
+
+	int16_t x,y;
+};
+typedef std::vector<VertShortXY> VerticesShortXY;
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
- * @brief Represents the linux frame buffer display.
+ * @brief Represents the linux GLES display.
  * Is able to deal with and abstract out the various pixel formats. 
- * For a simple 2D rendering system that's built for portablity that is an easy speed up.
- * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+ * For a simple 2D / 3D rendering system that's built for portablity that is an easy speed up.
+ * TinyGLES goal is a small code base just for playing with. One source file one header. Not and epic SIMD / NEON / GL / DX / Volcan monster engine. :)
  */
 class GLES
 {
@@ -204,9 +295,11 @@ public:
 	typedef std::function<void(const SystemEventData& pEvent)> SystemEventHandler;
 
 	/**
-	 * @brief Creates and opens a GLES object. Throws an excpetion if it fails.
+	 * @brief Creates and opens a GLES object. Throws an exception if it fails.
+	 * 
+	 * @param pFlags 
 	 */
-	GLES(bool pVerbose);
+	GLES(uint32_t pFlags = 0);
 
 	/**
 	 * @brief Clean up code. You must delete your object on exit!
@@ -214,27 +307,19 @@ public:
 	~GLES();
 
 	/**
-	 * @brief Get the setting for Verbose debug output.
-	 * 
-	 * @return true 
-	 * @return false 
-	 */
-	bool GetVerbose()const{return mVerbose;}
-
-	/**
 		@brief Returns the width of the frame buffer.
 	*/
-	int GetWidth()const{return mWidth;}
+	int GetWidth()const{return mReported.Width;}
 
 	/**
 		@brief Returns the height of the frame buffer.
 	*/
-	int GetHeight()const{return mHeight;}
+	int GetHeight()const{return mReported.Height;}
 
 	/**
 	 * @brief Get the Display Aspect Ratio
 	 */
-	float GetDisplayAspectRatio()const{return (float)mWidth/(float)mHeight;}
+	float GetDisplayAspectRatio()const{return (float)GetWidth()/(float)GetHeight();}
 
 	/**
 	 * @brief Marks the start of the frame, normally called in the while of a loop to create the render loop.
@@ -260,14 +345,15 @@ public:
 	void Clear(uint32_t pTexture);
 
 	/**
-	 * @brief Set the Frustum for 2D rending. This is the default mode, you only need to call it if you're mixed 3D with 2D.
+	 * @brief Set rendering states and the Frustum for 2D rending.
+	 * This is the default mode, you only need to call it if you mixed 3D with 2D.
 	 */
-	void SetFrustum2D();
+	void Begin2D();
 
 	/**
-	 * @brief Set the view frustum for 3D rendering
+	 * @brief Sets rendering states and the view frustum for 3D rendering
 	 */
-	void SetFrustum3D(float pFov, float pAspect, float pNear, float pFar);
+	void Begin3D(float pFov, float pNear, float pFar);
 
 	void SetTransform(float transform[4][4]);
 	void SetTransform(float x,float y,float z);
@@ -297,8 +383,30 @@ public:
 // Primitive draw commands.
 	/**
 	 * @brief Draws an arbitrary line.
+	 * DrawLineH and DrawLineV exist only to aid in converting an app from Tiny2D to TinyGLES. I aim to try to keep the API 'simular'.
 	 */
-	void Line(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+	inline void DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255){DrawLine(pFromX,pFromY,pToX,pFromY,pRed,pGreen,pBlue,pAlpha);}
+	inline void DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255){DrawLine(pFromX,pFromY,pFromX,pToY,pRed,pGreen,pBlue,pAlpha);}
+
+	/**
+	 * @brief Draws a line of 'pWidth' pixels wide. If pWidth is < 1 then 1 is assumed.
+	 * Will take a short cut if the line 1 pixel width.
+	 */
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+
+	/**
+	 * @brief Draws linked lines 1 pixel wide.
+	 * The next line will continue where the last left off.
+	 */
+	void DrawLineList(const VerticesShortXY& pPoints,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+
+	/**
+	 * @brief Draws linked lines of 'pWidth' pixels wide. If pWidth is < 1 then 1 is assumed.
+	 * The next line will continue where the last left off.
+	 * Will take a short cut if the line 1 pixel width.
+	 */
+	void DrawLineList(const VerticesShortXY& pPoints,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
 
 	/**
 	 * @brief Draws a circle using the pNumPoints to guide how many to use. I have set it to a nice default if < 1 -> 3 + (std::sqrt(pRadius)*3)
@@ -402,6 +510,12 @@ public:
 	 */
 	std::vector<QuadBatchTransform>& QuadBatchGetTransform(uint32_t pQuadBatch);
 
+
+//*******************************************
+// Primitive rendering functions for user defined shapes
+	void RenderTriangles(const VerticesXYZC& pVertices);
+	void RenderTriangles(const VerticesXYZUV& pVertices,uint32_t pTexture);
+
 //*******************************************
 // Texture functions
 	/**
@@ -484,7 +598,7 @@ public:
 // Free type rendering
 #ifdef USE_FREETYPEFONTS
 
-	uint32_t FontLoad(const std::string& pFontName,int pPixelHeight = 40,bool pVerbose = false);
+	uint32_t FontLoad(const std::string& pFontName,int pPixelHeight = 40);
 	void FontDelete(uint32_t pFont);
 
 	void FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText);
@@ -505,28 +619,6 @@ private:
 	 * @brief Check for system events that the application my want.
 	 */
 	void ProcessSystemEvents();
-
-	/**
-	 * @brief Gets the display of the screen, done like this as using GLES / EGL seems to have many different ways of doing it. A bit annoying.
-	 * 
-	 */
-	void FetchDisplayMode();
-
-	/**
-	 * @brief Gets the ball rolling by finding the initialsizeing the display.
-	 */
-	void InitialiseDisplay();
-
-	/**
-	 * @brief Looks for the best configuration format for the display.
-	 * Throws an exception if one could not be found.
-	 */
-	void FindGLESConfiguration();
-
-	/**
-	 * @brief Create the rendering context
-	 */
-	void CreateRenderingContext();
 
 	/**
 	 * @brief Sets some common rendering states for a nice starting point.
@@ -555,19 +647,20 @@ private:
 	void AllocateQuadBuffers();
 
 	void VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer);
-	void TexCoordPtr(int pNum_coord, uint32_t pType,const void* pPointer);
-	void ColourPtr(int pNum_coord,const uint8_t* pPointer);
-	void SetUserSpaceStreamPtr(uint32_t pStream,int pNum_coord, uint32_t pType,const void* pPointer);
 
-	const bool mVerbose;
+	uint32_t mCreateFlags;
 	bool mKeepGoing = true;								//!< Set to false by the application requesting to exit or the user doing ctrl + c.
 
-	int mWidth = 0;
-	int mHeight = 0;
+	// mPhysical is the atchal width / height of the display, we maybe applying a rotation. Well tell the app the size using mReported.
+	struct
+	{
+		int Width = 0;
+		int Height = 0;
+	}mPhysical,mReported;
 
 	std::unique_ptr<PlatformInterface> mPlatform;				//!< This is all the data needed to drive the rendering platform that this code sits on and used to render with.
 	std::unique_ptr<WorkBuffers> mWorkBuffers;					//!< Handy set of internal work buffers used when rendering so we don't blow the stack or thrash the heap. Easy speed up.
-	SystemEventHandler mSystemEventHandler = nullptr;			//!< Where all events that we are intrested in are routed.
+	SystemEventHandler mSystemEventHandler = nullptr;			//!< Where all events that we are interested in are routed.
 	std::map<uint32_t,std::unique_ptr<GLTexture>> mTextures; 	//!< Our textures. I reuse the GL texture index (handle) for my own. A handy value and works well.
 	std::map<uint32_t,std::unique_ptr<NinePatch>> mNinePatchs;	//!< Our nine patch data, image data is also into the textures map. I reuse the GL texture index (handle) for my own. A handy value and works well.
 	NinePatchDrawInfo mNinePatchDrawInfo;						//!< Temporary buffer used to pass back rending information to the caller of the DrawNinePatch so they can draw in the safe area.
@@ -625,11 +718,14 @@ private:
 
 	struct
 	{
-		TinyShader ColourOnly;
-		TinyShader TextureColour;
-		TinyShader TextureAlphaOnly;
-		TinyShader SpriteShader;
-		TinyShader QuadBatchShader;
+		TinyShader ColourOnly2D;
+		TinyShader TextureColour2D;
+		TinyShader TextureAlphaOnly2D;
+		TinyShader SpriteShader2D;
+		TinyShader QuadBatchShader2D;
+
+		TinyShader ColourOnly3D;
+		TinyShader TextureOnly3D;
 
 		TinyShader CurrentShader;
 	}mShaders;
