@@ -20,11 +20,11 @@
             "warnings_as_errors": true,
             "enable_all_warnings": true,
             "fatal_errors": true,
-            "standard": "c++17",
             "include": [
                 "/opt/vc/include/",
                 "/usr/include/freetype2",
-                "./"
+                "./",
+                "/usr/include/libdrm"
             ],
             "libs": [
                 "m",
@@ -33,21 +33,17 @@
                 "freetype",
                 "curl",
                 "z",
-                "brcmGLESv2",
-                "brcmEGL",
-                "bcm_host",
                 "stdc++fs",
-                "mosquitto"
-            ],
-            "libpaths":
-            [
-                "/opt/vc/lib"
+                "mosquitto",
+                "GLESv2",
+                "EGL",
+                "gbm",
+                "drm"
             ],
             "define": [
                 "NDEBUG",
                 "RELEASE_BUILD",
-                "BROADCOM_NATIVE_WINDOW",
-                "PLATFORM_GLES",
+                "PLATFORM_DRM_EGL",
                 "USE_FREETYPEFONTS"
             ]
         },
@@ -57,7 +53,6 @@
             "warnings_as_errors": false,
             "enable_all_warnings": true,
             "fatal_errors": false,
-            "standard": "c++17",
             "include": [
                 "/usr/include/freetype2",
                 "./"

@@ -45,26 +45,23 @@
 	#include <GL/glext.h>
 	#include <GL/glx.h>
 	#include <GL/glu.h>
-	
-	/**
-	 * @brief Emulate GLES with GL and X11, some defines to make the implementation cleaner, this is for development, I hate it adds loads of #ifdef's this should stop that.
-	 */
-	#define eglSwapBuffers(DISPLAY__,SURFACE__)			{mPlatform->RedrawWindow();}
-	#define eglDestroyContext(DISPLAY__, CONTEXT__)
-	#define eglDestroySurface(DISPLAY__, SURFACE__)
-	#define eglTerminate(DISPLAY__)
-	#define eglSwapInterval(DISPLAY__,INTERVAL__)
-	#define glColorMask(RED__,GREEN__,BLUE__,ALPHA__)
 #endif
 
-#ifdef BROADCOM_NATIVE_WINDOW // All included from /opt/vc/include
-	#include "bcm_host.h"
-#endif
-
-#ifdef PLATFORM_GLES
-	#include "GLES2/gl2.h"
+// This is for linux systems that have no window manager. Like RPi4 running their light version of raspbian or a distro built with Yocto.
+#ifdef PLATFORM_DRM_EGL
+//sudo apt install libdrm
+	#include <xf86drm.h>
+	#include <xf86drmMode.h>
+	#include <gbm.h>	// This is used to get the egl stuff going. DRM is used to do the page flip to the display. Goes.. DRM -> GDM -> GLES (I think)
+	#include <drm_fourcc.h>
 	#include "EGL/egl.h"
+	#include "GLES2/gl2.h"
+
+	#define EGL_NO_X11
+	#define MESA_EGL_NO_X11_HEADERS
+
 #endif
+
 
 namespace tinygles{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,23 +80,28 @@ namespace tinygles{	// Using a namespace to try to prevent name clashes as my cl
 	#define CHECK_OGL_ERRORS()
 #endif
 
-#define VERBOSE_MESSAGE(THE_MESSAGE__)	{if(mVerbose){std::clog << THE_MESSAGE__ << "\n";}}
+#ifdef VERBOSE_BUILD
+	#define VERBOSE_MESSAGE(THE_MESSAGE__)	{std::clog << THE_MESSAGE__ << "\n";}
+#else
+	#define VERBOSE_MESSAGE(THE_MESSAGE__)
+#endif
+
+#ifdef VERBOSE_SHADER_BUILD
+	static std::string gCurrentShaderName;
+	#define VERBOSE_SHADER_MESSAGE(THE_MESSAGE__)	{std::clog << "Shader: " << THE_MESSAGE__ << "\n";}
+#else
+	#define VERBOSE_SHADER_MESSAGE(THE_MESSAGE__)
+#endif
+
 
 #define THROW_MEANINGFUL_EXCEPTION(THE_MESSAGE__)	{throw std::runtime_error("At: " + std::to_string(__LINE__) + " In " + std::string(__FILE__) + " : " + std::string(THE_MESSAGE__));}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Internal structures.
 
-struct Vec2Df
+struct Vert2Df
 {
 	float x,y;
-};
-
-struct Vec2Ds
-{
-	Vec2Ds() = default;
-	Vec2Ds(int16_t pX,int16_t pY):x(pX),y(pY){};
-	int16_t x,y;
 };
 
 struct Vec2Db
@@ -111,14 +113,14 @@ struct Vec2Db
 
 struct Quad2D
 {
-	Vec2Ds v[4];
+	VertShortXY v[4];
 
 	const int16_t* data()const{return &v[0].x;}
 };
 
 struct Quad2Df
 {
-	Vec2Df v[4];
+	Vert2Df v[4];
 
 	const float* data()const{return &v[0].x;}
 };
@@ -143,7 +145,7 @@ struct NinePatch
 {
 	NinePatch() = delete;
 
-	NinePatch(int pWidth,int pHeight,const Vec2Ds& pScaleFrom,const Vec2Ds& pScaleTo,const Vec2Ds& pFillFrom,const Vec2Ds& pFillTo)
+	NinePatch(int pWidth,int pHeight,const VertShortXY& pScaleFrom,const VertShortXY& pScaleTo,const VertShortXY& pFillFrom,const VertShortXY& pFillTo)
 	{
 		mScalable.from = pScaleFrom;
 		mScalable.to = pScaleTo;
@@ -174,11 +176,11 @@ struct NinePatch
 
 	struct
 	{
-		Vec2Ds from,to;
+		VertShortXY from,to;
 	}mScalable,mFillable;
 
-	Vec2Ds mVerts[4][4];
-	Vec2Ds mUVs[4][4];
+	VertShortXY mVerts[4][4];
+	VertShortXY mUVs[4][4];
 };
 
 enum struct StreamIndex
@@ -353,14 +355,14 @@ private:
 /**
  * @brief Simple utility for building quads on the fly.
  */
-struct Vec2DShortScratchBuffer : public ScratchBuffer<Vec2Ds,256,64,1024>
+struct Vert2DShortScratchBuffer : public ScratchBuffer<VertShortXY,256,64,1024>
 {
 	/**
 	 * @brief Writes six vertices to the buffer.
 	 */
 	inline void BuildQuad(int pX,int pY,int pWidth,int pHeight)
 	{
-		Vec2Ds* verts = Next(6);
+		VertShortXY* verts = Next(6);
 		verts[0].x = pX;			verts[0].y = pY;
 		verts[1].x = pX + pWidth;	verts[1].y = pY;
 		verts[2].x = pX + pWidth;	verts[2].y = pY + pHeight;
@@ -375,7 +377,7 @@ struct Vec2DShortScratchBuffer : public ScratchBuffer<Vec2Ds,256,64,1024>
 	 */
 	inline void AddUVRect(int U0,int V0,int U1,int V1)
 	{
-		Vec2Ds* verts = Next(6);
+		VertShortXY* verts = Next(6);
 		verts[0].x = U0;	verts[0].y = V0;
 		verts[1].x = U1;	verts[1].y = V0;
 		verts[2].x = U1;	verts[2].y = V1;
@@ -400,9 +402,9 @@ struct Vec2DShortScratchBuffer : public ScratchBuffer<Vec2Ds,256,64,1024>
 struct WorkBuffers
 {
 	ScratchBuffer<uint8_t,128,16,512*512*4> scratchRam;// gets used for some temporary texture operations.
-	ScratchBuffer<Vec2Df,128,16,128> vec2Df;
-	Vec2DShortScratchBuffer vec2Ds;
-	Vec2DShortScratchBuffer uvShort;
+	ScratchBuffer<Vert2Df,128,16,128> vertices2Df;
+	Vert2DShortScratchBuffer vertices2DShort;
+	Vert2DShortScratchBuffer uvShort;
 };
 
 // End of scratch memory buffer utility
@@ -464,7 +466,7 @@ struct FreeTypeFont
 		}uv[2];
 	};
 
-	FreeTypeFont(FT_Face pFontFace,int pPixelHeight,bool pVerbose);
+	FreeTypeFont(FT_Face pFontFace,int pPixelHeight);
 	~FreeTypeFont();
 
 	/**
@@ -481,7 +483,6 @@ struct FreeTypeFont
 			std::function<void(uint32_t pTexture,int pX,int pY,int pWidth,int pHeight,const uint8_t* pPixels)> pFillTexture);
 
 	const std::string mFontName; //<! Helps with debugging.
-	const bool mVerbose;
 	FT_Face mFace;								//<! The font we are rending from.
 	uint32_t mTexture;							//<! This is the texture that the glyphs are in so we can render using GL and quads. It's crud but works. ;)
 	std::array<FreeTypeFont::Glyph,96>mGlyphs;	//<! Meta data needed to render the characters.
@@ -498,11 +499,163 @@ struct FreeTypeFont
 #endif // #ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Some basic matrix operations
+static const double PI = 3.141592654;
+static const double DEGTORAD = (PI / 180.0);
+
+void Matrix::SetIdentity()
+{
+	m[0][0] = 1.0f;
+	m[0][1] = 0.0f;
+	m[0][2] = 0.0f;
+	m[0][3] = 0.0f;
+
+	m[1][0] = 0.0f;
+	m[1][1] = 1.0f;
+	m[1][2] = 0.0f;
+	m[1][3] = 0.0f;
+
+	m[2][0] = 0.0f;
+	m[2][1] = 0.0f;
+	m[2][2] = 1.0f;
+	m[2][3] = 0.0f;
+
+	m[3][0] = 0.0f;
+	m[3][1] = 0.0f;
+	m[3][2] = 0.0f;
+	m[3][3] = 1.0f;
+}
+
+void Matrix::SetTranslation(float pX,float pY,float pZ)
+{
+	m[0][0] = 1.0f;
+	m[0][1] = 0.0f;
+	m[0][2] = 0.0f;
+	m[0][3] = 0.0f;
+
+	m[1][0] = 0.0f;
+	m[1][1] = 1.0f;
+	m[1][2] = 0.0f;
+	m[1][3] = 0.0f;
+
+	m[2][0] = 0.0f;
+	m[2][1] = 0.0f;
+	m[2][2] = 1.0f;
+	m[2][3] = 0.0f;
+
+	m[3][0] = pX;
+	m[3][1] = pY;
+	m[3][2] = pZ;
+	m[3][3] = 1.0f;
+}
+
+void Matrix::SetRotationX(float pPitch)
+{
+	float sinX = std::sin(pPitch * DEGTORAD);
+	float cosX = std::cos(pPitch * DEGTORAD);
+
+	m[0][0] = 1.0f;
+	m[0][1] = 0.0f;
+	m[0][2] = 0.0f;
+	m[0][3] = 0.0f;
+
+	m[1][0] = 0.0f;
+	m[1][1] = cosX;
+	m[1][2] = sinX;
+	m[1][3] = 0.0f;
+
+	m[2][0] = 0.0f;
+	m[2][1] = -sinX;
+	m[2][2] = cosX;
+	m[2][3] = 0.0f;
+
+	m[3][0] = 0.0f;
+	m[3][1] = 0.0f;
+	m[3][2] = 0.0f;
+	m[3][3] = 1.0f;
+}
+
+void Matrix::SetRotationY(float pYaw)
+{
+	float sinY = std::sin(pYaw * DEGTORAD);
+	float cosY = std::cos(pYaw * DEGTORAD);
+
+	m[0][0] = cosY;
+	m[0][1] = 0.0f;
+	m[0][2] = -sinY;
+	m[0][3] = 0.0f;
+
+	m[1][0] = 0.0f;
+	m[1][1] = 1.0f;
+	m[1][2] = 0.0f;
+	m[1][3] = 0.0f;
+
+	m[2][0] = sinY;
+	m[2][1] = 0.0f;
+	m[2][2] = cosY;
+	m[2][3] = 0.0f;
+
+	m[3][0] = 0.0f;
+	m[3][1] = 0.0f;
+	m[3][2] = 0.0f;
+	m[3][3] = 1.0f;
+}
+
+void Matrix::SetRotationZ(float pRoll)
+{
+	float sinZ = std::sin(pRoll * DEGTORAD);
+	float cosZ = std::cos(pRoll * DEGTORAD);
+
+	m[0][0] = cosZ;
+	m[0][1] = sinZ;
+	m[0][2] = 0.0f;
+	m[0][3] = 0.0f;
+
+	m[1][0] = -sinZ;
+	m[1][1] = cosZ;
+	m[1][2] = 0.0f;
+	m[1][3] = 0.0f;
+
+	m[2][0] = 0.0f;
+	m[2][1] = 0.0f;
+	m[2][2] = 1.0f;
+	m[2][3] = 0.0f;
+
+	m[3][0] = 0.0f;
+	m[3][1] = 0.0f;
+	m[3][2] = 0.0f;
+	m[3][3] = 1.0f;
+}
+
+void Matrix::Mul(const Matrix &pA,const Matrix &pB)
+{
+	m[0][0] = (pA.m[0][0]*pB.m[0][0]) + (pA.m[0][1]*pB.m[1][0]) + (pA.m[0][2]*pB.m[2][0]) + (pA.m[0][3]*pB.m[3][0]);
+	m[0][1] = (pA.m[0][0]*pB.m[0][1]) + (pA.m[0][1]*pB.m[1][1]) + (pA.m[0][2]*pB.m[2][1]) + (pA.m[0][3]*pB.m[3][1]);
+	m[0][2] = (pA.m[0][0]*pB.m[0][2]) + (pA.m[0][1]*pB.m[1][2]) + (pA.m[0][2]*pB.m[2][2]) + (pA.m[0][3]*pB.m[3][2]);
+	m[0][3] = (pA.m[0][0]*pB.m[0][3]) + (pA.m[0][1]*pB.m[1][3]) + (pA.m[0][2]*pB.m[2][3]) + (pA.m[0][3]*pB.m[3][3]);
+
+	m[1][0] = (pA.m[1][0]*pB.m[0][0]) + (pA.m[1][1]*pB.m[1][0]) + (pA.m[1][2]*pB.m[2][0]) + (pA.m[1][3]*pB.m[3][0]);
+	m[1][1] = (pA.m[1][0]*pB.m[0][1]) + (pA.m[1][1]*pB.m[1][1]) + (pA.m[1][2]*pB.m[2][1]) + (pA.m[1][3]*pB.m[3][1]);
+	m[1][2] = (pA.m[1][0]*pB.m[0][2]) + (pA.m[1][1]*pB.m[1][2]) + (pA.m[1][2]*pB.m[2][2]) + (pA.m[1][3]*pB.m[3][2]);
+	m[1][3] = (pA.m[1][0]*pB.m[0][3]) + (pA.m[1][1]*pB.m[1][3]) + (pA.m[1][2]*pB.m[2][3]) + (pA.m[1][3]*pB.m[3][3]);
+
+	m[2][0] = (pA.m[2][0]*pB.m[0][0]) + (pA.m[2][1]*pB.m[1][0]) + (pA.m[2][2]*pB.m[2][0]) + (pA.m[2][3]*pB.m[3][0]);
+	m[2][1] = (pA.m[2][0]*pB.m[0][1]) + (pA.m[2][1]*pB.m[1][1]) + (pA.m[2][2]*pB.m[2][1]) + (pA.m[2][3]*pB.m[3][1]);
+	m[2][2] = (pA.m[2][0]*pB.m[0][2]) + (pA.m[2][1]*pB.m[1][2]) + (pA.m[2][2]*pB.m[2][2]) + (pA.m[2][3]*pB.m[3][2]);
+	m[2][3] = (pA.m[2][0]*pB.m[0][3]) + (pA.m[2][1]*pB.m[1][3]) + (pA.m[2][2]*pB.m[2][3]) + (pA.m[2][3]*pB.m[3][3]);
+
+	m[3][0] = (pA.m[3][0]*pB.m[0][0]) + (pA.m[3][1]*pB.m[1][0]) + (pA.m[3][2]*pB.m[2][0]) + (pA.m[3][3]*pB.m[3][0]);
+	m[3][1] = (pA.m[3][0]*pB.m[0][1]) + (pA.m[3][1]*pB.m[1][1]) + (pA.m[3][2]*pB.m[2][1]) + (pA.m[3][3]*pB.m[3][1]);
+	m[3][2] = (pA.m[3][0]*pB.m[0][2]) + (pA.m[3][1]*pB.m[1][2]) + (pA.m[3][2]*pB.m[2][2]) + (pA.m[3][3]*pB.m[3][2]);
+	m[3][3] = (pA.m[3][0]*pB.m[0][3]) + (pA.m[3][1]*pB.m[1][3]) + (pA.m[3][2]*pB.m[2][3]) + (pA.m[3][3]*pB.m[3][3]);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GLES Shader definition
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct GLShader
 {
-	GLShader(const std::string& pName,const char* pVertex, const char* pFragment,bool pVerbose);
+	GLShader(const std::string& pName,const char* pVertex, const char* pFragment);
 	~GLShader();
 
 	int GetUniformLocation(const char* pName);
@@ -517,9 +670,9 @@ struct GLShader
 	bool GetUsesTransform()const{return mUniforms.trans > -1;}
 
 	const std::string mName;	//!< Mainly to help debugging.
-	const bool mVerbose;
 	const bool mEnableStreamUV;
 	const bool mEnableStreamTrans;
+	const bool mEnableStreamColour;
 
 	GLint mShader = 0;
 	GLint mVertexShader = 0;
@@ -536,21 +689,43 @@ struct GLShader
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// GLES 2.0 emulation hidden definition.
-#ifdef PLATFORM_GLES
+// DRM Direct Render Manager and EGL definition.
+// Used for more model systems like RPi4 and proper GL / GLES implementations.
+#ifdef PLATFORM_DRM_EGL
 struct PlatformInterface
 {
-	PlatformInterface(bool pVerbose){}
+	bool mIsFirstFrame = true;
+	int mDRMFile = -1;
+
+	// This is used for the EGL bring up and getting GLES going along with DRM.
+	struct gbm_device *mBufferManager = nullptr;
+	struct gbm_bo *mCurrentFrontBufferObject = nullptr;
+
+	drmModeEncoder *mModeEncoder = nullptr;
+	drmModeConnector* mConnector = nullptr;
+	drmModeModeInfo* mModeInfo = nullptr;
+	uint32_t mFOURCC_Format = DRM_FORMAT_INVALID;
+	uint32_t mCurrentFrontBufferID = 0;
 
 	EGLDisplay mDisplay = nullptr;				//!<GL display
 	EGLSurface mSurface = nullptr;				//!<GL rendering surface
 	EGLContext mContext = nullptr;				//!<GL rendering context
 	EGLConfig mConfig = nullptr;				//!<Configuration of the display.
-	#ifdef BROADCOM_NATIVE_WINDOW
-		EGL_DISPMANX_WINDOW_T mNativeWindow;		//!<The RPi window object needed to create the render surface.
-	#else 
-		EGLNativeWindowType mNativeWindow;
-	#endif
+
+	struct gbm_surface *mNativeWindow = nullptr;
+
+	PlatformInterface();
+	~PlatformInterface();
+
+	int GetWidth()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->hdisplay;}return 0;}
+	int GetHeight()const{assert(mModeInfo);if(mModeInfo){return mModeInfo->vdisplay;}return 0;}
+
+
+	void InitialiseDisplay();
+	void FindEGLConfiguration();
+
+	void UpdateCurrentBuffer();
+	void SwapBuffers();
 };
 #endif
 
@@ -567,7 +742,6 @@ struct PlatformInterface
  */
 struct PlatformInterface
 {
-	const bool mVerbose;
 	Display *mXDisplay = nullptr;
 	Window mWindow = 0;
 	Atom mDeleteMessage;
@@ -577,13 +751,13 @@ struct PlatformInterface
 
 	bool mWindowReady;
 
-	PlatformInterface(bool pVerbose);
+	PlatformInterface();
 	~PlatformInterface();
 
 	/**
 	 * @brief Creates the X11 window and all the bits needed to get rendering with.
 	 */
-	void Create();
+	void InitialiseDisplay();
 
 	/**
 	 * @brief Processes the X11 events then exits when all are done. Returns true if the app is asked to quit.
@@ -592,18 +766,21 @@ struct PlatformInterface
 
 	/**
 	 * @brief Draws the frame buffer to the X11 window.
-	 * 
 	 */
-	void RedrawWindow();
+	void SwapBuffers();
+
+	int GetWidth()const{return X11_EMULATION_WIDTH;}
+	int GetHeight()const{return X11_EMULATION_HEIGHT;}
+
 };
 #endif //#ifdef USE_X11_EMULATION
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GLES Implementation
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-GLES::GLES(bool pVerbose) :
-	mVerbose(pVerbose),
-	mPlatform(std::make_unique<PlatformInterface>(pVerbose)),
+GLES::GLES(uint32_t pFlags) :
+	mCreateFlags(pFlags),
+	mPlatform(std::make_unique<PlatformInterface>()),
 	mWorkBuffers(std::make_unique<WorkBuffers>())
 {
 	// Lets hook ctrl + c.
@@ -611,36 +788,66 @@ GLES::GLES(bool pVerbose) :
 
 	const char* MouseDeviceName = "/dev/input/event0";
 	mPointer.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK); // May fail, this is ok. They may not have one.
-	if( mVerbose )
+#ifdef VERBOSE_BUILD
+	if(  mPointer.mDevice >  0 )
 	{
-		if(  mPointer.mDevice >  0 )
+		VERBOSE_MESSAGE("Opened mouse device " << MouseDeviceName);
+		char name[256] = "Unknown";
+		if( ioctl(mPointer.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
 		{
-			char name[256] = "Unknown";
-			if( ioctl(mPointer.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
-			{
-				std::clog << "Reading mouse from: handle = " << mPointer.mDevice << " name = " << name << "\n";
-			}
-			else
-			{
-				std::clog << "Open mouse device" << MouseDeviceName << "\n" ;
-			}
+			VERBOSE_MESSAGE("Reading mouse from: handle = " << mPointer.mDevice << " name = " << name);
 		}
-		else
-		{// Not an error, may not have one connected. Depends on the usecase.
-			std::clog << "Failed to open mouse device " << MouseDeviceName << "\n";
+	}
+	else
+	{// Not an error, may not have one connected. Depends on the usecase.
+		VERBOSE_MESSAGE("Failed to open mouse device " << MouseDeviceName);
+	}
+#endif
+
+	mPhysical.Width = mPlatform->GetWidth();
+	mPhysical.Height = mPlatform->GetHeight();
+
+	if( mCreateFlags&ROTATE_FRAME_PORTRATE )
+	{
+		mCreateFlags &= ~ROTATE_FRAME_PORTRATE;
+		if( mPhysical.Width > mPhysical.Height )
+		{
+			mCreateFlags |= ROTATE_FRAME_BUFFER_90;
 		}
 	}
 
-	FetchDisplayMode();
-	InitialiseDisplay();
-	FindGLESConfiguration();
-	CreateRenderingContext();
+	if( mCreateFlags&ROTATE_FRAME_LANDSCAPE )
+	{
+		mCreateFlags &= ~ROTATE_FRAME_LANDSCAPE;
+		if( mPhysical.Width < mPhysical.Height )
+		{
+			mCreateFlags |= ROTATE_FRAME_BUFFER_90;
+		}
+	}
+
+	if( mCreateFlags&(ROTATE_FRAME_BUFFER_90|ROTATE_FRAME_BUFFER_270) )
+	{
+		mReported.Width = mPhysical.Height;
+		mReported.Height = mPhysical.Width;
+	}
+	else
+	{
+		mReported.Width = mPhysical.Width;
+		mReported.Height = mPhysical.Height;
+	}
+
+	VERBOSE_MESSAGE("Physical display resolution is " << mPhysical.Width << "x" << mPhysical.Height );
+
+	mPlatform->InitialiseDisplay();
+
 	SetRenderingDefaults();
 	BuildShaders();
 	BuildDebugTexture();
 	BuildPixelFontTexture();
 	InitFreeTypeFont();
 	AllocateQuadBuffers();
+
+	VERBOSE_MESSAGE("GLES Ready");
 }
 
 GLES::~GLES()
@@ -648,8 +855,8 @@ GLES::~GLES()
 	VERBOSE_MESSAGE("GLES destructor called");
 
 	VERBOSE_MESSAGE("On exit the following scratch memory buffers reached the sizes of...");
-	VERBOSE_MESSAGE("    mWorkBuffers.vec2Df " << mWorkBuffers->vec2Df.MemoryUsed() << " bytes");
-	VERBOSE_MESSAGE("    mWorkBuffers.vec2Ds " << mWorkBuffers->vec2Ds.MemoryUsed() << " bytes");
+	VERBOSE_MESSAGE("    mWorkBuffers.vertices2Df " << mWorkBuffers->vertices2Df.MemoryUsed() << " bytes");
+	VERBOSE_MESSAGE("    mWorkBuffers.vertices2DShort " << mWorkBuffers->vertices2DShort.MemoryUsed() << " bytes");
 	VERBOSE_MESSAGE("    mWorkBuffers.uvShort " << mWorkBuffers->uvShort.MemoryUsed() << " bytes");
 
 	glBindTexture(GL_TEXTURE_2D,0);
@@ -665,11 +872,15 @@ GLES::~GLES()
 	glDeleteBuffers(1,&mQuadBatch.IndicesBuffer);
 
 	mShaders.CurrentShader.reset();
-	mShaders.ColourOnly.reset();
-	mShaders.TextureColour.reset();
-	mShaders.TextureAlphaOnly.reset();
-	mShaders.SpriteShader.reset();
-	mShaders.QuadBatchShader.reset();
+	mShaders.ColourOnly2D.reset();
+	mShaders.TextureColour2D.reset();
+	mShaders.TextureAlphaOnly2D.reset();
+	mShaders.SpriteShader2D.reset();
+	mShaders.QuadBatchShader2D.reset();
+
+	mShaders.ColourOnly3D.reset();
+	mShaders.TextureOnly3D.reset();
+
 
 	// delete all free type fonts.
 #ifdef USE_FREETYPEFONTS
@@ -691,13 +902,6 @@ GLES::~GLES()
 		CHECK_OGL_ERRORS();
 	}
 
-	VERBOSE_MESSAGE("Clearing display");
-
-	VERBOSE_MESSAGE("Destroying contect");
-	eglDestroyContext(mPlatform->mDisplay, mPlatform->mContext);
-    eglDestroySurface(mPlatform->mDisplay, mPlatform->mSurface);
-    eglTerminate(mPlatform->mDisplay);
-
 	VERBOSE_MESSAGE("All done");
 }
 
@@ -707,7 +911,7 @@ bool GLES::BeginFrame()
 
 	// Reset some items so that we have a working render setup to begin the frame with.
 	// This is done so that I don't have to have a load of if statements to deal with first frame. Also makes life simpler for the more minimal applications.
-	EnableShader(mShaders.ColourOnly);
+	EnableShader(mShaders.ColourOnly2D);
 	SetTransformIdentity();
 
 	return GLES::mKeepGoing;
@@ -715,8 +919,8 @@ bool GLES::BeginFrame()
 
 void GLES::EndFrame()
 {
-	eglSwapBuffers(mPlatform->mDisplay,mPlatform->mSurface);
 	glFlush();// This makes sure the display is fully up to date before we allow them to interact with any kind of UI. This is the specified use of this function.
+	mPlatform->SwapBuffers();
 	ProcessSystemEvents();
 }
 
@@ -734,57 +938,95 @@ void GLES::Clear(uint32_t pTexture)
 	FillRectangle(0,0,GetWidth(),GetHeight(),pTexture);
 }
 
-void GLES::SetFrustum2D()
+void GLES::Begin2D()
 {
-	VERBOSE_MESSAGE("SetFrustum2D " << mWidth << " " << mHeight);
-
-	mMatrices.projection[0][0] = 2.0f / (float)mWidth;
-	mMatrices.projection[0][1] = 0;
-	mMatrices.projection[0][2] = 0;
-	mMatrices.projection[0][3] = 0;
-
-	mMatrices.projection[1][0] = 0;
-	mMatrices.projection[1][1] = -2.0f / (float)mHeight;
-	mMatrices.projection[1][2] = 0;
-	mMatrices.projection[1][3] = 0;
-		  	
-	mMatrices.projection[2][0] = 0;
-	mMatrices.projection[2][1] = 0;
-	mMatrices.projection[2][2] = 0;
-	mMatrices.projection[2][3] = 0;
-		  	
-	mMatrices.projection[3][0] = -1;
-	mMatrices.projection[3][1] = 1;
-	mMatrices.projection[3][2] = 0;
+	// Setup 2D frustum
+	memset(mMatrices.projection,0,sizeof(mMatrices.projection));
 	mMatrices.projection[3][3] = 1;
+
+	if( mCreateFlags&ROTATE_FRAME_BUFFER_90 )
+	{
+		mMatrices.projection[0][1] = -2.0f / (float)mPhysical.Height;
+		mMatrices.projection[1][0] = -2.0f / (float)mPhysical.Width;
+				
+		mMatrices.projection[3][0] = 1;
+		mMatrices.projection[3][1] = 1;
+	}
+	else if( mCreateFlags&ROTATE_FRAME_BUFFER_180 )
+	{
+		mMatrices.projection[0][0] = -2.0f / (float)mPhysical.Width;
+		mMatrices.projection[1][1] = 2.0f / (float)mPhysical.Height;
+				
+		mMatrices.projection[3][0] = 1;
+		mMatrices.projection[3][1] = -1;
+	}
+	else if( mCreateFlags&ROTATE_FRAME_BUFFER_270 )
+	{
+		mMatrices.projection[0][1] = 2.0f / (float)mPhysical.Height;
+		mMatrices.projection[1][0] = 2.0f / (float)mPhysical.Width;
+				
+		mMatrices.projection[3][0] = -1;
+		mMatrices.projection[3][1] = -1;
+	}
+	else
+	{
+		mMatrices.projection[0][0] = 2.0f / (float)mPhysical.Width;
+		mMatrices.projection[1][1] = -2.0f / (float)mPhysical.Height;
+		mMatrices.projection[3][0] = -1;
+		mMatrices.projection[3][1] = 1;
+	}
+
+	// No Depth buffer in 2D
+	glDisable(GL_DEPTH_TEST);
+	glDepthFunc(GL_ALWAYS);
+	glDepthMask(false);
+
 }
 
-void GLES::SetFrustum3D(float pFov, float pAspect, float pNear, float pFar)
+void GLES::Begin3D(float pFov, float pNear, float pFar)
 {
-	VERBOSE_MESSAGE("SetFrustum3D " << pFov << " " << pAspect << " " << pNear << " " << pFar);
-	
-	float cotangent = 1.0f / tanf(DegreeToRadian(pFov));
-	float q = pFar / (pFar - pNear);
+	const float cotangent = 1.0f / tanf(DegreeToRadian(pFov));
+	const float q = pFar / (pFar - pNear);
+	const float aspect = GetDisplayAspectRatio();
+
+	memset(mMatrices.projection,0,sizeof(mMatrices.projection));
 
 	mMatrices.projection[0][0] = cotangent;
-	mMatrices.projection[0][1] = 0.0f;
-	mMatrices.projection[0][2] = 0.0f;
-	mMatrices.projection[0][3] = 0.0f;
 
-	mMatrices.projection[1][0] = 0.0f;
-	mMatrices.projection[1][1] = pAspect * cotangent;
-	mMatrices.projection[1][2] = 0.0f;
-	mMatrices.projection[1][3] = 0.0f;
+	mMatrices.projection[1][1] = aspect * cotangent;
 
-	mMatrices.projection[2][0] = 0.0f;
-	mMatrices.projection[2][1] = 0.0f;
 	mMatrices.projection[2][2] = q;
 	mMatrices.projection[2][3] = 1.0f;
 
-	mMatrices.projection[3][0] = 0.0f;
-	mMatrices.projection[3][1] = 0.0f;
 	mMatrices.projection[3][2] = -q * pNear;
-	mMatrices.projection[3][3] = 0.0f;
+
+	if( mCreateFlags&ROTATE_FRAME_BUFFER_90 )
+	{
+		mMatrices.projection[0][1] = -mMatrices.projection[0][0];
+		mMatrices.projection[0][0] = 0.0f;
+
+		mMatrices.projection[1][0] = mMatrices.projection[1][1];
+		mMatrices.projection[1][1] = 0.0f;
+	}
+	else if( mCreateFlags&ROTATE_FRAME_BUFFER_180 )
+	{
+		mMatrices.projection[0][0] = -mMatrices.projection[0][0];
+		mMatrices.projection[1][1] = -mMatrices.projection[1][1];
+	}
+	else if( mCreateFlags&ROTATE_FRAME_BUFFER_270 )
+	{
+		mMatrices.projection[0][1] = mMatrices.projection[0][0];
+		mMatrices.projection[0][0] = 0.0f;
+
+		mMatrices.projection[1][0] = -mMatrices.projection[1][1];
+		mMatrices.projection[1][1] = 0.0f;
+	}
+
+	// Depth buffer please
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
+
 }
 
 void GLES::SetTransform(float pTransform[4][4])
@@ -837,17 +1079,109 @@ void GLES::OnApplicationExitRequest()
 
 //*******************************************
 // Primitive draw commands.
-void GLES::Line(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+void GLES::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	const int16_t quad[4] = {(int16_t)pFromX,(int16_t)pFromY,(int16_t)pToX,(int16_t)pToY};
 
-	EnableShader(mShaders.ColourOnly);
+	EnableShader(mShaders.ColourOnly2D);
 	mShaders.CurrentShader->SetGlobalColour(pRed,pGreen,pBlue,pAlpha);
 
 	VertexPtr(2,GL_SHORT,quad);
 	glDrawArrays(GL_LINES,0,2);
 	CHECK_OGL_ERRORS();
 }
+
+void GLES::DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	if( pWidth < 2 )
+	{
+		DrawLine(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
+	}
+	else
+	{
+		pWidth /= 2;
+		VertShortXY p[6];
+
+		if( pFromY < pToY )
+		{
+			std::swap(pFromY,pToY);
+			std::swap(pFromX,pToX);
+		}
+
+		if( pFromX < pToX )
+		{
+			p[0].x = pToX - pWidth;
+			p[0].y = pToY - pWidth;
+
+			p[1].x = pToX + pWidth;
+			p[1].y = pToY - pWidth;
+
+			p[2].x = pToX + pWidth;
+			p[2].y = pToY + pWidth;
+
+			p[3].x = pFromX + pWidth;
+			p[3].y = pFromY + pWidth;
+
+			p[4].x = pFromX - pWidth;
+			p[4].y = pFromY + pWidth;
+
+			p[5].x = pFromX - pWidth;
+			p[5].y = pFromY - pWidth;
+		}
+		else
+		{
+			p[0].x = pFromX + pWidth;
+			p[0].y = pFromY - pWidth;
+
+			p[1].x = pFromX + pWidth;
+			p[1].y = pFromY + pWidth;
+
+			p[2].x = pFromX - pWidth;
+			p[2].y = pFromY + pWidth;
+
+			p[3].x = pToX - pWidth;
+			p[3].y = pToY + pWidth;
+
+			p[4].x = pToX - pWidth;
+			p[4].y = pToY - pWidth;
+
+			p[5].x = pToX + pWidth;
+			p[5].y = pToY - pWidth;			
+		}
+
+		EnableShader(mShaders.ColourOnly2D);
+		mShaders.CurrentShader->SetGlobalColour(pRed,pGreen,pBlue,pAlpha);
+
+		VertexPtr(2,GL_SHORT,p);
+		glDrawArrays(GL_TRIANGLE_FAN,0,6);
+		CHECK_OGL_ERRORS();
+	}
+}
+
+void GLES::DrawLineList(const VerticesShortXY& pPoints,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	EnableShader(mShaders.ColourOnly2D);
+	mShaders.CurrentShader->SetGlobalColour(pRed,pGreen,pBlue,pAlpha);
+
+	VertexPtr(2,GL_SHORT,pPoints.data());
+	glDrawArrays(GL_LINE_STRIP,0,pPoints.size());
+	CHECK_OGL_ERRORS();
+}
+
+void GLES::DrawLineList(const VerticesShortXY& pPoints,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	if( pWidth < 2 )
+	{
+		DrawLineList(pPoints,pRed,pGreen,pBlue,pAlpha);
+	}
+	else
+	{
+		for( size_t n = 0 ; n < pPoints.size() - 1 ; n++ )
+		{
+			DrawLine(pPoints[n].x,pPoints[n].y,pPoints[n+1].x,pPoints[n+1].y,pWidth,pRed,pGreen,pBlue,pAlpha);
+		}
+	}
+}	
 
 void GLES::Circle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,size_t pNumPoints,bool pFilled)
 {
@@ -857,10 +1191,10 @@ void GLES::Circle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGr
 	}
 	if( pNumPoints > 128 ){pNumPoints = 128;}	// Make sure we don't go silly with number of verts and loose all the FPS.
 
-	Vec2Df* verts = mWorkBuffers->vec2Df.Restart(pNumPoints);
+	Vert2Df* verts = mWorkBuffers->vertices2Df.Restart(pNumPoints);
 
 	float rad = 0.0;
-	const float step = GetRadian() / (float)(pNumPoints-2);//+2 is because of first triangle.
+	const float step = GetRadian() / (float)(pNumPoints-2);// +2 is because of first triangle.
 	const float r = (float)pRadius;
 	const float x = (float)pCenterX;
 	const float y = (float)pCenterY;
@@ -870,7 +1204,7 @@ void GLES::Circle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGr
 		verts[n].y = y + (r*std::cos(rad));
 	}
 
-	EnableShader(mShaders.ColourOnly);
+	EnableShader(mShaders.ColourOnly2D);
 	mShaders.CurrentShader->SetGlobalColour(pRed,pGreen,pBlue,pAlpha);
 
 	VertexPtr(2,GL_FLOAT,verts);
@@ -887,7 +1221,13 @@ void GLES::Rectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_
 
 	if( mShaders.CurrentShader->GetUsesTexture() )
 	{
-		TexCoordPtr(2,GL_SHORT,uv);
+		glVertexAttribPointer(
+					(GLuint)StreamIndex::TEXCOORD,
+					2,
+					GL_SHORT,
+					GL_FALSE,
+					0,uv);
+		CHECK_OGL_ERRORS();
 	}
 
 	VertexPtr(2,GL_SHORT,quad);
@@ -902,12 +1242,12 @@ void GLES::RoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,
 	// Need a multiple of 4 points.
 	numPoints = (numPoints+3)&~3;
 	if( numPoints > 128 ){numPoints = 128;}	// Make sure we don't go silly with number of verts and loose all the FPS.
-	Vec2Df* verts = mWorkBuffers->vec2Df.Restart(numPoints);
+	Vert2Df* verts = mWorkBuffers->vertices2Df.Restart(numPoints);
 
 	float rad = GetRadian();
 	const float step = GetRadian() / (float)(numPoints-1);
 	const float r = (float)pRadius;
-	Vec2Df* p = verts;
+	Vert2Df* p = verts;
 
 	pToX -= pRadius;
 	pToY -= pRadius;
@@ -946,7 +1286,7 @@ void GLES::RoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,
 		rad -= step;
 	}
 
-	EnableShader(mShaders.ColourOnly);
+	EnableShader(mShaders.ColourOnly2D);
 	mShaders.CurrentShader->SetGlobalColour(pRed,pGreen,pBlue,pAlpha);
 
 	VertexPtr(2,GL_FLOAT,verts);
@@ -1027,11 +1367,11 @@ void GLES::SpriteDelete(uint32_t pSprite)
 
 void GLES::SpriteDraw(uint32_t pSprite)
 {
-	assert(mShaders.SpriteShader);
+	assert(mShaders.SpriteShader2D);
 
 	auto& sprite = mSprites.at(pSprite);
 
-	EnableShader(mShaders.SpriteShader);
+	EnableShader(mShaders.SpriteShader2D);
 
 	assert(mShaders.CurrentShader);
 	mShaders.CurrentShader->SetTexture(sprite->mTexture);
@@ -1098,13 +1438,13 @@ void GLES::QuadBatchDelete(uint32_t pQuadBatch)
 
 void GLES::QuadBatchDraw(uint32_t pQuadBatch)
 {
-	assert(mShaders.QuadBatchShader);
+	assert(mShaders.QuadBatchShader2D);
 
 	auto& QuadBatch = mQuadBatch.Batchs.at(pQuadBatch);
 
-	EnableShader(mShaders.QuadBatchShader);
+	EnableShader(mShaders.QuadBatchShader2D);
 
-	assert(mShaders.CurrentShader == mShaders.QuadBatchShader);
+	assert(mShaders.CurrentShader == mShaders.QuadBatchShader2D);
 	mShaders.CurrentShader->SetTexture(QuadBatch->mTexture);
 	mShaders.CurrentShader->SetGlobalColour(1.0f,1.0f,1.0f,1.0f);
 
@@ -1146,16 +1486,16 @@ void GLES::QuadBatchDraw(uint32_t pQuadBatch,size_t pFromIndex,size_t pToIndex)
 		return;// Allow this as their code may use this case at the start or end of an effect.
 	}
 
-	assert(mShaders.QuadBatchShader);
+	assert(mShaders.QuadBatchShader2D);
 
 	auto& QuadBatch = mQuadBatch.Batchs.at(pQuadBatch);
 
 	assert( pFromIndex < QuadBatch->GetNumQuads() );
 	assert( pToIndex < QuadBatch->GetNumQuads() );
 
-	EnableShader(mShaders.QuadBatchShader);
+	EnableShader(mShaders.QuadBatchShader2D);
 
-	assert(mShaders.CurrentShader == mShaders.QuadBatchShader);
+	assert(mShaders.CurrentShader == mShaders.QuadBatchShader2D);
 	mShaders.CurrentShader->SetTexture(QuadBatch->mTexture);
 	mShaders.CurrentShader->SetGlobalColour(1.0f,1.0f,1.0f,1.0f);
 
@@ -1198,6 +1538,78 @@ std::vector<QuadBatchTransform>& GLES::QuadBatchGetTransform(uint32_t pQuadBatch
 {
 	auto& QuadBatch = mQuadBatch.Batchs.at(pQuadBatch);
 	return QuadBatch->mTransforms;
+}
+
+//*******************************************
+// Primitive rendering functions for user defined shapes
+void GLES::RenderTriangles(const VerticesXYZC& pVertices)
+{
+	EnableShader(mShaders.ColourOnly3D);
+
+	assert(mShaders.CurrentShader);
+	mShaders.CurrentShader->SetGlobalColour(1.0f,1.0f,1.0f,1.0f);
+
+	const uint8_t* verts = (const uint8_t*)pVertices.data();
+	const uint8_t* c = verts + (sizeof(float)*3);
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::VERTEX,
+				3,
+				GL_FLOAT,
+				GL_FALSE,
+				sizeof(VertXYZC),
+				verts);
+	CHECK_OGL_ERRORS();
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::COLOUR,
+				4,
+				GL_UNSIGNED_BYTE,
+				GL_TRUE,
+				sizeof(VertXYZC),
+				c);
+	CHECK_OGL_ERRORS();
+
+	glDrawArrays(GL_TRIANGLES,0,pVertices.size());
+	CHECK_OGL_ERRORS();
+}
+
+void GLES::RenderTriangles(const VerticesXYZUV& pVertices,uint32_t pTexture)
+{
+	if(pTexture == 0)
+	{
+		pTexture = mDiagnostics.texture;
+	}
+
+	EnableShader(mShaders.TextureOnly3D);
+
+	assert(mShaders.CurrentShader);
+	mShaders.CurrentShader->SetTexture(pTexture);
+	mShaders.CurrentShader->SetGlobalColour(1.0f,1.0f,1.0f,1.0f);
+
+	const uint8_t* verts = (const uint8_t*)pVertices.data();
+	const uint8_t* c = verts + (sizeof(float)*3);
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::VERTEX,
+				3,
+				GL_FLOAT,
+				GL_FALSE,
+				sizeof(VertXYZUV),
+				verts);
+	CHECK_OGL_ERRORS();
+
+	glVertexAttribPointer(
+				(GLuint)StreamIndex::TEXCOORD,
+				2,
+				GL_SHORT,
+				GL_TRUE,
+				sizeof(VertXYZUV),
+				c);
+	CHECK_OGL_ERRORS();
+
+	glDrawArrays(GL_TRIANGLES,0,pVertices.size());
+	CHECK_OGL_ERRORS();
 }
 
 //*******************************************
@@ -1381,10 +1793,10 @@ uint32_t GLES::CreateNinePatch(int pWidth,int pHeight,const uint8_t* pPixels,boo
 	const int oldStride = pWidth * 4;
 
 	// Extract the information
-	Vec2Ds scaleFrom = {-1,-1};
-	Vec2Ds scaleTo = {-1,-1};
-	Vec2Ds fillFrom = {-1,-1};
-	Vec2Ds fillTo = {-1,-1};
+	VertShortXY scaleFrom = {-1,-1};
+	VertShortXY scaleTo = {-1,-1};
+	VertShortXY fillFrom = {-1,-1};
+	VertShortXY fillTo = {-1,-1};
 
 	auto ScanNinePatch = [](uint8_t pPixel,int16_t pIndex,int16_t &pFrom,int16_t &pTo,const std::string& pWhat)
 	{
@@ -1429,14 +1841,13 @@ uint32_t GLES::CreateNinePatch(int pWidth,int pHeight,const uint8_t* pPixels,boo
 	if( scaleFrom.x == -1 || scaleFrom.y == -1 || scaleTo.x == -1 || scaleTo.y == -1 || 
 		fillFrom.x  == -1 || fillFrom.y  == -1 || fillTo.x  == -1 || fillTo.y  == -1 )
 	{
-		if( mVerbose )
-		{
-			std::clog << "Nine patch failure,\n";
-			std::clog << "   Scalable X " << scaleFrom.x << " " << scaleTo.x << "\n";
-			std::clog << "   Scalable Y " << scaleFrom.y << " " << scaleTo.y << "\n";
-			std::clog << "   Fillable X " << fillFrom.x << " " << fillTo.x << "\n";
-			std::clog << "   Fillable Y " << fillFrom.y << " " << fillTo.y << "\n";
-		}
+#ifdef VERBOSE_BUILD
+		std::clog << "Nine patch failure,\n";
+		std::clog << "   Scalable X " << scaleFrom.x << " " << scaleTo.x << "\n";
+		std::clog << "   Scalable Y " << scaleFrom.y << " " << scaleTo.y << "\n";
+		std::clog << "   Fillable X " << fillFrom.x << " " << fillTo.x << "\n";
+		std::clog << "   Fillable Y " << fillFrom.y << " " << fillTo.y << "\n";
+#endif
 		THROW_MEANINGFUL_EXCEPTION("Nine patch edge definition invlaid, not all scaling and filling information found. Is it a nine patch texture?");
 	}
 
@@ -1498,7 +1909,7 @@ const NinePatchDrawInfo& GLES::DrawNinePatch(uint32_t pNinePatch,int pX,int pY,f
 	// We have to draw 9 rects, with the center scaling the texture.
 	const int xMove = pX + ((ninePinch->mScalable.to.x - ninePinch->mScalable.from.x) * pXScale);
 	const int yMove = pY + ((ninePinch->mScalable.to.y - ninePinch->mScalable.from.y) * pYScale);
-	Vec2Ds* verts = mWorkBuffers->vec2Ds.Restart(16);
+	VertShortXY* verts = mWorkBuffers->vertices2DShort.Restart(16);
 	for( int y = 0 ; y < 4 ; y++ )
 	{
 		for( int x = 0 ; x < 4 ; x++, verts++ )
@@ -1549,7 +1960,7 @@ const NinePatchDrawInfo& GLES::DrawNinePatch(uint32_t pNinePatch,int pX,int pY,f
 		10,11,15,10,15,14		
 	};
 
-	VertexPtr(2,GL_SHORT,mWorkBuffers->vec2Ds.Data());
+	VertexPtr(2,GL_SHORT,mWorkBuffers->vertices2DShort.Data());
 	glDrawElements(GL_TRIANGLES,9*6,GL_UNSIGNED_BYTE,indices);
 	CHECK_OGL_ERRORS();
 
@@ -1563,13 +1974,13 @@ const NinePatchDrawInfo& GLES::DrawNinePatch(uint32_t pNinePatch,int pX,int pY,f
 void GLES::FontPrint(int pX,int pY,const char* pText)
 {
 	const std::string_view s(pText);
-	mWorkBuffers->vec2Ds.Restart();
+	mWorkBuffers->vertices2DShort.Restart();
 	mWorkBuffers->uvShort.Restart();
 
 	// Get where the uvs will be written too.
 	const int quadSize = 16 * mPixelFont.scale;
 	const int squishHack = 3 * mPixelFont.scale;
-	mWorkBuffers->vec2Ds.BuildQuads(pX,pY,quadSize,quadSize,s.size(),quadSize - squishHack,0);
+	mWorkBuffers->vertices2DShort.BuildQuads(pX,pY,quadSize,quadSize,s.size(),quadSize - squishHack,0);
 
 	// Get where the uvs will be written too.
 	const int maxUV = 32767;
@@ -1582,12 +1993,12 @@ void GLES::FontPrint(int pX,int pY,const char* pText)
 	}
 
 	// Continue adding uvs to the buffer after the verts.
-	EnableShader(mShaders.TextureAlphaOnly);
+	EnableShader(mShaders.TextureAlphaOnly2D);
 	mShaders.CurrentShader->SetTexture(mPixelFont.texture);
 	mShaders.CurrentShader->SetGlobalColour(mPixelFont.R,mPixelFont.G,mPixelFont.B,mPixelFont.A);
 
 	// how many?
-	const int numVerts = mWorkBuffers->vec2Ds.Used();
+	const int numVerts = mWorkBuffers->vertices2DShort.Used();
 
 	glVertexAttribPointer(
 				(GLuint)StreamIndex::TEXCOORD,
@@ -1597,7 +2008,7 @@ void GLES::FontPrint(int pX,int pY,const char* pText)
 				4,mWorkBuffers->uvShort.Data());
 	CHECK_OGL_ERRORS();
 
-	VertexPtr(2,GL_SHORT,mWorkBuffers->vec2Ds.Data());
+	VertexPtr(2,GL_SHORT,mWorkBuffers->vertices2DShort.Data());
 	CHECK_OGL_ERRORS();
 	glDrawArrays(GL_TRIANGLES,0,numVerts);
 	CHECK_OGL_ERRORS();
@@ -1642,7 +2053,7 @@ int GLES::FontGetPrintfWidth(const char* pFmt,...)
 //*******************************************
 // Free type rendering
 #ifdef USE_FREETYPEFONTS
-uint32_t GLES::FontLoad(const std::string& pFontName,int pPixelHeight,bool pVerbose)
+uint32_t GLES::FontLoad(const std::string& pFontName,int pPixelHeight)
 {
 	FT_Face loadedFace;
 	if( FT_New_Face(mFreetype,pFontName.c_str(),0,&loadedFace) != 0 )
@@ -1651,7 +2062,7 @@ uint32_t GLES::FontLoad(const std::string& pFontName,int pPixelHeight,bool pVerb
 	}
 
 	const uint32_t fontID = mNextFontID++;
-	mFreeTypeFonts[fontID] = std::make_unique<FreeTypeFont>(loadedFace,pPixelHeight,pVerbose);
+	mFreeTypeFonts[fontID] = std::make_unique<FreeTypeFont>(loadedFace,pPixelHeight);
 
 	// Now we need to prepare the texture cache.
 	auto& font = mFreeTypeFonts.at(fontID);
@@ -1695,7 +2106,7 @@ void GLES::FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText)
 {
 	auto& font = mFreeTypeFonts.at(pFont);
 
-	mWorkBuffers->vec2Ds.Restart();
+	mWorkBuffers->vertices2DShort.Restart();
 	mWorkBuffers->uvShort.Restart();
 
 	// Get where the uvs will be written too.
@@ -1705,7 +2116,7 @@ void GLES::FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText)
 		{
 			auto&g = font->mGlyphs.at(c-32);
 
-			mWorkBuffers->vec2Ds.BuildQuad(pX + g.x_off,pY + g.y_off,g.width,g.height);
+			mWorkBuffers->vertices2DShort.BuildQuad(pX + g.x_off,pY + g.y_off,g.width,g.height);
 
 			mWorkBuffers->uvShort.AddUVRect(
 					g.uv[0].x,
@@ -1722,12 +2133,12 @@ void GLES::FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText)
 	}
 
 	assert(font->mTexture);
-	EnableShader(mShaders.TextureAlphaOnly);
+	EnableShader(mShaders.TextureAlphaOnly2D);
 	mShaders.CurrentShader->SetTexture(font->mTexture);
 	mShaders.CurrentShader->SetGlobalColour(font->mColour.R,font->mColour.G,font->mColour.B,font->mColour.A);
 
 	// how many?
-	const int numVerts = mWorkBuffers->vec2Ds.Used();
+	const int numVerts = mWorkBuffers->vertices2DShort.Used();
 
 	glVertexAttribPointer(
 				(GLuint)StreamIndex::TEXCOORD,
@@ -1736,7 +2147,7 @@ void GLES::FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText)
 				GL_TRUE,
 				4,mWorkBuffers->uvShort.Data());
 
-	VertexPtr(2,GL_SHORT,mWorkBuffers->vec2Ds.Data());
+	VertexPtr(2,GL_SHORT,mWorkBuffers->vertices2DShort.Data());
 	glDrawArrays(GL_TRIANGLES,0,numVerts);
 	CHECK_OGL_ERRORS();
 }
@@ -1799,11 +2210,12 @@ void GLES::ProcessSystemEvents()
 		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
 		{
 			// EV_SYN is a seperator of events.
-			if( mVerbose && ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
+#ifdef VERBOSE_BUILD
+			if( ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
 			{// Anything I missed? 
 				std::cout << std::hex << ev.type << " " << ev.code << " " << ev.value << "\n";
 			}
-
+#endif
 			switch( ev.type )
 			{
 			case EV_KEY:
@@ -1847,190 +2259,12 @@ void GLES::ProcessSystemEvents()
 	}
 }
 
-void GLES::FetchDisplayMode()
-{
-#ifdef PLATFORM_GLES
-	struct fb_var_screeninfo vinfo;
-	{
-		int File = open("/dev/fb0", O_RDWR);
-		if(ioctl(File, FBIOGET_VSCREENINFO, &vinfo) ) 
-		{
-			THROW_MEANINGFUL_EXCEPTION("failed to open ioctl");
-		}
-		close(File);
-	}
-
-	mWidth = vinfo.xres;
-	mHeight = vinfo.yres;
-
-	if( mWidth < 16 || mHeight < 16 )
-	{
-		THROW_MEANINGFUL_EXCEPTION("failed to find sensible screen mode from /dev/fb0");
-	}
-#endif
-
-#ifdef PLATFORM_X11_GL
-	mWidth = X11_EMULATION_WIDTH;
-	mHeight = X11_EMULATION_HEIGHT;
-#endif
-
-	VERBOSE_MESSAGE("Display resolution is " << mWidth << "x" << mHeight );
-}
-
-void GLES::InitialiseDisplay()
-{
-#ifdef BROADCOM_NATIVE_WINDOW
-	bcm_host_init();
-#endif
-
-#ifdef PLATFORM_GLES
-	VERBOSE_MESSAGE("Calling eglGetDisplay");
-	mPlatform->mDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-	if( !mPlatform->mDisplay )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Couldn\'t open the EGL default display");
-	}
-
-	//Now we have a display lets initialize it.
-    EGLint majorVersion,minorVersion;
-	if( !eglInitialize(mPlatform->mDisplay, &majorVersion, &minorVersion) )
-	{
-		THROW_MEANINGFUL_EXCEPTION("eglInitialize() failed");
-	}
-	CHECK_OGL_ERRORS();
-	VERBOSE_MESSAGE("GLES version " << majorVersion << "." << minorVersion);
-	eglBindAPI(EGL_OPENGL_ES_API);
-	CHECK_OGL_ERRORS();
-#endif //#ifdef PLATFORM_GLES
-
-#ifdef PLATFORM_X11_GL
-	mPlatform->Create();
-#endif
-}
-
-void GLES::FindGLESConfiguration()
-{
-#ifdef PLATFORM_GLES
-	int depths_32_to_16[3] = {32,24,16};
-
-	for( int c = 0 ; c < 3 ; c++ )
-	{
-		const EGLint attrib_list[] =
-		{
-			EGL_RED_SIZE,			8,
-			EGL_GREEN_SIZE,			8,
-			EGL_BLUE_SIZE,			8,
-			EGL_ALPHA_SIZE,			8,
-			EGL_DEPTH_SIZE,			depths_32_to_16[c],
-			EGL_STENCIL_SIZE,		EGL_DONT_CARE,
-			EGL_RENDERABLE_TYPE,	EGL_OPENGL_ES2_BIT,
-			EGL_NONE,				EGL_NONE
-		};
-
-		EGLint numConfigs;
-		if( !eglChooseConfig(mPlatform->mDisplay,attrib_list,&mPlatform->mConfig,1, &numConfigs) )
-		{
-			THROW_MEANINGFUL_EXCEPTION("Error: eglGetConfigs() failed");
-		}
-
-		if( numConfigs > 0 )
-		{
-			EGLint bufSize,r,g,b,a,z,s = 0;
-
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_BUFFER_SIZE,&bufSize);
-
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_RED_SIZE,&r);
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_GREEN_SIZE,&g);
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_BLUE_SIZE,&b);
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_ALPHA_SIZE,&a);
-
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_DEPTH_SIZE,&z);
-			eglGetConfigAttrib(mPlatform->mDisplay,mPlatform->mConfig,EGL_STENCIL_SIZE,&s);
-
-			CHECK_OGL_ERRORS();
-
-			VERBOSE_MESSAGE("Config found:");
-			VERBOSE_MESSAGE("\tFrame buffer size " << bufSize);
-			VERBOSE_MESSAGE("\tRGBA " << r << "," << g << "," << b << "," << a);
-			VERBOSE_MESSAGE("\tZBuffer " << z+s << "Z " << z << "S " << s);
-
-			return;// All good :)
-		}
-	}
-	THROW_MEANINGFUL_EXCEPTION("No matching EGL configs found");
-#endif //#ifdef PLATFORM_GLES
-}
-
-void GLES::CreateRenderingContext()
-{
-#ifdef PLATFORM_GLES
-	//We have our display and have chosen the config so now we are ready to create the rendering context.
-	VERBOSE_MESSAGE("Creating context");
-	EGLint ai32ContextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-	mPlatform->mContext = eglCreateContext(mPlatform->mDisplay,mPlatform->mConfig,EGL_NO_CONTEXT,ai32ContextAttribs);
-	if( !mPlatform->mContext )
-	{
-		THROW_MEANINGFUL_EXCEPTION("Failed to get a rendering context");
-	}
-
-// This is annoying but GLES is just broken on RPi and always has been.
-#ifdef BROADCOM_NATIVE_WINDOW
-	VC_RECT_T dst_rect;
-	VC_RECT_T src_rect;
-
-	dst_rect.x = 0;
-	dst_rect.y = 0;
-	dst_rect.width = mWidth;
-	dst_rect.height = mHeight;
-
-	src_rect.x = 0;
-	src_rect.y = 0;
-	src_rect.width = mWidth << 16;
-	src_rect.height = mHeight << 16;        
-
-	DISPMANX_DISPLAY_HANDLE_T dispman_display = vc_dispmanx_display_open( 0 /* LCD */);
-	DISPMANX_UPDATE_HANDLE_T dispman_update = vc_dispmanx_update_start( 0 );
-
-	DISPMANX_ELEMENT_HANDLE_T dispman_element = vc_dispmanx_element_add(
-			dispman_update,
-			dispman_display,
-			0,&dst_rect,
-			0,&src_rect,
-			DISPMANX_PROTECTION_NONE,
-			nullptr,nullptr,
-			DISPMANX_NO_ROTATE);
-
-	mPlatform->mNativeWindow.element = dispman_element;
-	mPlatform->mNativeWindow.width = mWidth;
-	mPlatform->mNativeWindow.height = mHeight;
-	vc_dispmanx_update_submit_sync( dispman_update );
-	mPlatform->mSurface = eglCreateWindowSurface(mPlatform->mDisplay,mPlatform->mConfig,&mPlatform->mNativeWindow,0);
-#else
-	mPlatform->mSurface = eglCreateWindowSurface(mPlatform->mDisplay,mPlatform->mConfig,mPlatform->mNativeWindow,0);
-#endif //BROADCOM_NATIVE_WINDOW
-
-
-	CHECK_OGL_ERRORS();
-	eglMakeCurrent(mPlatform->mDisplay, mPlatform->mSurface, mPlatform->mSurface, mPlatform->mContext );
-	eglQuerySurface(mPlatform->mDisplay, mPlatform->mSurface,EGL_WIDTH,  &mWidth);
-	eglQuerySurface(mPlatform->mDisplay, mPlatform->mSurface,EGL_HEIGHT, &mHeight);
-	CHECK_OGL_ERRORS();
-#endif //#ifdef PLATFORM_GLES
-}
-
 void GLES::SetRenderingDefaults()
 {
-	eglSwapInterval(mPlatform->mDisplay,1);
-	glColorMask(EGL_TRUE,EGL_TRUE,EGL_TRUE,EGL_FALSE);// Have to mask out alpha as some systems (RPi show the terminal behind)
-
-	glViewport(0, 0, (GLsizei)mWidth, (GLsizei)mHeight);
+	glViewport(0, 0, (GLsizei)mPhysical.Width, (GLsizei)mPhysical.Height);
 	glDepthRangef(0.0f,1.0f);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-	SetFrustum2D();
-
-	glDisable(GL_DEPTH_TEST);
-	glDepthFunc(GL_ALWAYS);
-	glDepthMask(false);
+	Begin2D();
 
 	// Always cull, because why not. :) Make code paths simple.
 	glEnable(GL_CULL_FACE);
@@ -2048,7 +2282,7 @@ void GLES::SetRenderingDefaults()
 
 void GLES::BuildShaders()
 {
-	const char* ColourOnly_VS = R"(
+	const char* ColourOnly2D_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
@@ -2060,7 +2294,7 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	const char *ColourOnly_PS = R"(
+	const char *ColourOnly2D_PS = R"(
 		varying vec4 v_col;
 		void main(void)
 		{
@@ -2068,9 +2302,9 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	mShaders.ColourOnly = std::make_unique<GLShader>("ColourOnly",ColourOnly_VS,ColourOnly_PS,mVerbose);
+	mShaders.ColourOnly2D = std::make_unique<GLShader>("ColourOnly2D",ColourOnly2D_VS,ColourOnly2D_PS);
 
-	const char* TextureColour_VS = R"(
+	const char* TextureColour2D_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
@@ -2085,7 +2319,7 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	const char *TextureColour_PS = R"(
+	const char *TextureColour2D_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
@@ -2095,9 +2329,9 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	mShaders.TextureColour = std::make_unique<GLShader>("TextureColour",TextureColour_VS,TextureColour_PS,mVerbose);
+	mShaders.TextureColour2D = std::make_unique<GLShader>("TextureColour2D",TextureColour2D_VS,TextureColour2D_PS);
 
-	const char* TextureAlphaOnly_VS = R"(
+	const char* TextureAlphaOnly2D_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
@@ -2112,19 +2346,19 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	const char *TextureAlphaOnly_PS = R"(
+	const char *TextureAlphaOnly2D_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
 		void main(void)
 		{
-			gl_FragColor = v_col * texture2D(u_tex0,v_tex0).aaaa;
+			gl_FragColor = vec4(v_col.rgb,texture2D(u_tex0,v_tex0).a);
 		}
 	)";
 
-	mShaders.TextureAlphaOnly = std::make_unique<GLShader>("TextureAlphaOnly",TextureAlphaOnly_VS,TextureAlphaOnly_PS,mVerbose);
+	mShaders.TextureAlphaOnly2D = std::make_unique<GLShader>("TextureAlphaOnly2D",TextureAlphaOnly2D_VS,TextureAlphaOnly2D_PS);
 	
-	const char* SpriteShader_VS = R"(
+	const char* SpriteShader2D_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform mat4 u_trans;
 		uniform vec4 u_global_colour;
@@ -2140,7 +2374,7 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	const char *SpriteShader_PS = R"(
+	const char *SpriteShader2D_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
@@ -2150,9 +2384,9 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	mShaders.SpriteShader = std::make_unique<GLShader>("SpriteShader",SpriteShader_VS,SpriteShader_PS,mVerbose);
+	mShaders.SpriteShader2D = std::make_unique<GLShader>("SpriteShader2D",SpriteShader2D_VS,SpriteShader2D_PS);
 
-	const char* QuadBatchShader_VS = R"(
+	const char* QuadBatchShader2D_VS = R"(
 		uniform mat4 u_proj_cam;
 		uniform vec4 u_global_colour;
 		attribute vec4 a_xyz;
@@ -2193,7 +2427,7 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	const char *QuadBatchShader_PS = R"(
+	const char *QuadBatchShader2D_PS = R"(
 		varying vec4 v_col;
 		varying vec2 v_tex0;
 		uniform sampler2D u_tex0;
@@ -2203,25 +2437,79 @@ void GLES::BuildShaders()
 		}
 	)";
 
-	mShaders.QuadBatchShader = std::make_unique<GLShader>("QuadBatchShader",QuadBatchShader_VS,QuadBatchShader_PS,mVerbose);
+	mShaders.QuadBatchShader2D = std::make_unique<GLShader>("QuadBatchShader2D",QuadBatchShader2D_VS,QuadBatchShader2D_PS);
+
+
+	const char* ColourOnly3D_VS = R"(
+		uniform mat4 u_proj_cam;
+		uniform mat4 u_trans;
+		uniform vec4 u_global_colour;		
+		attribute vec4 a_xyz;
+		attribute vec4 a_col;
+		varying vec4 v_col;
+		void main(void)
+		{
+			v_col = u_global_colour * a_col;
+			gl_Position = u_proj_cam * (u_trans * a_xyz);
+		}
+	)";
+
+	const char *ColourOnly3D_PS = R"(
+		varying vec4 v_col;
+		void main(void)
+		{
+			gl_FragColor = v_col;
+		}
+	)";
+
+	mShaders.ColourOnly3D = std::make_unique<GLShader>("ColourOnly3D",ColourOnly3D_VS,ColourOnly3D_PS);	
+
+	const char* TextureOnly3D_VS = R"(
+		uniform mat4 u_proj_cam;
+		uniform mat4 u_trans;
+		uniform vec4 u_global_colour;		
+		attribute vec4 a_xyz;
+		attribute vec2 a_uv0;
+		varying vec4 v_col;
+		varying vec2 v_tex0;
+		void main(void)
+		{
+			v_col = u_global_colour;
+			v_tex0 = a_uv0;
+			gl_Position = u_proj_cam * (u_trans * a_xyz);
+		}
+	)";
+
+	const char *TextureOnly3D_PS = R"(
+		varying vec4 v_col;
+		varying vec2 v_tex0;
+		uniform sampler2D u_tex0;
+		void main(void)
+		{
+			gl_FragColor = v_col * texture2D(u_tex0,v_tex0);
+		}
+	)";
+
+	mShaders.TextureOnly3D = std::make_unique<GLShader>("TextureOnly3D",TextureOnly3D_VS,TextureOnly3D_PS);	
+
 }
 
 void GLES::SelectAndEnableShader(uint32_t pTexture,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
-	assert(mShaders.TextureAlphaOnly);
-	assert(mShaders.TextureColour);
-	assert(mShaders.ColourOnly);
+	assert(mShaders.TextureAlphaOnly2D);
+	assert(mShaders.TextureColour2D);
+	assert(mShaders.ColourOnly2D);
 
-	TinyShader aShader = mShaders.ColourOnly;
+	TinyShader aShader = mShaders.ColourOnly2D;
 	if( pTexture > 0 )
 	{
 		if( mTextures.at(pTexture)->mFormat == TextureFormat::FORMAT_ALPHA )
 		{
-			aShader = mShaders.TextureAlphaOnly;
+			aShader = mShaders.TextureAlphaOnly2D;
 		}
 		else
 		{
-			aShader = mShaders.TextureColour;
+			aShader = mShaders.TextureColour2D;
 		}
 	}
 
@@ -2238,11 +2526,9 @@ void GLES::EnableShader(TinyShader pShader)
 	assert( pShader );
 	if( mShaders.CurrentShader != pShader )
 	{
-//		VERBOSE_MESSAGE("Enabling shader " << pShader->mName << " in frame " << mDiagnostics.frameNumber );
 		mShaders.CurrentShader = pShader;
 		pShader->Enable(mMatrices.projection);
 		pShader->SetTransform(mMatrices.transform);
-		CHECK_OGL_ERRORS();
 	}
 }
 
@@ -2286,6 +2572,7 @@ void GLES::BuildDebugTexture()
 
 void GLES::BuildPixelFontTexture()
 {
+	VERBOSE_MESSAGE("Creating pixel font texture");
 	// This is alpha 4bits per pixel data. So we need to pad it out.
 	uint8_t* pixels = mWorkBuffers->scratchRam.Restart(256*256);
 	int n = 0;
@@ -2320,11 +2607,14 @@ void GLES::InitFreeTypeFont()
 
 void GLES::AllocateQuadBuffers()
 {
+	VERBOSE_MESSAGE("Creating quad buffers");
 	// Fill quad index buffer.
 	const size_t numIndices = mQuadBatch.IndicesPerQuad * mQuadBatch.MaxQuads;
 	const size_t sizeofQuadIndexBuffer = sizeof(uint16_t) * numIndices;
 	uint16_t* idx = (uint16_t*)mWorkBuffers->scratchRam.Restart(sizeofQuadIndexBuffer);
+#ifdef	DEBUG_BUILD
 	const uint16_t* idx_end = idx + numIndices;
+#endif
 	uint16_t baseIndex = 0;
 	for( size_t n = 0 ; n < mQuadBatch.MaxQuads ; n++, baseIndex += 4, idx += mQuadBatch.IndicesPerQuad )
 	{
@@ -2337,6 +2627,7 @@ void GLES::AllocateQuadBuffers()
 		idx[4] = 2 + baseIndex;
 		idx[5] = 3 + baseIndex;
 	}
+
 	glGenBuffers(1,&mQuadBatch.IndicesBuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,mQuadBatch.IndicesBuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeofQuadIndexBuffer,mWorkBuffers->scratchRam.Data(),GL_STATIC_DRAW);
@@ -2347,7 +2638,9 @@ void GLES::AllocateQuadBuffers()
 	const size_t numberOfVectors = mQuadBatch.VerticesPerQuad * mQuadBatch.MaxQuads;
 	const size_t sizeofQuadVertBuffer = sizeof(Vec2Db) * numberOfVectors;
 	Vec2Db* v = (Vec2Db*)mWorkBuffers->scratchRam.Restart(sizeofQuadVertBuffer);
+#ifdef	DEBUG_BUILD
 	const Vec2Db* v_end = v + numberOfVectors;
+#endif
 	for( size_t n = 0 ; n < mQuadBatch.MaxQuads ; n++, v += mQuadBatch.VerticesPerQuad )
 	{
 		assert( v + mQuadBatch.VerticesPerQuad <= v_end );
@@ -2369,6 +2662,7 @@ void GLES::AllocateQuadBuffers()
 	glBindBuffer(GL_ARRAY_BUFFER,mQuadBatch.VerticesBuffer);
 	glBufferData(GL_ARRAY_BUFFER,sizeofQuadVertBuffer,mWorkBuffers->scratchRam.Data(),GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER,0);
+
 	CHECK_OGL_ERRORS();
 }
 
@@ -2379,39 +2673,14 @@ void GLES::VertexPtr(int pNum_coord, uint32_t pType,const void* pPointer)
 		THROW_MEANINGFUL_EXCEPTION("VertexPtr passed invalid value for pNum_coord, must be 2 or 3 got " + std::to_string(pNum_coord));
 	}
 
-	return SetUserSpaceStreamPtr((GLuint)StreamIndex::VERTEX,pNum_coord,pType,pPointer);
-}
-
-void GLES::TexCoordPtr(int pNum_coord, uint32_t pType,const void* pPointer)
-{
-	return SetUserSpaceStreamPtr((GLuint)StreamIndex::TEXCOORD,pNum_coord,pType,pPointer);
-}
-
-void GLES::ColourPtr(int pNum_coord,const uint8_t* pPointer)
-{
-	if(pNum_coord < 3 || pNum_coord > 4)
-	{
-		THROW_MEANINGFUL_EXCEPTION("ColourPtr passed invalid value for pNum_coord, must be 3 or 4 got " + std::to_string(pNum_coord));
-	}
-
-	return SetUserSpaceStreamPtr((GLuint)StreamIndex::COLOUR,pNum_coord,GL_BYTE,pPointer);
-}
-
-void GLES::SetUserSpaceStreamPtr(uint32_t pStream,GLint pNum_coord, uint32_t pType,const void* pPointer)
-{
-
-	if( pStream != (GLuint)StreamIndex::VERTEX && pStream != (GLuint)StreamIndex::TEXCOORD && pStream != (GLuint)StreamIndex::COLOUR  )
-	{
-		THROW_MEANINGFUL_EXCEPTION("SetUserSpaceStreamPtr passed invlaid stream index " + std::to_string((int)pStream));
-	}
-
 	glVertexAttribPointer(
-				(GLuint)pStream,
+				(GLuint)StreamIndex::VERTEX,
 				pNum_coord,
 				pType,
 				pType == GL_BYTE,
 				0,pPointer);
 	CHECK_OGL_ERRORS();
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2440,18 +2709,19 @@ void GLES::CtrlHandler(int SigNum)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GLES Shader definition
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFragment,bool pVerbose) :
+GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFragment) :
 	mName(pName),
-	mVerbose(pVerbose),
 	mEnableStreamUV(strstr(pVertex," a_uv0;")),
-	mEnableStreamTrans(strstr(pVertex," a_trans;"))
+	mEnableStreamTrans(strstr(pVertex," a_trans;")),
+	mEnableStreamColour(strstr(pVertex," a_col;"))
 {
-	VERBOSE_MESSAGE("GLShader::Create: " << mName);
+	VERBOSE_SHADER_MESSAGE("Creating " << mName << " mEnableStreamUV " << mEnableStreamUV << " mEnableStreamTrans" << mEnableStreamTrans << " mEnableStreamColour" << mEnableStreamColour);
 
 	mVertexShader = LoadShader(GL_VERTEX_SHADER,pVertex);
+
 	mFragmentShader = LoadShader(GL_FRAGMENT_SHADER,pFragment);
 
-	VERBOSE_MESSAGE("vertex("<<mVertexShader<<") fragment("<<mFragmentShader<<")");
+	VERBOSE_SHADER_MESSAGE("vertex("<<mVertexShader<<") fragment("<<mFragmentShader<<")");
 
 	mShader = glCreateProgram(); // create empty OpenGL Program
 	CHECK_OGL_ERRORS();
@@ -2461,11 +2731,12 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 
 	glAttachShader(mShader, mFragmentShader); // add the fragment shader to program
 	CHECK_OGL_ERRORS();
+
 	//Set the input stream numbers.
 	//Has to be done before linking.
 	BindAttribLocation((int)StreamIndex::VERTEX, "a_xyz");
 	BindAttribLocation((int)StreamIndex::TEXCOORD, "a_uv0");
-//	BindAttribLocation((int)StreamIndex::COLOUR, "a_col");
+	BindAttribLocation((int)StreamIndex::COLOUR, "a_col");
 	BindAttribLocation((int)StreamIndex::TRANSFORM, "a_trans");
 
 	glLinkProgram(mShader); // creates OpenGL program executables
@@ -2495,7 +2766,7 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 		THROW_MEANINGFUL_EXCEPTION(error);
 	}
 
-	VERBOSE_MESSAGE("Shader: " << mName << " Compiled ok");
+	VERBOSE_SHADER_MESSAGE("Shader " << mName << " Compiled ok");
 
 	//Get the bits for the variables in the shader.
 	mUniforms.proj_cam = GetUniformLocation("u_proj_cam");
@@ -2505,11 +2776,14 @@ GLShader::GLShader(const std::string& pName,const char* pVertex, const char* pFr
 
 
 	glUseProgram(0);
+#ifdef VERBOSE_SHADER_BUILD
+	gCurrentShaderName = "";
+#endif
 }
 
 GLShader::~GLShader()
 {
-	VERBOSE_MESSAGE("Deleting shader " << mName << " " << mShader);
+	VERBOSE_SHADER_MESSAGE("Deleting shader " << mName << " " << mShader);
 	
 	glDeleteShader(mVertexShader);
 	CHECK_OGL_ERRORS();
@@ -2529,10 +2803,10 @@ int GLShader::GetUniformLocation(const char* pName)
 
 	if( location < 0 )
 	{
-		VERBOSE_MESSAGE("Shader: " << mName << " Failed to find UniformLocation " << pName);
+		VERBOSE_SHADER_MESSAGE( mName << " Failed to find UniformLocation " << pName);
 	}
 
-	VERBOSE_MESSAGE("Shader: " << mName << " GetUniformLocation(" << pName << ") == " << location);
+	VERBOSE_SHADER_MESSAGE( mName << " GetUniformLocation(" << pName << ") == " << location);
 
 	return location;
 
@@ -2542,12 +2816,15 @@ void GLShader::BindAttribLocation(int location,const char* pName)
 {
 	glBindAttribLocation(mShader, location,pName);
 	CHECK_OGL_ERRORS();
-	VERBOSE_MESSAGE("Shader: " << mName << " AttribLocation("<< pName << "," << location << ")");
+	VERBOSE_SHADER_MESSAGE( mName << " AttribLocation("<< pName << "," << location << ")");
 }
 
 void GLShader::Enable(const float projInvcam[4][4])
 {
-//	VERBOSE_MESSAGE("shader: " << mName << " Enabling shader " << mShader );
+#ifdef VERBOSE_SHADER_BUILD
+	gCurrentShaderName = mName;
+#endif
+
 	assert(mShader);
     glUseProgram(mShader);
     CHECK_OGL_ERRORS();
@@ -2572,6 +2849,16 @@ void GLShader::Enable(const float projInvcam[4][4])
 	{
 		glDisableVertexAttribArray((int)StreamIndex::TRANSFORM);
 	}
+
+	if( mEnableStreamColour )
+	{
+		glEnableVertexAttribArray((int)StreamIndex::COLOUR);
+	}
+	else
+	{
+		glDisableVertexAttribArray((int)StreamIndex::COLOUR);
+	}
+	
 
 
     CHECK_OGL_ERRORS();
@@ -2617,6 +2904,12 @@ int GLShader::LoadShader(int type, const char* shaderCode)
 	// or a fragment shader type (GLES20.GL_FRAGMENT_SHADER)
 	int shaderFrag = glCreateShader(type);
 
+	// If we're GLES system we need to add "precision highp float"
+#ifdef PLATFORM_DRM_EGL
+	const std::string glesShaderCode= std::string("precision highp float; ") + shaderCode;
+	shaderCode = glesShaderCode.c_str();
+#endif
+
 	// add the source code to the shader and compile it
 	glShaderSource(shaderFrag,1,&shaderCode,NULL);
 	glCompileShader(shaderFrag);
@@ -2657,6 +2950,16 @@ void ReadOGLErrors(const char *pSource_file_name,int pLine_number)
 		return;
 	}
 
+#ifdef VERBOSE_SHADER_BUILD
+	if( gCurrentShaderName.size() )
+	{
+		VERBOSE_SHADER_MESSAGE("Current shader: " << gCurrentShaderName );
+	}
+	else
+	{
+		VERBOSE_SHADER_MESSAGE("No shader selected: " << gCurrentShaderName );
+	}
+#endif
 	std:: cerr << "\n**********************\nline " << pLine_number << " file " << pSource_file_name << "\n";
 	while(gl_error_code != GL_NO_ERROR)
 	{
@@ -2701,9 +3004,8 @@ void ReadOGLErrors(const char *pSource_file_name,int pLine_number)
  * One note, I don't do localisation. ASCII here. If you need all the characters then maybe add yourself or use a commercial grade GL engine. :) localisation is a BIG job!
  * Rendering is done in the GL code, this class is more of just a container.
  */
-FreeTypeFont::FreeTypeFont(FT_Face pFontFace,int pPixelHeight,bool pVerbose) :
+FreeTypeFont::FreeTypeFont(FT_Face pFontFace,int pPixelHeight) :
 	mFontName(pFontFace->family_name),
-	mVerbose(pVerbose),
 	mFace(pFontFace)
 {
 	if( FT_Set_Pixel_Sizes(mFace,0,pPixelHeight) == 0 )
@@ -2939,14 +3241,326 @@ void FreeTypeFont::BuildTexture(
 #endif //#ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Direct Render Manager layer implementation
+// DRM Direct Render Manager hidden definition.
+// Used for more model systems like RPi4 and proper GL / GLES implementations.
+#ifdef PLATFORM_DRM_EGL
+PlatformInterface::PlatformInterface()
+{
+	if( drmAvailable() == 0 )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Kernel DRM driver not loaded");
+	}
+
+	// Lets go searching for a connected direct render manager device.
+	// Later I could add a param to allow user to specify this.
+	drmDevicePtr devices[8] = { NULL };
+	int num_devices = drmGetDevices2(0, devices, 8);
+	if (num_devices < 0)
+	{
+		THROW_MEANINGFUL_EXCEPTION("drmGetDevices2 failed: " + std::string(strerror(-num_devices)) );
+	}
+
+	mDRMFile = -1;
+	for( int n = 0 ; n < num_devices && mDRMFile < 0 ; n++ )
+	{
+		if( devices[n]->available_nodes&(1 << DRM_NODE_PRIMARY) )
+		{
+			// See if we can open it...
+			VERBOSE_MESSAGE("Trying DRM device " << std::string(devices[n]->nodes[DRM_NODE_PRIMARY]));
+			mDRMFile = open(devices[n]->nodes[DRM_NODE_PRIMARY], O_RDWR);
+		}
+	}
+	drmFreeDevices(devices, num_devices);
+
+	if( mDRMFile < 0 )
+	{
+		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed to find and open direct rendering manager device" );
+	}
+	drmModeRes* resources = drmModeGetResources(mDRMFile);
+	if( resources == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed get mode resources");
+	}
+
+	drmModeConnector* connector = nullptr;
+	for(int n = 0 ; n < resources->count_connectors && connector == nullptr ; n++ )
+	{
+		connector = drmModeGetConnector(mDRMFile, resources->connectors[n]);
+		if( connector && connector->connection != DRM_MODE_CONNECTED )
+		{// Not connected, check next one...
+			drmModeFreeConnector(connector);
+			connector = nullptr;
+		}
+	}
+	if( connector == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed get mode connector");
+	}
+	mConnector = connector;
+
+	for( int i = 0 ; i < connector->count_modes && mModeInfo == nullptr ; i++ )
+	{
+		if( connector->modes[i].type & DRM_MODE_TYPE_PREFERRED )
+		{// DRM really wants us to use this, this should be the best option for LCD displays.
+			mModeInfo = &connector->modes[i];
+			VERBOSE_MESSAGE("Preferred screen mode found");
+		}
+	}
+
+	if( GetWidth() == 0 || GetHeight() == 0 )
+	{
+		THROW_MEANINGFUL_EXCEPTION("DirectRenderManager: Failed to find screen mode");
+	}
+
+	// Now grab the encoder, we need it for the CRTC ID. This is display connected to the conector.
+	for( int n = 0 ; n < resources->count_encoders && mModeEncoder == nullptr ; n++ )
+	{
+		drmModeEncoder *encoder = drmModeGetEncoder(mDRMFile, resources->encoders[n]);
+		if( encoder->encoder_id == connector->encoder_id )
+		{
+			mModeEncoder = encoder;
+		}
+		else
+		{
+			drmModeFreeEncoder(encoder);
+		}
+	}
+
+	drmModeFreeResources(resources);	
+}
+
+PlatformInterface::~PlatformInterface()
+{
+	VERBOSE_MESSAGE("Destroying context");
+	eglDestroyContext(mDisplay, mContext);
+    eglDestroySurface(mDisplay, mSurface);
+    eglTerminate(mDisplay);
+
+	VERBOSE_MESSAGE("Cleaning up DRM");
+	gbm_surface_destroy(mNativeWindow);
+	gbm_device_destroy(mBufferManager);
+	drmModeFreeEncoder(mModeEncoder);
+	drmModeFreeConnector(mConnector);
+	close(mDRMFile);
+}
+
+void PlatformInterface::InitialiseDisplay()
+{
+	VERBOSE_MESSAGE("Calling DRM InitialiseDisplay");
+
+	mBufferManager = gbm_create_device(mDRMFile);
+	mDisplay = eglGetDisplay(mBufferManager);
+	if( !mDisplay )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Couldn\'t open the EGL default display");
+	}
+
+	//Now we have a display lets initialize it.
+	EGLint majorVersion,minorVersion;
+	if( !eglInitialize(mDisplay, &majorVersion, &minorVersion) )
+	{
+		THROW_MEANINGFUL_EXCEPTION("eglInitialize() failed");
+	}
+	CHECK_OGL_ERRORS();
+	VERBOSE_MESSAGE("EGL version " << majorVersion << "." << minorVersion);
+	eglBindAPI(EGL_OPENGL_ES_API);
+	CHECK_OGL_ERRORS();
+
+	FindEGLConfiguration();
+
+	//We have our display and have chosen the config so now we are ready to create the rendering context.
+	VERBOSE_MESSAGE("Creating context");
+	EGLint ai32ContextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+	mContext = eglCreateContext(mDisplay,mConfig,EGL_NO_CONTEXT,ai32ContextAttribs);
+	if( !mContext )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Failed to get a rendering context");
+	}
+
+	mNativeWindow = gbm_surface_create(mBufferManager,GetWidth(), GetHeight(),mFOURCC_Format,GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+	mSurface = eglCreateWindowSurface(mDisplay,mConfig,mNativeWindow,0);
+	CHECK_OGL_ERRORS();
+
+	eglMakeCurrent(mDisplay, mSurface, mSurface, mContext );
+	CHECK_OGL_ERRORS();
+}
+
+void PlatformInterface::FindEGLConfiguration()
+{
+	int depths_32_to_16[3] = {32,24,16};
+
+	for( int c = 0 ; c < 3 ; c++ )
+	{
+		const EGLint attrib_list[] =
+		{
+			EGL_RED_SIZE,			8,
+			EGL_GREEN_SIZE,			8,
+			EGL_BLUE_SIZE,			8,
+			EGL_ALPHA_SIZE,			8,
+			EGL_DEPTH_SIZE,			depths_32_to_16[c],
+			EGL_STENCIL_SIZE,		EGL_DONT_CARE,
+			EGL_RENDERABLE_TYPE,	EGL_OPENGL_ES2_BIT,
+			EGL_NONE,				EGL_NONE
+		};
+
+		EGLint numConfigs;
+		if( !eglChooseConfig(mDisplay,attrib_list,&mConfig,1, &numConfigs) )
+		{
+			THROW_MEANINGFUL_EXCEPTION("Error: eglGetConfigs() failed");
+		}
+
+		if( numConfigs > 0 )
+		{
+			EGLint bufSize,r,g,b,a,z,s = 0;
+
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_BUFFER_SIZE,&bufSize);
+
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_RED_SIZE,&r);
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_GREEN_SIZE,&g);
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_BLUE_SIZE,&b);
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_ALPHA_SIZE,&a);
+
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_DEPTH_SIZE,&z);
+			eglGetConfigAttrib(mDisplay,mConfig,EGL_STENCIL_SIZE,&s);
+
+			CHECK_OGL_ERRORS();
+
+			// Get the format we need DRM buffers to match.
+			if( r == 8 && g == 8 && b == 8 )
+			{
+				if( a == 8 )
+				{
+					mFOURCC_Format = DRM_FORMAT_ARGB8888;
+				}
+				else
+				{
+					mFOURCC_Format = DRM_FORMAT_RGB888;
+				}
+			}
+			else
+			{
+				mFOURCC_Format = DRM_FORMAT_RGB565;
+			}
+
+			VERBOSE_MESSAGE("Config found:");
+			VERBOSE_MESSAGE("\tFrame buffer size " << bufSize);
+			VERBOSE_MESSAGE("\tRGBA " << r << "," << g << "," << b << "," << a);
+			VERBOSE_MESSAGE("\tZBuffer " << z+s << "Z " << z << "S " << s);
+
+			return;// All good :)
+		}
+	}
+	THROW_MEANINGFUL_EXCEPTION("No matching EGL configs found");
+}
+
+static void drm_fb_destroy_callback(struct gbm_bo *bo, void *data)
+{
+	uint32_t* user_data = (uint32_t*)data;
+	delete user_data;
+}
+
+void PlatformInterface::UpdateCurrentBuffer()
+{
+	assert(mNativeWindow);
+	mCurrentFrontBufferObject = gbm_surface_lock_front_buffer(mNativeWindow);
+	if( mCurrentFrontBufferObject == nullptr )
+	{
+		THROW_MEANINGFUL_EXCEPTION("Failed to lock front buffer from native window.");
+	}
+
+	uint32_t* user_data = (uint32_t*)gbm_bo_get_user_data(mCurrentFrontBufferObject);
+	if( user_data == nullptr )
+	{
+		// Annoying JIT allocation. Should only happen twice.
+		// Should look at removing the need for the libgbm
+
+		const uint32_t handles[4] = {gbm_bo_get_handle(mCurrentFrontBufferObject).u32,0,0,0};
+		const uint32_t strides[4] = {gbm_bo_get_stride(mCurrentFrontBufferObject),0,0,0};
+		const uint32_t offsets[4] = {0,0,0,0};
+
+		user_data = new uint32_t;
+		int ret = drmModeAddFB2(mDRMFile, GetWidth(), GetHeight(), mFOURCC_Format,handles, strides, offsets, user_data, 0);
+		if (ret)
+		{
+			THROW_MEANINGFUL_EXCEPTION("failed to create frame buffer " + std::string(strerror(ret)) + " " + std::string(strerror(errno)) );
+		}
+		gbm_bo_set_user_data(mCurrentFrontBufferObject,user_data, drm_fb_destroy_callback);
+		VERBOSE_MESSAGE("JIT allocating drm frame buffer " << (*user_data));
+	}
+	mCurrentFrontBufferID = *user_data;
+}
+
+static void page_flip_handler(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
+{
+	/* suppress 'unused parameter' warnings */
+	(void)fd, (void)frame, (void)sec, (void)usec;
+	*((bool*)data) = 0;	// Set flip flag to false
+}
+
+void PlatformInterface::SwapBuffers()
+{
+	eglSwapBuffers(mDisplay,mSurface);
+
+	UpdateCurrentBuffer();
+
+	if( mIsFirstFrame )
+	{
+		mIsFirstFrame = false;
+		assert(mModeEncoder);
+		assert(mConnector);
+		assert(mModeInfo);
+
+		int ret = drmModeSetCrtc(mDRMFile, mModeEncoder->crtc_id, mCurrentFrontBufferID, 0, 0,&mConnector->connector_id, 1, mModeInfo);
+		if (ret)
+		{
+			THROW_MEANINGFUL_EXCEPTION("drmModeSetCrtc failed to set mode" + std::string(strerror(ret)) + " " + std::string(strerror(errno)) );
+		}
+	}
+
+	// Using DRM_MODE_PAGE_FLIP_EVENT as some devices don't support DRM_MODE_PAGE_FLIP_ASYNC.
+	bool waiting_for_flip = 1;
+	int ret = drmModePageFlip(mDRMFile, mModeEncoder->crtc_id, mCurrentFrontBufferID,DRM_MODE_PAGE_FLIP_EVENT,&waiting_for_flip);
+	if (ret)
+	{
+		THROW_MEANINGFUL_EXCEPTION("drmModePageFlip failed to queue page flip " + std::string(strerror(errno)) );
+	}
+
+	while (waiting_for_flip)
+	{
+		drmEventContext evctx =
+		{
+			.version = 2,
+			.page_flip_handler = page_flip_handler,
+		};
+
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(0, &fds);
+		FD_SET(mDRMFile, &fds);
+
+		ret = select(mDRMFile + 1, &fds, NULL, NULL, NULL);
+		if (ret < 0)
+		{
+			THROW_MEANINGFUL_EXCEPTION("PlatformInterface::SwapBuffer select on DRM file failed to queue page flip " + std::string(strerror(errno)));
+		}
+
+		drmHandleEvent(mDRMFile, &evctx);
+	}
+
+	gbm_surface_release_buffer(mNativeWindow,mCurrentFrontBufferObject);
+}
+
+#endif //#ifdef PLATFORM_DRM_EGL
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // PLATFORM_X11_GL Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef PLATFORM_X11_GL
 /**
  * @brief The TinyGLES codebase is expected to be used for a system not running X11. But to aid development there is an option to 'emulate' a frame buffer with an X11 window.
  */
-PlatformInterface::PlatformInterface(bool pVerbose):
-	mVerbose(pVerbose),
+PlatformInterface::PlatformInterface():
 	mXDisplay(NULL),
 	mWindow(0),
 	mWindowReady(false)
@@ -2970,7 +3584,7 @@ PlatformInterface::~PlatformInterface()
 	mXDisplay = nullptr;
 }
 
-void PlatformInterface::Create()
+void PlatformInterface::InitialiseDisplay()
 {
 	VERBOSE_MESSAGE("Making X11 window for GLES emulation");
 
@@ -3139,7 +3753,7 @@ bool PlatformInterface::ProcessX11Events(tinygles::GLES::SystemEventHandler pEve
 	return false;
 }
 
-void PlatformInterface::RedrawWindow()
+void PlatformInterface::SwapBuffers()
 {
 	assert( mWindowReady );
 	if( mXDisplay == nullptr )
