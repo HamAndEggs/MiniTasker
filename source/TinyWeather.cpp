@@ -22,7 +22,7 @@
 #include <assert.h>
 
 #include <stdio.h>
-#include <curl/curl.h>
+#include <curl/curl.h> //sudo apt install libcurl4-openssl-dev
 
 #include "TinyWeather.h"
 #include "TinyJson.h"
