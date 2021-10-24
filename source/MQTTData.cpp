@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <iostream>
+#include <unistd.h>
 
 void MQTTData::CallbackConnected(struct mosquitto *mosq, void *userdata, int result)
 {
@@ -94,22 +95,20 @@ MQTTData::MQTTData(const char* pHost,int pPort,
         mosquitto_message_callback_set(mMQTT, CallbackMessage);
         mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
 
-        if(mosquitto_connect(mMQTT, pHost, pPort, keepalive) == MOSQ_ERR_SUCCESS )
+        while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
         {
-            if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
-            {
-                mOk = true;
-            }
-            else
-            {
-                std::cout << "MQTT Init Error: Failed to start networking loop\n";
-            }
+            // Try again in a bit.
+            sleep(5);
+        }
+
+        // Now start the loop.
+        if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
+        {
+            mOk = true;
         }
         else
         {
-            std::cout << "MQTT Init Error: Failed to connect\n";
-            
-            fprintf(stderr, "Unable to connect.\n");
+            std::cout << "MQTT Init Error: Failed to start networking loop\n";
         }
     }
     else
