@@ -122,10 +122,10 @@ int main(int argc, char *argv[])
         outsideTemperatureDelivered = std::time(nullptr);
     });
 
-    if( MQTT.GetOK() == false )
+    while( MQTT.GetOK() == false )
     {
-        std::cerr << "Failed to start MQTT\n";
-       	return EXIT_FAILURE;
+        std::cerr << "Waiting for MQTT to start\n";
+        sleep(1);
     }
 
     while( GL.BeginFrame() )
