@@ -35,8 +35,8 @@ private:
     tinygles::GLES& GL;
     i2c::SGP30 indoorAirQuality;
     int mResult = i2c::SGP30::READING_RESULT_WARM_UP;
-    uint16_t mECO2 = 1200;
-    uint16_t mTVOC = 12;
+    uint16_t mECO2 = 0;
+    uint16_t mTVOC = 0;
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H

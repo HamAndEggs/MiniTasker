@@ -50,7 +50,19 @@ void DisplayAirQuality::Update(int pX,int pY)
 
     pX += 20;
     pY += 40;
-    GL.FontPrintf(mFont,pX,pY,"eCO2: %d",mECO2);
-    pY += 40;
-    GL.FontPrintf(mFont,pX,pY,"tVOC: %d",mTVOC);
+    if( mResult == i2c::SGP30::READING_RESULT_WARM_UP )
+    {
+        GL.FontPrint(mFont,pX,pY,"Start up");
+    }
+    else if( mResult == i2c::SGP30::READING_RESULT_VALID )
+    {
+        GL.FontPrintf(mFont,pX,pY,"eCO2: %d",mECO2);
+        pY += 40;
+        GL.FontPrintf(mFont,pX,pY,"tVOC: %d",mTVOC);
+    }
+    else
+    {
+        GL.FontPrint(mFont,pX,pY,"Error");
+    }
+
 }
