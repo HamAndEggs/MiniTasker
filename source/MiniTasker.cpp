@@ -21,12 +21,11 @@
 #include "DisplayTask.h"
 #include "DisplayWeather.h"
 #include "DisplaySystemStatus.h"
+#include "DisplayAirQuality.h"
 
 #include "TheWeather.h"
 #include "Icons.h"
-
 #include "TinyPNG.h"
-
 #include "MQTTData.h"
 
 #include <cstdlib>
@@ -99,9 +98,10 @@ int main(int argc, char *argv[])
     Icons someIcons(GL,path);
     DisplayWeather theWeather(GL,path);
     DisplaySystemStatus systemStatus(GL,path);
-    
-
+    DisplayAirQuality theAirQuality(GL,path);
     DisplayClock theClock(GL,path);
+
+
     theClock.SetForground(255,255,255);
 
     TheWeather weatherData(theTasks.GetWeatherApiKey());
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to start MQTT\n";
        	return EXIT_FAILURE;
     }
-
+    
     while( GL.BeginFrame() )
     {
         std::time_t theTimeUTC = std::time(nullptr);
@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 
         weatherData.Update(theTimeUTC);
         theClock.Update(20,20,currentTime);
+        theAirQuality.Update(430,2);
         theTasks.Update(20,450,currentTime);
 
         // draw atchal outside temperature.

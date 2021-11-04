@@ -1,15 +1,19 @@
 {
     "source_files": [
         "./source/MiniTasker.cpp",
-        "./source/DisplayClock.cpp",
-        "./source/DisplayTask.cpp",
-        "./source/DisplayWeather.cpp",
+        "./source/sgp30.cpp",
+        "./source/i2c_device.cpp",
         "./source/TheWeather.cpp",
    		"./source/TinyGLES.cpp",
    		"./source/TinyPNG.cpp",
         "./source/TinyWeather.cpp",
+        "./source/TinyTools.cpp",
         "./source/Icons.cpp",
         "./source/MQTTData.cpp",
+        "./source/DisplayClock.cpp",
+        "./source/DisplayTask.cpp",
+        "./source/DisplayWeather.cpp",
+        "./source/DisplayAirQuality.cpp",
         "./source/DisplaySystemStatus.cpp"
     ],
     "configurations": {
@@ -38,7 +42,8 @@
                 "GLESv2",
                 "EGL",
                 "gbm",
-                "drm"
+                "drm",
+                "i2c"
             ],
             "define": [
                 "NDEBUG",
@@ -50,9 +55,6 @@
         "x11": {
             "optimisation": "0",
             "debug_level": "2",
-            "warnings_as_errors": false,
-            "enable_all_warnings": true,
-            "fatal_errors": false,
             "include": [
                 "/usr/include/freetype2",
                 "./"
@@ -66,7 +68,8 @@
                 "freetype",
                 "curl",
                 "z",
-                "mosquitto"
+                "mosquitto",
+                "i2c"
             ],
             "define": [
                 "DEBUG_BUILD",
