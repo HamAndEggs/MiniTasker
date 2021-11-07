@@ -40,12 +40,8 @@ public:
 
     /**
      * @brief Renders a box with the temprature in it.
-     * 
-     * @param pY 
-     * @param pTemperature
-     * @param pIsOnline True if the data is valid, false if it's a bit too old. Just changes the render colour.
      */
-    int RenderTemperature(int pX,int pY,const std::string& pTemperature,bool pIsOnline = true);
+    int RenderTemperature(int pX,int pY,const std::string& pOutsideTemperature);
 
 private:
     const uint32_t mIconFont = 0;

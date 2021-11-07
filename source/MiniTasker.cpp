@@ -38,6 +38,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -107,7 +108,6 @@ int main(int argc, char *argv[])
     TheWeather weatherData(theTasks.GetWeatherApiKey());
 
     // Get our MQTT data stream so we can collect stuff from other systems.
-    const auto OUTSIDE_SENSOR_TIMEOUT_ALARM = (20*60); //Warn when nothing data for 20 minutes 
     std::map<std::string,std::string> outsideData;
     std::time_t outsideTemperatureDelivered = 0;
     const std::vector<std::string>& topics =
@@ -145,8 +145,18 @@ int main(int argc, char *argv[])
         theTasks.Update(20,450,currentTime);
 
         // draw atchal outside temperature.
-        int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"],(outsideTemperatureDelivered + OUTSIDE_SENSOR_TIMEOUT_ALARM > theTimeUTC));
-        theWeather.RenderTemperature(x,120,outsideData["/outside/battery"]);
+        const int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"]);
+        std::stringstream s(outsideData["/outside/battery"]);
+        int percent = 0;
+        s >> percent;
+        const int fx = x + 14;
+        const int dx = 100;
+        const int y = 184;
+        const int h = 4;
+        GL.DrawRectangle(fx,y,fx+1 + dx,y + h + 1,0,0,0);
+        GL.FillRectangle(fx,y,fx + dx,y + h,255,255,255);
+        GL.FillRectangle(fx,y,fx + percent,y + h,15,205,15);
+
 
         // Render the weather forcast.
         theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);

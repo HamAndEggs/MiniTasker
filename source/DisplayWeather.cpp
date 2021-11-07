@@ -77,13 +77,13 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
     RenderTemperature(GL.GetWidth(),pY-80,pWeather.GetCurrentTemperature());
 }
 
-int DisplayWeather::RenderTemperature(int pX,int pY,const std::string& pTemperature,bool pIsOnline)
+int DisplayWeather::RenderTemperature(int pX,int pY,const std::string& pTemperature)
 {
     const int width = 140 + ((pTemperature.size()-1)*22);
     const int x = pX - width;
     if( pTemperature.size() > 0 )
     {
-        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,255,pIsOnline?255:80,pIsOnline?255:80,130,true);
+        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,255,255,255,130,true);
         GL.FontSetColour(mTemperatureFont,0,0,0);
         GL.FontPrint(mTemperatureFont,x + 10,pY + 60,pTemperature.c_str());
     }

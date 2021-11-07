@@ -2529,7 +2529,7 @@ void GLES::BuildDebugTexture()
 	// Put some dots in so I know which way is up and if it's flipped.
 	pixels[(16*4) + (7*4) + 0] = 0xff;
 	pixels[(16*4) + (7*4) + 1] = 0x0;
-	pixels[(16*4) + (7*4) + 2] = 0x0;
+	pixels[(16*4) + (7*4) + 2] = 0x0;	
 	pixels[(16*4) + (8*4) + 0] = 0xff;
 	pixels[(16*4) + (8*4) + 1] = 0x0;
 	pixels[(16*4) + (8*4) + 2] = 0x0;
