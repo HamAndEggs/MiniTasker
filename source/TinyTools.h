@@ -3,6 +3,7 @@
  * @author Richard e Collins
  * @version 0.1
  * @date 2021-03-15
+ * https://github.com/HamAndEggs/TinyTools
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -387,6 +388,65 @@ private:
     std::condition_variable mSleeper;   //!< Used to sleep for how long asked for but also wake up if we need to exit.
     std::mutex mSleeperMutex;			//!< This is used to correctly use the condition variable.
 };
+
+/**
+ * @brief This is the ring buffer container.
+ * As long as you can grantee that only one thread is writing and one thread is reading no locks are needed.
+ * The reading and writing threads can be different.
+ * The writing thread must not call ReadNext.
+ * The reading thread must not call WriteNext.
+ * Using volatile is to force the suppression of optimisations
+ * that could otherwise occur on the counters that could break the lockless nature of the buffer.
+ */
+class LocklessRingBuffer
+{
+public:
+    /**
+     * @brief Allocates a buffer object.
+     * 
+     * @param pItemSizeof The size of each item being but into the buffer.
+     * @param pItemCount The number of items in the buffer.
+     */
+    LocklessRingBuffer(size_t pItemSizeof,size_t pItemCount);
+
+    ~LocklessRingBuffer();
+
+	/**
+	 * @brief Will state if there is data to be read or not.
+	 * 
+	 * @return true No data to be read.
+	 * @return false There is data to read.
+	 */
+	bool Empty()const{return mCurrentReadPos == mNextWritePos;}
+	
+	/**
+     * @brief Reads the next item that is in the buffer.
+	 * 
+	 * @param rItem The memory store to write the data too.
+	 * @param pBufferSize The size of the buffer we're writing too.
+	 * @return true If data was read.
+	 * @return false If the buffer is empty.
+	 */
+    bool ReadNext(void* rItem,size_t pBufferSize);
+
+    /**
+     * @brief Writes an item to the buffer.
+     * 
+     * @param pItem The item to write.
+	 * @param pBufferSize The size of the buffer we're reading.
+     * @return true if there was room to write the item, false if the buffer is full and items can not be written.
+     */
+    bool WriteNext(const void* pItem,size_t pBufferSize);
+
+private:
+    volatile int mCurrentReadPos;//!< The current item READ index in the buffer. That is mBuffer + (mCurrentReadPos * mItemSizeof)    
+    volatile int mNextWritePos;//!< The current item WRITE index in the buffer. That is mBuffer + (mNextWritePos * mItemSizeof)
+    
+    uint8_t *mBuffer;
+    size_t mItemSizeof;
+    size_t mItemCount;
+};
+
 
 };//namespace threading{
 

@@ -2529,7 +2529,7 @@ void GLES::BuildDebugTexture()
 	// Put some dots in so I know which way is up and if it's flipped.
 	pixels[(16*4) + (7*4) + 0] = 0xff;
 	pixels[(16*4) + (7*4) + 1] = 0x0;
-	pixels[(16*4) + (7*4) + 2] = 0x0;	
+	pixels[(16*4) + (7*4) + 2] = 0x0;
 	pixels[(16*4) + (8*4) + 0] = 0xff;
 	pixels[(16*4) + (8*4) + 1] = 0x0;
 	pixels[(16*4) + (8*4) + 2] = 0x0;
@@ -2586,11 +2586,9 @@ void GLES::AllocateQuadBuffers()
 	const size_t numIndices = mQuadBatch.IndicesPerQuad * mQuadBatch.MaxQuads;
 	const size_t sizeofQuadIndexBuffer = sizeof(uint16_t) * numIndices;
 	uint16_t* idx = (uint16_t*)mWorkBuffers->scratchRam.Restart(sizeofQuadIndexBuffer);
-
 #ifdef DEBUG_BUILD
 	const uint16_t* idx_end = idx + numIndices;
 #endif
-
 	uint16_t baseIndex = 0;
 	for( size_t n = 0 ; n < mQuadBatch.MaxQuads ; n++, baseIndex += 4, idx += mQuadBatch.IndicesPerQuad )
 	{
@@ -2616,8 +2614,7 @@ void GLES::AllocateQuadBuffers()
 	Vec2Db* v = (Vec2Db*)mWorkBuffers->scratchRam.Restart(sizeofQuadVertBuffer);
 #ifdef DEBUG_BUILD
 	const Vec2Db* v_end = v + numberOfVectors;
-#endif
-
+#endif	
 	for( size_t n = 0 ; n < mQuadBatch.MaxQuads ; n++, v += mQuadBatch.VerticesPerQuad )
 	{
 		assert( v + mQuadBatch.VerticesPerQuad <= v_end );

@@ -186,45 +186,52 @@ void OpenWeatherMap::Get(double pLatitude,double pLongitude,std::function<void(b
 
 	if( DownloadWeatherReport(url.str(),jsonData) )
 	{
-		// We got it, now we need to build the weather object from the json.
-		// I would have used rapid json but that is a lot of files to add to this project.
-		// My intention is for someone to beable to drop these two files into their project and continue.
-		// And so I will make my own json reader, it's easy but not the best solution.
-		tinyjson::JsonProcessor json(jsonData);
-		const tinyjson::JsonValue weather = json.GetRoot();
-
-		mTimeZone = weather.GetString("timezone");
-		mTimezoneOffset = weather.GetUInt32("timezone_offset");
-
-		// Lets build up the weather data.
-		if( weather.HasValue("current") )
+		try
 		{
-			downloadedOk = true;
-			ReadWeatherData(weather["current"],mCurrent);
-		}
+			// We got it, now we need to build the weather object from the json.
+			// I would have used rapid json but that is a lot of files to add to this project.
+			// My intention is for someone to beable to drop these two files into their project and continue.
+			// And so I will make my own json reader, it's easy but not the best solution.
+			tinyjson::JsonProcessor json(jsonData);
+			const tinyjson::JsonValue weather = json.GetRoot();
 
-		if( weather.GetArraySize("hourly") > 0 )
-		{
-			downloadedOk = true;
-			const tinyjson::JsonValue& hourly = weather["hourly"];
-			for( const auto& weather : hourly.mArray )
+			mTimeZone = weather.GetString("timezone");
+			mTimezoneOffset = weather.GetUInt32("timezone_offset");
+
+			// Lets build up the weather data.
+			if( weather.HasValue("current") )
 			{
-				// Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
-                mHourly.resize(mHourly.size()+1);
-				ReadWeatherData(weather,mHourly.back());
-			}
-		}
-
-		if( weather.GetArraySize("daily") > 0 )
-		{
-			downloadedOk = true;
-			const tinyjson::JsonValue& daily = weather["daily"];
-			for( const auto& weather : daily.mArray )
-			{
-                mDaily.resize(mDaily.size()+1);
-				ReadDailyWeatherData(weather,mDaily.back());
+				downloadedOk = true;
+				ReadWeatherData(weather["current"],mCurrent);
 			}
 
+			if( weather.GetArraySize("hourly") > 0 )
+			{
+				downloadedOk = true;
+				const tinyjson::JsonValue& hourly = weather["hourly"];
+				for( const auto& weather : hourly.mArray )
+				{
+					// Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
+					mHourly.resize(mHourly.size()+1);
+					ReadWeatherData(weather,mHourly.back());
+				}
+			}
+
+			if( weather.GetArraySize("daily") > 0 )
+			{
+				downloadedOk = true;
+				const tinyjson::JsonValue& daily = weather["daily"];
+				for( const auto& weather : daily.mArray )
+				{
+					mDaily.resize(mDaily.size()+1);
+					ReadDailyWeatherData(weather,mDaily.back());
+				}
+
+			}
+		}
+		catch(std::runtime_error &e)
+		{
+			std::cerr << "Failed to download weather: " << e.what() << "\n";
 		}
 	}
 
