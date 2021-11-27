@@ -320,7 +320,7 @@ public:
      */
 	JsonProcessor(const std::string& pJsonString,bool pFailOnDuplicateKeys = false) :
         mFailOnDuplicateKeys(pFailOnDuplicateKeys),
-        mJsonEnd(pJsonString.c_str() + pJsonString.size() + 1),
+        mJsonEnd(pJsonString.c_str() + pJsonString.size()),
         mPos(pJsonString.c_str())
     {
         mRow = mColumn = 1;
@@ -331,8 +331,8 @@ public:
         }
 
         MakeValue(mRoot); // Now lets get going. :D
-
-        if( mPos >= mJsonEnd )// Now should be at the end
+        SkipWhiteSpace();
+        if( mPos < mJsonEnd )// Now should be at the end
         {
             throw std::runtime_error("Data found after root object, invalid Json");
         }
@@ -401,10 +401,27 @@ private:
         AssertCorrectChar('{',"Start of object not found, invalid Json");
         do
         {
+            const char previousChar = mPos[0];
             NextChar();// Skip object start char or comma for more key value pairs.
+            SkipWhiteSpace();
+            // Is it an empty object?
+            if( *mPos == '}' )
+            {
+                if( previousChar == ',' )
+                {
+                    throw std::runtime_error(GetErrorPos() + "End of root object found, invalid Json. Comma with no object defined after it");
+                }
+                else
+                {
+                    NextChar();
+                    return;
+                }
+            }
+
             std::string objKey;
             ReadString(objKey);
-        // Now parse it's value.
+
+            // Now parse it's value.
             SkipWhiteSpace();
             AssertCorrectChar(':',"Json format error detected, seperator character ':'");
             NextChar();
@@ -457,15 +474,30 @@ private:
             pNewValue.mType = JsonValueType::ARRAY;
             do
             {
+                const char previousChar = mPos[0];
                 NextChar();// skip '[' or the ','
+
+                SkipWhiteSpace();
+                // Make sure there is an object next and not the end of the array.
+                if( previousChar == ',' && mPos[0] == ']' )
+                {
+                    throw std::runtime_error(GetErrorPos() + "Json format error detected, comma not follwed by a value.");
+                }
+
                 // Looks odd, but is the easiest / optimal way to reduce memory reallocations using c++14 features.
                 // The problem is that we have to make the object before adding to the vector.
                 // This means we can't use emplace_back as we don't have all that we need.
                 // I would have to duplicate the code for MakeValue for when adding to an array. And that just makes everything hard to maintain!
                 // In c++17 you can use PMR and reduce memory allocations. I may look at that.
                 // But for now this code compiles for c++11 which is good for some old systems. Remember, minimun requirements!
-                pNewValue.mArray.resize(pNewValue.mArray.size()+1);
-                MakeValue(pNewValue.mArray.back());
+
+                // Only make the value if there is one next.
+                // It is posible that this is an empty array. Rather annoying that the spec allows that.
+                if( *mPos != ']' )
+                {
+                    pNewValue.mArray.resize(pNewValue.mArray.size()+1);
+                    MakeValue(pNewValue.mArray.back());
+                }
             }while(*mPos == ',');
 
             // Check we did get to the end.
@@ -571,17 +603,36 @@ private:
         while( *mPos != '\"' )
         {
             // Did we hit the end?
-            AssertMoreData("Abrupt end to json whilst reading string");
+            AssertMoreData("Abrupt end to json whilst reading string");            
+
             // Special case, if we find a \ and then a special character code.
             if( mPos[0] == '\\' )
             {
-                if( mPos[1] == '\0' || mPos[1] == '\a' || mPos[1] == '\b' || mPos[1] == '\t' ||
-                    mPos[1] == '\n' || mPos[1] == '\v' || mPos[1] == '\f' || mPos[1] == '\r' ||
-                    mPos[1] == '\e' || mPos[1] == '\"' || mPos[1] == '\\' )
+                // Test data says \x should be a failure. For safety I agree. I may have to add an option for the user.
+                if( mPos[1] == '0' || mPos[1] == 'x' )
+                {
+                    throw std::runtime_error(std::string("Escape value \\") + mPos[1] + " not allowed " + std::string(mPos-1,20) );
+                }
+
+
+                if( mPos[1] == 'a' || mPos[1] == 'b' || mPos[1] == 't' ||
+                    mPos[1] == 'n' || mPos[1] == 'v' || mPos[1] == 'f' || mPos[1] == 'r' ||
+                    mPos[1] == 'e' || mPos[1] == '\"' || mPos[1] == '\\' )
                 {
                     NextChar();
                 }
             }
+
+            // Test for illegal characters.
+            if( mPos[0] == '\t' )
+            {
+                throw std::runtime_error(std::string("illegal character, tab not allowed ") + std::string(mPos-1,20) );
+            }
+            if( mPos[0] == '\n' )
+            {
+                throw std::runtime_error(std::string("illegal character, newline not allowed ") + std::string(mPos-1,20) );
+            }
+
             NextChar();
         }
    
@@ -613,10 +664,22 @@ private:
             throw std::runtime_error(std::string("Malformed number ") + std::string(mPos-1,20) );
         }
 
+        // Not allowed to start with a zero.
+        if( *mPos == '0' && isdigit(mPos[1]) )
+        {
+            throw std::runtime_error(std::string("Malformed number, not allowed to start with zero.") + std::string(mPos-1,20) );
+        }
+
         // Scan for end of digits.
         while( isdigit(*mPos) )
         {
             NextChar();
+        }
+
+        // The next character should not be alpha.
+        if( isalpha(*mPos) && *mPos != 'e' && *mPos != 'E' )
+        {
+            throw std::runtime_error(std::string("Malformed number, embedded characters ") + std::string(mPos-1,20) );
         }
 
         // Do we have a decimal?
@@ -628,28 +691,32 @@ private:
             {
                 NextChar();
             }
-            // now see if there is an exponent. 
-            if( *mPos == 'E' || *mPos == 'e' )
+        }
+        // now see if there is an exponent. 
+        if( *mPos == 'E' || *mPos == 'e' )
+        {
+            NextChar();
+            // Now must be a sign or a number
+            if( *mPos == '-' || *mPos == '+' || std::isdigit(*mPos) )
             {
-                NextChar();
-                // Now must be a sign or a number
-                if( *mPos == '-' || *mPos == '+' || std::isdigit(*mPos) )
-                {
+                if( *mPos == '-' || *mPos == '+' )
+                {// Must be followed by a number.
                     NextChar();
                     if( isdigit(*mPos) == false )// after accounting the - or + there must be a number next.
                     {
                         throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
                     }
-                    // Now scan more more digits.
-                    while( isdigit(*mPos) )
-                    {
-                        NextChar();
-                    }
                 }
-                else
+
+                // Now scan more more digits.
+                while( isdigit(*mPos) )
                 {
-                    throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
+                    NextChar();
                 }
+            }
+            else
+            {
+                throw std::runtime_error(GetErrorPos() + std::string("Malformed exponent in number ") + std::string(mPos-1,20) );
             }
         }
 
@@ -657,8 +724,6 @@ private:
         // I've tested string_view. It reduces memory allocations by 40% but complicates the code as I have to insert NULLs into the data.
         // Reading is so fast, even on low end arm chips, it's a pointless optimisation! Remember, I'm going for clean code.
         rString.assign(valueStart,mPos-valueStart);
-
-        AssertMoreData("Abrupt end to json whilst reading number");
     }
 };//end of struct JsonProcessor
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
