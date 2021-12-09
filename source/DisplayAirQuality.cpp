@@ -39,6 +39,12 @@ DisplayAirQuality::DisplayAirQuality(tinygles::GLES& pGL,const std::string& pFon
     indoorAirQuality.Start(callback);
 }
 
+DisplayAirQuality::~DisplayAirQuality()
+{
+    indoorAirQuality.Stop();
+}
+
+
 void DisplayAirQuality::Update(int pX,int pY)
 {
     const int width = 200;

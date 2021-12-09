@@ -26,7 +26,7 @@ class DisplayAirQuality
 {
 public:
     DisplayAirQuality(tinygles::GLES& pGL,const std::string& pFontPath);
-    ~DisplayAirQuality() = default;
+    ~DisplayAirQuality();
 
     void Update(int pX,int pY);
 
