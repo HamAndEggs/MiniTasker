@@ -92,6 +92,17 @@ void DisplayBitcoinPrice::Update(int pX,int pY)
         else
             GL.Blit(mIconDownArrow,x,pY+4,255,0,0);
 
+        x = pX - width;
+        pY += 80;
+
+        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,0,0,0,255,true);
+        x += 4;
+
+        std::string growth = std::to_string(mLastPrice-mLast24Price);
+        if( mLastPrice > mLast24Price )
+            growth = "+" + growth;
+        x = pX - 40 - GL.FontGetPrintWidth(mFont,growth);
+        GL.FontPrint(mFont,x + 10,pY + 50,growth);
     }
 
 }
