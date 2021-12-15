@@ -8,7 +8,7 @@
 class DisplayBitcoinPrice
 {
 public:
-    DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pFontPath);
+    DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pPath);
     ~DisplayBitcoinPrice();
 
     void Update(int pX,int pY);
@@ -20,7 +20,12 @@ private:
     int mLast24Price = 0;
     tinytools::threading::SleepableThread  mPriceUpdater;
 
+    uint32_t mIconDownArrow;
+    uint32_t mIconUpArrow;
+    uint32_t mIconGBP;
+
     bool DownloadReport(const std::string& pURL,std::string& rJson)const;
+    uint32_t LoadIcon(const std::string& pName);
 };
 
 #endif //DisplayBitcoinPrice_h__

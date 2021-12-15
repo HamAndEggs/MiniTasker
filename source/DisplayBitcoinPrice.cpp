@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include "TinyJson.h"
 #include "TinyTools.h"
+#include "TinyPNG.h"
 
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {
@@ -29,10 +30,14 @@ static std::string TrimZeros(const std::string &s)
     return std::string(it, rit.base());
 }*/
 
-DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pFontPath):
-    mFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Regular.ttf",52)),
+DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pPath):
+    mFont( pGL.FontLoad( pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",52)),
     GL(pGL)
 {
+    mIconDownArrow = LoadIcon(pPath + "icons/down-arrow.png");
+    mIconUpArrow = LoadIcon(pPath + "icons/up-arrow.png");
+    mIconGBP = LoadIcon(pPath + "icons/gold-pound-symbol.png");
+
     mPriceUpdater.Tick(60*10,[this]()
     {
         std::string jsonData;
@@ -65,22 +70,28 @@ DisplayBitcoinPrice::~DisplayBitcoinPrice()
 
 void DisplayBitcoinPrice::Update(int pX,int pY)
 {
-    const std::string price = std::to_string(mLastPrice) + " GBP";
+    const std::string price = std::to_string(mLastPrice);
     if( price.size() > 0 )
     {
-        const int width = 106 + ((price.size()-1)*22);
-        const int x = pX - width;
-        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,255,255,255,130,true);
-        if( mLastPrice > mLast24Price )
-        {
-            GL.FontSetColour(mFont,0,120,0);
-        }
-        else
-        {
-            GL.FontSetColour(mFont,120,0,0);
-        }
+        const int width = 126 + ((price.size()-1)*22) + GL.GetTextureWidth(mIconGBP);
+        int x = pX - width;
 
+        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,255,255,255,130,true);
+        x += 4;
+
+        GL.Blit(mIconGBP,x,pY+4);
+        x += GL.GetTextureWidth(mIconGBP);
+
+        GL.FontSetColour(mFont,0,0,0);
         GL.FontPrint(mFont,x + 10,pY + 50,price);
+        x += GL.FontGetPrintWidth(mFont,price);
+
+        x += 12;
+        if( mLastPrice > mLast24Price )
+            GL.Blit(mIconUpArrow,x,pY+4,0,255,0);
+        else
+            GL.Blit(mIconDownArrow,x,pY+4,255,0,0);
+
     }
 
 }
@@ -126,4 +137,21 @@ bool DisplayBitcoinPrice::DownloadReport(const std::string& pURL,std::string& rJ
 	}
 
 	return result;
+}
+
+uint32_t DisplayBitcoinPrice::LoadIcon(const std::string& pName)
+{
+    tinypng::Loader loader;
+    if( loader.LoadFromFile(pName) )
+    {
+        std::vector<uint8_t> pixels;
+        loader.GetRGBA(pixels);
+        return GL.CreateTexture(loader.GetWidth(),loader.GetHeight(),pixels.data(),tinygles::TextureFormat::FORMAT_RGBA);
+    }
+    else
+    {
+        std::cerr << "Failed to load icon " << pName << "\n";
+    }
+
+    return GL.GetDiagnosticsTexture();
 }

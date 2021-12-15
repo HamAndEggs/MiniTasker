@@ -75,7 +75,7 @@ uint32_t Icons::LoadIconTexture(tinygles::GLES& GL,tinypng::Loader& pLoader,cons
     }
     else
     {
-        throw std::runtime_error("Failed to load icon " + pName);
+        std::cerr << "Failed to load icon " << pName << "\n";
     }
 
     return GL.GetDiagnosticsTexture();
