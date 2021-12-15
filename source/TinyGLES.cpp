@@ -2125,7 +2125,7 @@ void GLES::FontPrint(uint32_t pFont,int pX,int pY,const std::string_view& pText)
 	// Get where the uvs will be written too.
 	for( auto c : pText )
 	{
-		if( c > 31 || c < 127 )
+		if( c > 31 && c < 127 )
 		{
 			auto&g = font->mGlyphs.at(c-32);
 
@@ -3132,8 +3132,9 @@ void FreeTypeFont::BuildTexture(
 	int maxX = 0,maxY = 0;
 	mBaselineHeight = 0;
 
+	// Cheap and quick font ASCII renderer. I'm not geeting into unicode. It's a nightmare to make fast in GL on a resource constrained system!
 	std::array<std::vector<uint8_t>,96>glyphsPixels;
-	for( int c = 0 ; c < 96 ; c++ )// Cheap and quick font ASCII renderer. I'm not geeting into unicode. It's a nightmare to make fast in GL on a resource constrained system!
+	for( int c = 0 ; c < 96 ; c++ )
 	{
 		auto& g = mGlyphs.at(c);
 		auto& p = glyphsPixels.at(c);

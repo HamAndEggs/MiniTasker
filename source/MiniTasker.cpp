@@ -22,6 +22,7 @@
 #include "DisplayWeather.h"
 #include "DisplaySystemStatus.h"
 #include "DisplayAirQuality.h"
+#include "DisplayBitcoinPrice.h"
 
 #include "TheWeather.h"
 #include "Icons.h"
@@ -101,6 +102,7 @@ int main(int argc, char *argv[])
     DisplaySystemStatus systemStatus(GL,path);
     DisplayAirQuality theAirQuality(GL,path);
     DisplayClock theClock(GL,path);
+    DisplayBitcoinPrice bitcoinPrice(GL,path);
 
 
     theClock.SetForground(255,255,255);
@@ -143,8 +145,9 @@ int main(int argc, char *argv[])
         theClock.Update(20,20,currentTime);
         theAirQuality.Update(430,2);
         theTasks.Update(20,450,currentTime);
+        bitcoinPrice.Update(GL.GetWidth()-230,120);
 
-        // draw atchal outside temperature.
+        // draw current outside temperature.
         const int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"]);
         std::stringstream s(outsideData["/outside/battery"]);
         int percent = 0;

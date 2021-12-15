@@ -14,7 +14,8 @@
         "./source/DisplayTask.cpp",
         "./source/DisplayWeather.cpp",
         "./source/DisplayAirQuality.cpp",
-        "./source/DisplaySystemStatus.cpp"
+        "./source/DisplaySystemStatus.cpp",
+        "./source/DisplayBitcoinPrice.cpp"
     ],
     "configurations": {
         "release": {
