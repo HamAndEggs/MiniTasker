@@ -76,13 +76,13 @@ void DisplayBitcoinPrice::Update(int pX,int pY)
         const int width = 126 + ((price.size()-1)*22) + GL.GetTextureWidth(mIconGBP);
         int x = pX - width;
 
-        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,255,255,255,130,true);
+        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,0,0,0,255,true);
         x += 4;
 
         GL.Blit(mIconGBP,x,pY+4);
         x += GL.GetTextureWidth(mIconGBP);
 
-        GL.FontSetColour(mFont,0,0,0);
+        GL.FontSetColour(mFont,255,255,255);
         GL.FontPrint(mFont,x + 10,pY + 50,price);
         x += GL.FontGetPrintWidth(mFont,price);
 
