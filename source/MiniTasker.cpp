@@ -43,6 +43,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <chrono>
 
 int main(int argc, char *argv[])
 {
@@ -116,6 +117,7 @@ int main(int argc, char *argv[])
     {
         "/outside/temperature",
         "/outside/battery",
+        "/outside/hartbeat",
     };
 
     MQTTData MQTT("server",1883,topics,[&outsideData,&outsideTemperatureDelivered](const std::string &pTopic,const std::string &pData)
@@ -147,18 +149,33 @@ int main(int argc, char *argv[])
         theTasks.Update(20,450,currentTime);
         bitcoinPrice.Update(GL.GetWidth()-230,120);
 
-        // draw current outside temperature.
-        const int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"]);
-        std::stringstream s(outsideData["/outside/battery"]);
-        int percent = 0;
-        s >> percent;
-        const int fx = x + 14;
-        const int dx = 100;
-        const int y = 184;
-        const int h = 4;
-        GL.DrawRectangle(fx,y,fx+1 + dx,y + h + 1,0,0,0);
-        GL.FillRectangle(fx,y,fx + dx,y + h,255,255,255);
-        GL.FillRectangle(fx,y,fx + percent,y + h,15,205,15);
+        // draw current outside temperature. May not have the value and so need to trap that exception.
+        try
+        {
+            const int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"]);
+            std::stringstream s(outsideData["/outside/battery"]);
+            int percent = 0;
+            s >> percent;
+            const int fx = x + 14;
+            const int dx = 100;
+            const int y = 184;
+            const int h = 4;
+            GL.DrawRectangle(fx,y,fx+1 + dx,y + h + 1,0,0,0);
+            GL.FillRectangle(fx,y,fx + dx,y + h,255,255,255);
+            GL.FillRectangle(fx,y,fx + percent,y + h,15,205,15);
+
+            // get the hartbeat of the outside temprature and render something so I know if it's offline
+            const std::time_t outsideTimestamp = std::stol(outsideData["/outside/hartbeat"]);
+            const int64_t nowTimeStamp = std::time(NULL);
+//            std::cout << (nowTimeStamp - outsideTimestamp) / 60 << "\n";
+            const int diff = (int)((nowTimeStamp - outsideTimestamp) / 60);
+            GL.FontSetColour(0,0,0);
+            GL.FontPrintf(fx + 134,y-10,"%d",diff);
+        }
+        catch(std::runtime_error& e)
+        {
+            std::cerr << "Failed to read MQTT data: " << e.what() << "\n";
+        }
 
 
         // Render the weather forcast.
