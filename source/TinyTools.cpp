@@ -387,10 +387,130 @@ bool IsPortOpen(uint32_t pIPv4,uint16_t pPort)
 	return isOpen;
 }
 
+size_t Encode7Bit(const uint8_t* p8Bit,size_t p8BitSize,uint8_t** r7Bit)
+{
+    size_t newSize = ((p8BitSize+1) * 8) / 7;
+    assert(newSize > 1);
+
+    uint8_t* out = new uint8_t[newSize];
+    *r7Bit = out;
+
+    for( ; p8BitSize > 6 ; p8BitSize -=7 , out += 8, p8Bit += 7 )
+    {
+        assert( out + 7 < (*r7Bit) + newSize );
+        out[0] = (                        (p8Bit[0]>>1) );
+        out[1] = ( ((p8Bit[0]&0x01)<<6) | (p8Bit[1]>>2) );
+        out[2] = ( ((p8Bit[1]&0x03)<<5) | (p8Bit[2]>>3) );
+        out[3] = ( ((p8Bit[2]&0x07)<<4) | (p8Bit[3]>>4) );
+        out[4] = ( ((p8Bit[3]&0x0F)<<3) | (p8Bit[4]>>5) );
+        out[5] = ( ((p8Bit[4]&0x1F)<<2) | (p8Bit[5]>>6) );
+        out[6] = ( ((p8Bit[5]&0x3F)<<1) | (p8Bit[6]>>7) );
+        out[7] = ( ((p8Bit[6]&0x7F)<<0) );        
+    }
+
+    // And now for the trailing bytes.
+    assert( p8BitSize < 7 );
+    if( p8BitSize > 0 )
+    {
+        uint8_t padding[6] = {0,0,0,0,0,0};
+        for( size_t n = 0 ; n < p8BitSize ; n++ )
+        {
+            padding[n] = p8Bit[n];
+        }
+
+        *out = (                          (padding[0]>>1) ); out++;
+        *out = ( ((padding[0]&0x01)<<6) | (padding[1]>>2) ); out++;
+        if( p8BitSize > 1 )
+        {
+            *out = ( ((p8Bit[1]&0x03)<<5) | (p8Bit[2]>>3) ); out++;
+            if( p8BitSize > 2 )
+            {
+                *out = ( ((p8Bit[2]&0x07)<<4) | (p8Bit[3]>>4) ); out++;
+                if( p8BitSize > 3 )
+                {
+                    *out = ( ((p8Bit[3]&0x0F)<<3) | (p8Bit[4]>>5) ); out++;
+                    if( p8BitSize > 4 )
+                    {
+                        *out = ( ((p8Bit[4]&0x1F)<<2) | (p8Bit[5]>>6) ); out++;
+                        if( p8BitSize > 5 )
+                        {
+                            *out = ((p8Bit[5]&0x3F)<<1); out++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert( out <= (*r7Bit) + newSize );
+
+    return out - *r7Bit;
+}
+
+size_t Decode7Bit(const uint8_t* p7Bit,size_t p7BitSize,uint8_t** r8Bit)
+{
+    size_t newSize = (p7BitSize+1) * 7 / 8;
+    assert(newSize > 1);
+
+    uint8_t* out = new uint8_t[newSize];
+    *r8Bit = out;
+
+    for( ; p7BitSize > 7 ; p7BitSize -= 8, p7Bit += 8, out += 7 )
+    {
+        assert( out + 6 < (*r8Bit) + newSize );
+        out[0] = ( p7Bit[0] << 1 | (p7Bit[1]>>6));
+        out[1] = ( p7Bit[1] << 2 | (p7Bit[2]>>5));
+        out[2] = ( p7Bit[2] << 3 | (p7Bit[3]>>4));
+        out[3] = ( p7Bit[3] << 4 | (p7Bit[4]>>3));
+        out[4] = ( p7Bit[4] << 5 | (p7Bit[5]>>2));
+        out[5] = ( p7Bit[5] << 6 | (p7Bit[6]>>1));
+        out[6] = ( p7Bit[6] << 7 | (p7Bit[7]>>0));
+    }
+
+    if( p7BitSize > 0 )
+    {
+        *out = ( p7Bit[0] << 1 | (p7Bit[1]>>6)); out++;
+        if( p7BitSize > 2 )
+        {
+            *out = ( p7Bit[1] << 2 | (p7Bit[2]>>5)); out++;
+            if( p7BitSize > 3 )
+            {
+                *out = ( p7Bit[2] << 3 | (p7Bit[3]>>4)); out++;
+                if( p7BitSize > 4 )
+                {
+                    *out = ( p7Bit[3] << 4 | (p7Bit[4]>>3)); out++;
+                    if( p7BitSize > 5 )
+                    {
+                        *out = ( p7Bit[4] << 5 | (p7Bit[5]>>2)); out++;
+                        if( p7BitSize > 6 )
+                        {
+                            *out = ( p7Bit[5] << 6 | (p7Bit[6]>>1)); out++;
+                            if( p7BitSize > 7 )
+                            {
+                                *out = ( p7Bit[6] << 7 | (p7Bit[7]>>0)); out++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert( out <= (*r8Bit) + newSize );
+
+    return out - *r8Bit;
+}
+
 };// namespace network
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace system{
+
+std::string GetLocalDateTime()
+{
+	auto t = std::time(nullptr);
+	char mbstr[100];
+	std::strftime(mbstr,sizeof(mbstr), "%d-%m-%Y %H-%M-%S",std::localtime(&t));
+    return mbstr;
+}
 
 /**
  * @brief Fetches the system uptime in a more human readable format
@@ -1364,6 +1484,22 @@ bool CompareFileTimes(const std::string& pSourceFile,const std::string& pDestFil
     }
 
     return true;
+}
+
+std::string LoadFileIntoString(const std::string& pFilename)
+{
+    std::ifstream jsonFile(pFilename);
+    if( jsonFile.is_open() )
+    {
+        std::stringstream jsonStream;
+        jsonStream << jsonFile.rdbuf();// Read the whole file in...
+
+        return jsonStream.str();
+    }
+
+    std::throw_with_nested(std::runtime_error("Jons file not found " + pFilename));
+
+    return "";
 }
 
 };//namespace file{

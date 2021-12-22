@@ -36,6 +36,8 @@
 #include <chrono>
 #include <thread>
 #include <condition_variable>
+#include <ctime>
+#include <iomanip>
 
 /**
  * @brief Adds line and source file. There is a c++20 way now that is better. I need to look at that.
@@ -71,6 +73,35 @@ inline float RoundToPointFive(float pValue)
 	const float frac = std::round(GetFractional(pValue)*2.0f) / 2.0f;
 	return integer + frac;
 }
+
+// Taken from the site: https://tttapa.github.io/Pages/Mathematics/Systems-and-Control-Theory/Digital-filters/Simple%20Moving%20Average/C++Implementation.html
+template <uint8_t N, class input_t = uint16_t, class sum_t = uint32_t>
+// Simple Moving Average difference equation
+class SimpleMovingAverage
+{
+public:
+	input_t operator()(input_t input)
+	{
+		sum -= previousInputs[index];
+		sum += input;
+		previousInputs[index] = input;
+		if (++index == N)
+		index = 0;
+		return (sum + (N / 2)) / N;
+	}
+
+	static_assert
+	(
+		sum_t(0) < sum_t(-1),  // Check that `sum_t` is an unsigned type
+		"Error: sum data type should be an unsigned integer, otherwise, "
+		"the rounding operation in the return statement is invalid."
+	);
+
+private:
+	uint8_t index             = 0;
+	input_t previousInputs[N] = {};
+	sum_t sum                 = 0;
+};
 
 };//namespace math{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,6 +277,19 @@ inline std::string IPv4ToString(uint32_t pIPv4)
 	return std::to_string(a) + "." + std::to_string(b) + "." + std::to_string(c) + "." + std::to_string(d);
 }
 
+/**
+ * @brief Encodes 8 bit data to a 7 bit data data stream. No data is lost, new buffer size will be bigger because of that.
+ * Used for comunication protocals so that the most significant bit can be used for control bytes.
+ * @param r7Bit A point to memory holding the converted data. You have to delete this after use with delete[].
+ * @return size_t The size of the 7Bit data.
+ */
+size_t Encode7Bit(const uint8_t* p8Bit,size_t p8BitSize,uint8_t** r7Bit);
+
+/**
+ * @brief Converts 7 bit input data into the original 8 bit data.
+ */
+size_t Decode7Bit(const uint8_t* p7Bit,size_t p7BitSize,uint8_t** r8Bit);
+
 };// namespace network
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -258,6 +302,13 @@ inline int64_t SecondsSinceEpoch()
 {
 	return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
+/**
+ * @brief Get the local date time as string
+ * 
+ * @return std::string 
+ */
+std::string GetLocalDateTime();
 
 /**
  * @brief Fetches the system uptime in a more human readable format
@@ -522,11 +573,24 @@ bool MakeDir(const std::string& pPath);
  * @return false There was an issue.
  */
 bool MakeDirForFile(const std::string& pPathedFilename);
-
+/**
+ * @brief Get the Current Working Directory
+ */
 std::string GetCurrentWorkingDirectory();
+
+/**
+ * @brief Tries to clean the path passed in. So things lile /./ become /
+ */
 std::string CleanPath(const std::string& pPath);
 
+/**
+ * @brief Gets the File Name from the pathed filename string.
+ */
 std::string GetFileName(const std::string& pPathedFileName,bool RemoveExtension = false);
+
+/**
+ * @brief Gets the Path from the pathed filename string.
+ */
 std::string GetPath(const std::string& pPathedFileName);
 
 /**
@@ -572,6 +636,13 @@ std::string GetRelativePath(const std::string& pCWD,const std::string& pFullPath
  */
 bool CompareFileTimes(const std::string& pSourceFile,const std::string& pDestFile);
 
+/**
+ * @brief Loads the contents of the file into a string object.
+ * Throws an exception if file not found.
+ * @param pFilename 
+ * @return std::string 
+ */
+std::string LoadFileIntoString(const std::string& pFilename);
 
 };// namespace file
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
