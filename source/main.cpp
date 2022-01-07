@@ -147,18 +147,19 @@ int main(int argc, char *argv[])
         theClock.Update(20,20,currentTime);
         theAirQuality.Update(430,2);
         theTasks.Update(20,450,currentTime);
-        bitcoinPrice.Update(GL.GetWidth()-230,120);
+        bitcoinPrice.Update(GL.GetWidth()/2,120);
 
         // draw current outside temperature. May not have the value and so need to trap that exception.
         try
         {
-            const int x = theWeather.RenderTemperature(GL.GetWidth(),120,outsideData["/outside/temperature"]);
+            const int temperatureY = 520;
+            const int x = theWeather.RenderTemperature(GL.GetWidth(),temperatureY,outsideData["/outside/temperature"]);
             std::stringstream s(outsideData["/outside/battery"]);
             int percent = 0;
             s >> percent;
             const int fx = x + 14;
             const int dx = 100;
-            const int y = 184;
+            const int y = temperatureY + 64;
             const int h = 4;
             GL.DrawRectangle(fx,y,fx+1 + dx,y + h + 1,0,0,0);
             GL.FillRectangle(fx,y,fx + dx,y + h,255,255,255);

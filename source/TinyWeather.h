@@ -30,7 +30,14 @@
 namespace tinyweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef std::vector<std::pair<int,std::string>> HourlyIconVector;
+struct HourlyIcon
+{
+	int hour;
+	std::string icon;
+	float temprature;
+};
+
+typedef std::vector<HourlyIcon> HourlyIconVector;
 
 struct WeatherTime
 {

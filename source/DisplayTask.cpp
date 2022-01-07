@@ -108,9 +108,11 @@ void DisplayTask::Update(int pX,int pY,const tm& pCurrentTime)
     {
 //        mFont.SetPenColour(theTask->fg_r,theTask->fg_g,theTask->fg_b);
 //        mFont.SetBackgroundColour(theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        const int width = GL.GetWidth() / 2;
+        const int rightEdge = Xpadding + width;
 
         // Draw box for all the text
-        GL.FillRoundedRectangle(Xpadding,pY,GL.GetWidth()-1-Xpadding,GL.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        GL.FillRoundedRectangle(Xpadding,pY,rightEdge,GL.GetHeight()+40,35,theTask->bg_r,theTask->bg_g,theTask->bg_b);
 
         // Draw the progress line.
         const float fromTotal =  ((theTask->whenHour * 60) + theTask->whenMinute) * 60;
@@ -124,10 +126,10 @@ void DisplayTask::Update(int pX,int pY,const tm& pCurrentTime)
             progress = 1.0f - ((tillTotal - nowTotal) / (tillTotal - fromTotal));
         }
 
-        const int progressX = Xpadding + 4 + ((GL.GetWidth()-1-Xpadding-Xpadding-8) * progress);
+        const int progressX = Xpadding + 4 + ((width-1-Xpadding-Xpadding-8) * progress);
         const int progressY = GL.GetHeight();
         GL.FillRectangle(Xpadding,progressY-8,progressX,progressY,rTillR,rTillG,rTillB);
-        GL.FillRectangle(progressX,progressY-8,GL.GetWidth()-1-Xpadding,progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
+        GL.FillRectangle(progressX,progressY-8,width-1-Xpadding,progressY,theTask->bg_r,theTask->bg_g,theTask->bg_b);
         GL.FillRectangle(progressX-4,progressY-8,progressX+4,progressY,theTask->fg_r,theTask->fg_g,theTask->fg_b);// the tick
 
         // Draw the text.

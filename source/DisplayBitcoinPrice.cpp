@@ -43,7 +43,9 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& 
         std::string jsonData;
         try
         {
-            if( DownloadReport("https://api.blockchain.com/v3/exchange/tickers/BTC-GBP",jsonData) )
+            const std::string url = "https://cex.io/api/ticker/BTC/GBP";
+//            const std::string url = "https://api.blockchain.com/v3/exchange/tickers/BTC-GBP";
+            if( DownloadReport(url,jsonData) )
             {
                 // We got it, now we need to build the weather object from the json.
                 // I would have used rapid json but that is a lot of files to add to this project.
@@ -52,8 +54,10 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& 
                 tinyjson::JsonProcessor json(jsonData);
                 const tinyjson::JsonValue price = json.GetRoot();
 
-                mLastPrice = (int)price.GetDouble("last_trade_price");
-                mLast24Price = (int)price.GetDouble("price_24h");
+                mLastPrice = (int)std::stoi(price["last"].GetString());
+                mPriceChange = (int)std::stoi(price["priceChange"].GetString());
+                m24HourLow = (int)std::stoi(price["low"].GetString());
+                m24HourHigh = (int)std::stoi(price["high"].GetString());
             }
         }
         catch(std::runtime_error &e)
@@ -73,36 +77,63 @@ void DisplayBitcoinPrice::Update(int pX,int pY)
     const std::string price = std::string("£") + std::to_string(mLastPrice);
     if( price.size() > 0 )
     {
-        const int width = 126 + ((price.size()-1)*22);// + GL.GetTextureWidth(mIconGBP);
-        int x = pX - width;
+        int width = 126 + ((price.size()-1)*20);
+        int x = pX;
 
-        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,0,0,0,255,true);
+// Main price
+        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
         x += 4;
-
-//        GL.Blit(mIconGBP,x,pY+4);
-//        x += GL.GetTextureWidth(mIconGBP);
 
         GL.FontSetColour(mFont,255,255,255);
         GL.FontPrint(mFont,x + 10,pY + 50,price);
         x += GL.FontGetPrintWidth(mFont,price);
 
-        x += 12;
-        if( mLastPrice > mLast24Price )
-            GL.Blit(mIconUpArrow,x,pY+4,0,255,0);
-        else
-            GL.Blit(mIconDownArrow,x,pY+4,255,0,0);
+        x += 20;
+        if( mPriceChange != 0 )
+        {
+            if( mPriceChange > 0 )
+                GL.Blit(mIconUpArrow,x,pY+4,0,255,0);
+            else
+                GL.Blit(mIconDownArrow,x,pY+4,255,0,0);
+        }
 
-        x = pX - width;
+// Price change
+        x = pX;
         pY += 80;
 
-        GL.RoundedRectangle(x,pY,pX-20,pY+70,12,0,0,0,255,true);
+        GL.RoundedRectangle(x,pY,pX+width,pY+70,12,0,0,0,255,true);
         x += 4;
 
-        std::string growth = std::to_string(mLastPrice-mLast24Price);
-        if( mLastPrice > mLast24Price )
+        std::string growth = std::to_string(mPriceChange);
+        if( mPriceChange > 0 )
             growth = "+" + growth;
-        x = pX - 40 - GL.FontGetPrintWidth(mFont,growth);
+        x = pX + width - 40 - GL.FontGetPrintWidth(mFont,growth);
         GL.FontPrint(mFont,x + 10,pY + 50,growth);
+
+// 24 hour high
+        pY -= 80;
+        x = pX + width + 10;
+
+        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
+        x += 4;
+
+        const std::string high = std::string("£") + std::to_string(m24HourHigh);
+        GL.FontSetColour(mFont,255,255,255);
+        x += width - GL.FontGetPrintWidth(mFont,high) - 10;
+        GL.FontPrint(mFont,x,pY + 50,high);
+
+// 24 hour low
+        pY += 80;
+        x = pX + width + 10;
+
+        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
+        x += 4;
+
+        const std::string low = std::string("£") + std::to_string(m24HourLow);
+        GL.FontSetColour(mFont,255,255,255);
+        x += width - GL.FontGetPrintWidth(mFont,low) - 10;
+        GL.FontPrint(mFont,x,pY + 50,low);
+
     }
 
 }

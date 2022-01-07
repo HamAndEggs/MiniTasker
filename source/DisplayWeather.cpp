@@ -15,6 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "TinyJson.h"
+#include "TinyTools.h"
 #include "DisplayWeather.h"
 
 #include <ctime>
@@ -41,25 +42,31 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
     for( const auto& icon : icons )
     {
         GL.Blit(pTheIcons.GetIconBG(),x,y,0,0,0,200);
-        GL.Blit(pTheIcons.GetIcon(icon.second),x-20,y-10);
+        GL.Blit(pTheIcons.GetIcon(icon.icon),x-20,y-10);
 
         // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
         std::string hour; 
-        if( icon.first == 0 )
+        if( icon.hour == 0 )
         {// Special case zero houndred, IE 12am...
             hour = "Midnight";
         }
-        else if( icon.first < 12 )
+        else if( icon.hour < 12 )
         {
-            hour = std::to_string(icon.first) + "am";
+            hour = std::to_string(icon.hour) + "am";
         }
-        else if( icon.first == 12 )
+        else if( icon.hour == 12 )
         {// Special case 12 houndred, IE 12pm, or am, or pm.......
             hour = "Midday";
         }
         else
         {
-            hour = std::to_string(icon.first-12) + "pm";
+            hour = std::to_string(icon.hour-12) + "pm";
+        }
+
+        {
+            char buf[64];
+            snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(icon.temprature));
+            GL.FontPrint(mIconFont,x+20,y+154,buf);
         }
 
         GL.FontPrint(mIconFont,x+14,y+36,hour.c_str());
@@ -72,9 +79,6 @@ void DisplayWeather::RenderWeatherForcast(int pY,const tm& pCurrentTime,const Th
             break;
         }
     }
-
-    // Draw temperature forcast, if we have one.
-    RenderTemperature(GL.GetWidth(),pY-80,pWeather.GetCurrentTemperature());
 }
 
 int DisplayWeather::RenderTemperature(int pX,int pY,const std::string& pTemperature)

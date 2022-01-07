@@ -277,7 +277,8 @@ HourlyIconVector OpenWeatherMap::GetTodaysHourlyIconCodes(std::time_t pNowUTC)co
 	{
 		if( t.mTime.mDay == now.mDay )
 		{
-			icons.push_back(std::make_pair(t.mTime.mHour,t.mDisplay.mIcon));
+			const HourlyIcon icon = {t.mTime.mHour,t.mDisplay.mIcon,t.mTemperature.c};
+			icons.push_back(icon);
 		}
 	}
 
@@ -296,7 +297,8 @@ HourlyIconVector OpenWeatherMap::GetHourlyIconCodes(std::time_t pNowUTC)const
 	{
 		if( pNowUTC <= t.mTime.mUTC )
 		{
-			icons.push_back(std::make_pair(t.mTime.mHour,t.mDisplay.mIcon));
+			const HourlyIcon icon = {t.mTime.mHour,t.mDisplay.mIcon,t.mTemperature.c};
+			icons.push_back(icon);
 		}
 	}
 

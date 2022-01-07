@@ -17,7 +17,9 @@ private:
     const uint32_t mFont = 0;
     tinygles::GLES& GL;
     int mLastPrice = 0;
-    int mLast24Price = 0;
+    int mPriceChange = 0;
+    int m24HourLow = 0;
+    int m24HourHigh = 0;
     tinytools::threading::SleepableThread  mPriceUpdater;
 
     uint32_t mIconDownArrow;

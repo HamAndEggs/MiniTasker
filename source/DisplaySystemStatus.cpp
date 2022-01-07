@@ -67,7 +67,7 @@ void DisplaySystemStatus::Render(int pX,int pY)
     }
     else
     {
-        GL.FontPrint(mSmallFont,pX + fontBorder,pY + 90,"CPU:--%");
+        GL.FontPrint(mSmallFont,pX + fontBorder,pY + 90,"CPU:--%%");
     }
 
     size_t memoryUsedKB,memAvailableKB,memTotalKB,swapUsedKB;
