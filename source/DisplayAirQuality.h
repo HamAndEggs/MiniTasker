@@ -17,26 +17,37 @@
 #ifndef DISPLAY_AIR_QUALITY_H
 #define DISPLAY_AIR_QUALITY_H
 
-#include "TinyGLES.h"
-#include "TheWeather.h"
-#include "Icons.h"
+#include "Graphics.h"
+#include "Element.h"
 #include "sgp30.h"
+#include "MQTTData.h"
 
-class DisplayAirQuality
+#include <string>
+#include <map>
+
+class DisplayAirQuality : public eui::Element
 {
 public:
-    DisplayAirQuality(tinygles::GLES& pGL,const std::string& pFontPath);
+
+    DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayAirQuality();
 
-    void Update(int pX,int pY);
+    virtual bool OnUpdate();
 
 private:
-    const uint32_t mFont = 0;
-    tinygles::GLES& GL;
+
+    eui::ElementPtr eCO2,tOC,outsideTemp;
     i2c::SGP30 indoorAirQuality;
-    int mResult = i2c::SGP30::READING_RESULT_WARM_UP;
     uint16_t mECO2 = 0;
     uint16_t mTVOC = 0;
+    int mResult = i2c::SGP30::READING_RESULT_WARM_UP;
+    std::map<std::string,std::string> outsideData;
+    std::time_t outsideTemperatureDelivered = 0;
+
+    // MQTT data
+    const std::vector<std::string>& topics = {"/outside/temperature","/outside/hartbeat"};
+    MQTTData OutsideWeather;
+
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H

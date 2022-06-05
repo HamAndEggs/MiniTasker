@@ -8,13 +8,15 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/x11/MiniTasker",
+            "program": "${workspaceFolder}/build/MiniTasker",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
+            "debugServerArgs": "dir ${workspaceFolder}/source",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

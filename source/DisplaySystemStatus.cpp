@@ -16,66 +16,88 @@
 
 #include "DisplaySystemStatus.h"
 
-#include <string>
-#include <array>
-
-DisplaySystemStatus::DisplaySystemStatus(tinygles::GLES& pGL,const std::string& pFontPath):
-    mFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Bold.ttf")),
-    mSmallFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Bold.ttf",20)),
-    GL(pGL)
+DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
+    this->SetID("system status");
+    this->SetPos(0,0);
+
+    uptime = eui::Element::Create();
+        uptime->SetPadding(0.05f);
+        uptime->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
+        uptime->SetFont(pNormalFont);
+        uptime->SetText("UP: XX:XX:XX");
+    this->Attach(uptime);
+
+    localIP = eui::Element::Create();
+        localIP->SetPadding(0.05f);
+        localIP->GetStyle().mAlignment = eui::ALIGN_LEFT_CENTER;
+        localIP->SetFont(pMiniFont);
+        localIP->SetText("XX.XX.XX.XX");
+    this->Attach(localIP);
+
+    hostName = eui::Element::Create();
+        hostName->SetPadding(0.05f);
+        hostName->GetStyle().mAlignment = eui::ALIGN_RIGHT_CENTER;
+        hostName->SetFont(pMiniFont);
+        hostName->SetText("--------");
+    this->Attach(hostName);
+
+    cpuLoad = eui::Element::Create();
+        cpuLoad->SetPadding(0.05f);
+        cpuLoad->GetStyle().mAlignment = eui::ALIGN_LEFT_BOTTOM;
+        cpuLoad->SetFont(pMiniFont);
+        cpuLoad->SetText("XX.XX.XX.XX");
+    this->Attach(cpuLoad);
+
+    ramUsed = eui::Element::Create();
+        ramUsed->SetPadding(0.05f);
+        ramUsed->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
+        ramUsed->SetFont(pMiniFont);
+        ramUsed->SetText("--------");
+    this->Attach(ramUsed);
+
+    eui::Style s;
+    s.mBackground = eui::COLOUR_BLUE;
+    s.mBorderSize = BORDER_SIZE;
+    s.mBorder = eui::COLOUR_WHITE;
+    s.mRadius = RECT_RADIUS;
+    this->SetStyle(s);
+    this->SetPadding(CELL_PADDING);
+
     std::map<int,int> CPULoads;
     int totalSystemLoad;
-    tinytools::system::GetCPULoad(mTrackingData,totalSystemLoad,CPULoads);
+    tinytools::system::GetCPULoad(trackingData,totalSystemLoad,CPULoads);
 }
 
-DisplaySystemStatus::~DisplaySystemStatus()
+bool DisplaySystemStatus::OnUpdate()
 {
-
-}
-
-void DisplaySystemStatus::Render(int pX,int pY)
-{
-    // Render the uptime
+// Render the uptime
     uint64_t upDays,upHours,upMinutes;
     tinytools::system::GetUptime(upDays,upHours,upMinutes);
 
-    const int border = 4;
-    const int fontBorder = 30;
-    const int Height = 100;
-    const int Width = 340;
-    GL.FillRoundedRectangle(pX,pY,pX + Width,pY + Height,20,255,255,255);
-    GL.FillRoundedRectangle(pX+border,pY+border,pX + Width - border,pY + Height - border,18,20,30,180);
-    GL.FontPrintf(mFont,pX + fontBorder,pY + 40,"Uptime: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
+    uptime->SetTextF("UP: %lld:%02lld:%02lld",upDays,upHours,upMinutes);
 
-    GL.FontPrint(mSmallFont,pX + fontBorder,pY + 70,tinytools::network::GetLocalIP());
+    localIP->SetText(tinytools::network::GetLocalIP());
 
-    const std::string hostName = tinytools::network::GetHostName();
-    if( hostName.size() > 0 )
-    {
-        const int textWidth = GL.FontGetPrintWidth(mSmallFont,hostName);
-
-        GL.FontPrint(mSmallFont,pX + Width - textWidth - fontBorder,pY + 70,hostName);
-    }
+    hostName->SetText(tinytools::network::GetHostName());
 
     std::map<int,int> CPULoads;
     int totalSystemLoad;
-    tinytools::system::GetCPULoad(mTrackingData,totalSystemLoad,CPULoads);
+    tinytools::system::GetCPULoad(trackingData,totalSystemLoad,CPULoads);
     if(CPULoads.size() > 0)
     {
-        GL.FontPrintf(mSmallFont,pX + fontBorder,pY + 90,"CPU:%d%%",totalSystemLoad);
+        cpuLoad->SetTextF("CPU:%d%%",totalSystemLoad);
     }
     else
     {
-        GL.FontPrint(mSmallFont,pX + fontBorder,pY + 90,"CPU:--%%");
+        cpuLoad->SetText("CPU:--%%");
     }
 
     size_t memoryUsedKB,memAvailableKB,memTotalKB,swapUsedKB;
     if( tinytools::system::GetMemoryUsage(memoryUsedKB,memAvailableKB,memTotalKB,swapUsedKB) )
     {
         const std::string memory = "Mem:" + std::to_string(memoryUsedKB * 100 / memTotalKB) + "%"; 
-        const int textWidth = GL.FontGetPrintWidth(mSmallFont,memory);
-
-        GL.FontPrint(mSmallFont,pX + Width - textWidth - fontBorder,pY + 90,memory);
+        ramUsed->SetText(memory);
     }
+    return true;
 }

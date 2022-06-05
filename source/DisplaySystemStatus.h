@@ -17,29 +17,28 @@
 #ifndef DISPLAY_SYSTEM_STATUS_H
 #define DISPLAY_SYSTEM_STATUS_H
 
-#include "TinyGLES.h"
-
+#include "Graphics.h"
+#include "Element.h"
 #include "TinyTools.h"
-
 
 #include <string>
 #include <time.h>
 
-class DisplaySystemStatus
+class DisplaySystemStatus : public eui::Element
 {
 public:
-    DisplaySystemStatus(tinygles::GLES& pGL,const std::string& pFontPath);
-    ~DisplaySystemStatus();
 
-    void Render(int pX,int pY);
+    DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    virtual bool OnUpdate();
 
 private:
+    eui::ElementPtr uptime;
+    eui::ElementPtr localIP;
+    eui::ElementPtr hostName;
+    eui::ElementPtr cpuLoad;
+    eui::ElementPtr ramUsed;
 
-    const uint32_t mFont = 0;
-    const uint32_t mSmallFont = 0;
-
-    tinygles::GLES& GL;
-    std::map<int,tinytools::system::CPULoadTracking> mTrackingData;
+    std::map<int,tinytools::system::CPULoadTracking> trackingData;
 
 };
 

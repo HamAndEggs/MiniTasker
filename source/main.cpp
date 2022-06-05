@@ -14,185 +14,73 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "TinyGLES.h"
-#include "TinyTools.h"
+#include "Graphics.h"
+#include "Element.h"
+
 
 #include "DisplayClock.h"
-#include "DisplayTask.h"
 #include "DisplayWeather.h"
 #include "DisplaySystemStatus.h"
 #include "DisplayAirQuality.h"
 #include "DisplayBitcoinPrice.h"
 
-#include "TheWeather.h"
-#include "Icons.h"
-#include "TinyPNG.h"
-#include "MQTTData.h"
-
-#include <cstdlib>
-#include <time.h>
-#include <signal.h>
 #include <unistd.h>
-#include <cstdarg>
-#include <string.h>
-#include <sys/stat.h>
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <filesystem>
-#include <chrono>
+const float CELL_PADDING = 0.02f;
+const float RECT_RADIUS = 0.2f;
+const float BORDER_SIZE = 3.0f;
 
 int main(int argc, char *argv[])
 {
-// Display the constants defined by app build. \n";
-    std::cout << "Application Version " << APP_VERSION << '\n';
-    std::cout << "Build date and time " << APP_BUILD_DATE_TIME << '\n';
-    std::cout << "Build date " << APP_BUILD_DATE << '\n';
-    std::cout << "Build time " << APP_BUILD_TIME << '\n';
+    eui::Graphics* graphics = eui::Graphics::Open();
 
-    // Crude argument list handling.
-    std::string path = "./";
+    eui::ElementPtr mainScreen = eui::Element::Create();
+    mainScreen->SetID("mainScreen");
+    mainScreen->SetGrid(3,3);
 
-    std::string taskFile = "task-file.json";
-    if( (argc == 2 || argc == 3) && std::filesystem::directory_entry(argv[1]).exists() )
+    int miniFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Regular.ttf",20);
+    int normalFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Regular.ttf",35);
+    int bigFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Bold.ttf",130);
+    mainScreen->SetFont(normalFont);
+    mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG("./images/bg-pastal-01.png");
+    mainScreen->GetStyle().mBackground = eui::COLOUR_WHITE;
+
+    mainScreen->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mainScreen->Attach(new DisplayBitcoinPrice(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mainScreen->Attach(new DisplayWeather(graphics,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+
+    eui::ElementPtr status = eui::Element::Create();
+    status->SetGrid(1,2);
+    status->SetPos(2,0);
+    mainScreen->Attach(status);
+    status->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    status->Attach(new DisplayAirQuality(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+
+    // Use dependency injection to pass events onto the controls.
+    // This means that we don't need a circular header dependency that can make it hard to port code.
+    // I do not want graphics.h including element.h as element.h already includes graphics.h
+    auto touchEventHandler = [mainScreen](int32_t pX,int32_t pY,bool pTouched)
     {
-        path = argv[1];
-        if( path.back() != '/' )
-            path += '/';
-    }
-
-    if( argc == 3 )
-    {
-        taskFile = argv[2];
-    }
-
-    std::time_t result = std::time(nullptr);
-    tm currentTime = *localtime(&result);
-
-    tinygles::GLES GL(tinygles::ROTATE_FRAME_LANDSCAPE);
-    GL.FontSetMaximumAllowedGlyph(256);
-
-    DisplayTask theTasks(GL,path + "liberation_serif_font/");
-    
-    if( theTasks.LoadTaskList(path + taskFile) == false )
-    {
-        std::cerr << "Failed to read task file\n";
-       	return EXIT_FAILURE;
-    }
-
-    // Load a background, later I'll make this configurable.
-    uint32_t background = 0;
-
-    tinypng::Loader bg;
-    if( bg.LoadFromFile(path + "images/bg-pastal-01.png") )
-    {
-        std::vector<uint8_t> RGB;
-        bg.GetRGB(RGB);
-        background = GL.CreateTexture(bg.GetWidth(),bg.GetHeight(),RGB.data(),tinygles::TextureFormat::FORMAT_RGB);
-    }
-    else
-    {
-        background = GL.GetDiagnosticsTexture(); // used default development texture
-    }
-
-    Icons someIcons(GL,path);
-    DisplayWeather theWeather(GL,path);
-    DisplaySystemStatus systemStatus(GL,path);
-    DisplayAirQuality theAirQuality(GL,path);
-    DisplayClock theClock(GL,path);
-    DisplayBitcoinPrice bitcoinPrice(GL,path);
-
-
-    theClock.SetForground(255,255,255);
-
-    TheWeather weatherData(theTasks.GetWeatherApiKey());
-
-    // Get our MQTT data stream so we can collect stuff from other systems.
-    std::map<std::string,std::string> outsideData;
-    std::time_t outsideTemperatureDelivered = 0;
-    const std::vector<std::string>& topics =
-    {
-        "/outside/temperature",
-        "/outside/battery",
-        "/outside/hartbeat",
+        return mainScreen->TouchEvent(pX,pY,pTouched);
     };
 
-    MQTTData MQTT("server",1883,topics,[&outsideData,&outsideTemperatureDelivered](const std::string &pTopic,const std::string &pData)
+    while( graphics->ProcessSystemEvents(touchEventHandler) )
     {
-        outsideData[pTopic] = pData;
-        outsideTemperatureDelivered = std::time(nullptr);
-    });
+        mainScreen->Update();
 
-    if( MQTT.GetOK() == false )
-    {
-        std::cerr << "Failed to start MQTT\n";
-       	return EXIT_FAILURE;
-    }
-    
-    while( GL.BeginFrame() )
-    {
-        std::time_t theTimeUTC = std::time(nullptr);
-        const tm *now = localtime(&theTimeUTC);
-        if( now != nullptr )
-        {
-            currentTime = *now;
-        }
+        graphics->BeginFrame();
 
-        GL.Clear(background);
+        mainScreen->Draw(graphics);
 
-        weatherData.Update(theTimeUTC);
-        theClock.Update(20,20,currentTime);
-        theAirQuality.Update(430,2);
-        theTasks.Update(20,450,currentTime);
-        bitcoinPrice.Update(GL.GetWidth()/2,120);
-
-        // draw current outside temperature. May not have the value and so need to trap that exception.
-        try
-        {
-            const int temperatureY = 520;
-            const int x = theWeather.RenderTemperature(GL.GetWidth(),temperatureY,outsideData["/outside/temperature"]);
-            std::stringstream s(outsideData["/outside/battery"]);
-            int percent = 0;
-            s >> percent;
-            const int fx = x + 14;
-            const int dx = 100;
-            const int y = temperatureY + 64;
-            const int h = 4;
-            GL.DrawRectangle(fx,y,fx+1 + dx,y + h + 1,0,0,0);
-            GL.FillRectangle(fx,y,fx + dx,y + h,255,255,255);
-            GL.FillRectangle(fx,y,fx + percent,y + h,15,205,15);
-
-            // get the hartbeat of the outside temprature and render something so I know if it's offline
-            const std::time_t outsideTimestamp = std::stol(outsideData["/outside/hartbeat"]);
-            const int64_t nowTimeStamp = std::time(NULL);
-//            std::cout << (nowTimeStamp - outsideTimestamp) / 60 << "\n";
-            const int diff = (int)((nowTimeStamp - outsideTimestamp) / 60);
-            GL.FontSetColour(0,0,0);
-            GL.FontPrintf(fx + 134,y-10,"%d",diff);
-        }
-        catch(std::runtime_error& e)
-        {
-            std::cerr << "Failed to read MQTT data: " << e.what() << "\n";
-        }
-
-
-        // Render the weather forcast.
-        theWeather.RenderWeatherForcast(280,currentTime,weatherData,someIcons);
-
-        // Draw some intresting system status stuff.
-        systemStatus.Render(650,2);
-
-        // Always redraw FB, something on the OS may have don't something I can't stop.
-        // Also handles user input.
-        GL.EndFrame();
+        graphics->EndFrame();
 
         // Check again in a second. Not doing big wait here as I need to be able to quit in a timely fashion.
         // Also OS could correct display. But one second means system not pegged 100% rendering as fast as possible.
         sleep(1);
     }
+
+    delete mainScreen;
+    eui::Graphics::Close();
 
     return EXIT_SUCCESS;
 }

@@ -3,12 +3,9 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/MiniTasker/"
+                "${workspaceFolder}/**"
             ],
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c17",
-            "intelliSenseMode": "linux-clang-x64"
+            "cStandard": "c17"
         }
     ],
     "version": 4

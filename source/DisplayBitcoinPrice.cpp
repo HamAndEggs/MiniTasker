@@ -1,42 +1,63 @@
-#include "DisplayBitcoinPrice.h"
 
-#include <assert.h>
+#include "DisplayBitcoinPrice.h"
+#include "TinyJson.h"
 
 #include <curl/curl.h>
-#include "TinyJson.h"
-#include "TinyTools.h"
-#include "TinyPNG.h"
 
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {
-	if(writerData == NULL)
-		return 0;
+    if(writerData == NULL)
+        return 0;
 
-	writerData->append(data, size*nmemb);
+    writerData->append(data, size*nmemb);
 
-	return size * nmemb;
+    return size * nmemb;
 }
-/*
-static std::string TrimZeros(const std::string &s)
+
+DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
-    std::string::const_iterator it = s.begin();
-    while (it != s.end() && (isspace(*it) || *it == '0') )
-        it++;
+    this->SetID("bitcoin");
+    this->SetPos(1,0);
+    this->SetGrid(2,2);
 
-    std::string::const_reverse_iterator rit = s.rbegin();
-    while (rit.base() != it && (isspace(*rit) || *rit == '0') )
-        rit++;
+    eui::Style s;
+    s.mBackground = eui::COLOUR_DARK_GREY;
+    s.mBorderSize = BORDER_SIZE;
+    s.mBorder = eui::COLOUR_WHITE;
+    s.mRadius = RECT_RADIUS;
+    s.mAlignment = eui::ALIGN_CENTER_CENTER;
 
-    return std::string(it, rit.base());
-}*/
+    mControls.LastPrice = eui::Element::Create(s);
+        mControls.LastPrice->SetPadding(0.05f);
+        mControls.LastPrice->SetFont(pNormalFont);
+        mControls.LastPrice->SetText("£XXXXXX");
+        mControls.LastPrice->SetPadding(CELL_PADDING);
+        mControls.LastPrice->SetPos(0,0);
+    this->Attach(mControls.LastPrice);
 
-DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pPath):
-    mFont( pGL.FontLoad( pPath + "liberation_serif_font/LiberationSerif-Bold.ttf",52)),
-    GL(pGL)
-{
-    mIconDownArrow = LoadIcon(pPath + "icons/down-arrow.png");
-    mIconUpArrow = LoadIcon(pPath + "icons/up-arrow.png");
-    mIconGBP = LoadIcon(pPath + "icons/gold-pound-symbol.png");
+    mControls.PriceChange = eui::Element::Create(s);
+        mControls.PriceChange->SetPadding(0.05f);
+        mControls.PriceChange->SetFont(pNormalFont);
+        mControls.PriceChange->SetText("+XXXXXX");
+        mControls.PriceChange->SetPadding(CELL_PADDING);
+        mControls.PriceChange->SetPos(0,1);
+    this->Attach(mControls.PriceChange);
+
+    mControls.High = eui::Element::Create(s);
+        mControls.High->SetPadding(0.05f);
+        mControls.High->SetFont(pNormalFont);
+        mControls.High->SetText("+XXXXXX");
+        mControls.High->SetPadding(CELL_PADDING);
+        mControls.High->SetPos(1,0);
+    this->Attach(mControls.High);
+
+    mControls.Low = eui::Element::Create(s);
+        mControls.Low->SetPadding(0.05f);
+        mControls.Low->SetFont(pNormalFont);
+        mControls.Low->SetText("£XXXXXX");
+        mControls.Low->SetPadding(CELL_PADDING);
+        mControls.Low->SetPos(1,1);
+    this->Attach(mControls.Low);
 
     mPriceUpdater.Tick(60*10,[this]()
     {
@@ -44,7 +65,6 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& 
         try
         {
             const std::string url = "https://cex.io/api/ticker/BTC/GBP";
-//            const std::string url = "https://api.blockchain.com/v3/exchange/tickers/BTC-GBP";
             if( DownloadReport(url,jsonData) )
             {
                 // We got it, now we need to build the weather object from the json.
@@ -72,128 +92,49 @@ DisplayBitcoinPrice::~DisplayBitcoinPrice()
     mPriceUpdater.TellThreadToExitAndWait();
 }
 
-void DisplayBitcoinPrice::Update(int pX,int pY)
+bool DisplayBitcoinPrice::OnUpdate()
 {
-    const std::string price = std::string("£") + std::to_string(mLastPrice);
-    if( price.size() > 0 )
-    {
-        int width = 126 + ((price.size()-1)*20);
-        int x = pX;
+    mControls.LastPrice->SetTextF("£%d",mLastPrice);
 
-// Main price
-        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
-        x += 4;
+    std::string growth = std::to_string(mPriceChange);
+    if( mPriceChange > 0 )
+        growth = "+" + growth;
 
-        GL.FontSetColour(mFont,255,255,255);
-        GL.FontPrint(mFont,x + 10,pY + 50,price);
-        x += GL.FontGetPrintWidth(mFont,price);
+    mControls.PriceChange->SetText(growth);
 
-        x += 20;
-        if( mPriceChange != 0 )
-        {
-            if( mPriceChange > 0 )
-                GL.Blit(mIconUpArrow,x,pY+4,0,255,0);
-            else
-                GL.Blit(mIconDownArrow,x,pY+4,255,0,0);
-        }
-
-// Price change
-        x = pX;
-        pY += 80;
-
-        GL.RoundedRectangle(x,pY,pX+width,pY+70,12,0,0,0,255,true);
-        x += 4;
-
-        std::string growth = std::to_string(mPriceChange);
-        if( mPriceChange > 0 )
-            growth = "+" + growth;
-        x = pX + width - 40 - GL.FontGetPrintWidth(mFont,growth);
-        GL.FontPrint(mFont,x + 10,pY + 50,growth);
-
-// 24 hour high
-        pY -= 80;
-        x = pX + width + 10;
-
-        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
-        x += 4;
-
-        const std::string high = std::string("£") + std::to_string(m24HourHigh);
-        GL.FontSetColour(mFont,255,255,255);
-        x += width - GL.FontGetPrintWidth(mFont,high) - 10;
-        GL.FontPrint(mFont,x,pY + 50,high);
-
-// 24 hour low
-        pY += 80;
-        x = pX + width + 10;
-
-        GL.RoundedRectangle(x,pY,x + width,pY+70,12,0,0,0,255,true);
-        x += 4;
-
-        const std::string low = std::string("£") + std::to_string(m24HourLow);
-        GL.FontSetColour(mFont,255,255,255);
-        x += width - GL.FontGetPrintWidth(mFont,low) - 10;
-        GL.FontPrint(mFont,x,pY + 50,low);
-
-    }
-
+    mControls.High->SetTextF("£%d",m24HourHigh);
+    mControls.Low->SetTextF("£%d",m24HourLow);
+    return true;
 }
 
 bool DisplayBitcoinPrice::DownloadReport(const std::string& pURL,std::string& rJson)const
 {
-	bool result = false;
-	CURL *curl = curl_easy_init();
-	if(curl)
-	{
-		char errorBuffer[CURL_ERROR_SIZE];
-		errorBuffer[0] = 0;
-
-		const char* funcName = "CURLOPT_ERRORBUFFER";
-		if( curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK )
-		{
-			funcName = "CURLOPT_URL";
-			if( curl_easy_setopt(curl, CURLOPT_URL, pURL.c_str()) == CURLE_OK )
-			{
-				funcName = "CURLOPT_WRITEFUNCTION";
-				if( curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLWriter) == CURLE_OK )
-				{
-					funcName = "CURLOPT_WRITEDATA";
-					if( curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rJson) == CURLE_OK )
-					{
-						funcName = "curl_easy_perform";
-						if( curl_easy_perform(curl) == CURLE_OK )
-						{
-							result = true;
-						}
-					}
-				}
-			}
-		}
-
-		if( result  == false )
-		{
-			std::cerr << "Lib curl " << funcName << " failed, [" << errorBuffer << "]\n";
-		}
-
-		/* always cleanup */ 
-		curl_easy_cleanup(curl);
-	}
-
-	return result;
-}
-
-uint32_t DisplayBitcoinPrice::LoadIcon(const std::string& pName)
-{
-    tinypng::Loader loader;
-    if( loader.LoadFromFile(pName) )
+    bool result = false;
+    CURL *curl = curl_easy_init();
+    if(curl)
     {
-        std::vector<uint8_t> pixels;
-        loader.GetRGBA(pixels);
-        return GL.CreateTexture(loader.GetWidth(),loader.GetHeight(),pixels.data(),tinygles::TextureFormat::FORMAT_RGBA);
-    }
-    else
-    {
-        std::cerr << "Failed to load icon " << pName << "\n";
+        char errorBuffer[CURL_ERROR_SIZE];
+        errorBuffer[0] = 0;
+        if( curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK )
+        {
+            if( curl_easy_setopt(curl, CURLOPT_URL, pURL.c_str()) == CURLE_OK )
+            {
+                if( curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLWriter) == CURLE_OK )
+                {
+                    if( curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rJson) == CURLE_OK )
+                    {
+                        if( curl_easy_perform(curl) == CURLE_OK )
+                        {
+                            result = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        /* always cleanup */ 
+        curl_easy_cleanup(curl);
     }
 
-    return GL.GetDiagnosticsTexture();
+    return result;
 }

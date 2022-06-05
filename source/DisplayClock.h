@@ -17,30 +17,22 @@
 #ifndef DISPLAY_CLOCK_H
 #define DISPLAY_CLOCK_H
 
-#include "TinyGLES.h"
+#include "Graphics.h"
+#include "Element.h"
 
-#include <string>
-#include <time.h>
-
-class DisplayClock
+class DisplayClock : public eui::Element
 {
 public:
-    DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath);
-    ~DisplayClock();
 
-    void SetForground(uint8_t pR,uint8_t pG,uint8_t pB);
-    void Update(int pX,int pY,const tm& pCurrentTime);
+    DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    virtual bool OnUpdate();
 
 private:
-
-    void DrawTime(int pX,int pY,int pHour,int pMinute);
-    void DrawDay(int pX,int pY,int pWeekDay,int pMonthDay);
-    
-    const uint32_t mTimeFont = 0;
-    const uint32_t mDateFont = 0;
-
-    tinygles::GLES& GL;
+    eui::ElementPtr clock = nullptr;
+    eui::ElementPtr dayName = nullptr;
+    eui::ElementPtr dayNumber = nullptr;
 
 };
+
 
 #endif //#ifndef DISPLAY_CLOCK_H

@@ -1,33 +1,38 @@
 #ifndef DisplayBitcoinPrice_h__
 #define DisplayBitcoinPrice_h__
 
-#include "TinyGLES.h"
-
-#include <thread>
+#include "Graphics.h"
+#include "Element.h"
 #include "TinyTools.h"
-class DisplayBitcoinPrice
+
+#include <string>
+
+class DisplayBitcoinPrice : public eui::Element
 {
 public:
-    DisplayBitcoinPrice(tinygles::GLES& pGL,const std::string& pPath);
-    ~DisplayBitcoinPrice();
 
-    void Update(int pX,int pY);
+    DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    ~DisplayBitcoinPrice();
+    virtual bool OnUpdate();
 
 private:
-    const uint32_t mFont = 0;
-    tinygles::GLES& GL;
     int mLastPrice = 0;
     int mPriceChange = 0;
     int m24HourLow = 0;
     int m24HourHigh = 0;
+
+    struct
+    {
+        eui::ElementPtr LastPrice;
+        eui::ElementPtr PriceChange;
+        eui::ElementPtr Low;
+        eui::ElementPtr High;
+    }mControls;
+
     tinytools::threading::SleepableThread  mPriceUpdater;
 
-    uint32_t mIconDownArrow;
-    uint32_t mIconUpArrow;
-    uint32_t mIconGBP;
-
     bool DownloadReport(const std::string& pURL,std::string& rJson)const;
-    uint32_t LoadIcon(const std::string& pName);
+
 };
 
 #endif //DisplayBitcoinPrice_h__

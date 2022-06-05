@@ -17,37 +17,69 @@
 #ifndef DISPLAY_WEATHER_H
 #define DISPLAY_WEATHER_H
 
-#include "TinyGLES.h"
-#include "TheWeather.h"
-#include "Icons.h"
+#include "Graphics.h"
+#include "Element.h"
+
+#include "TinyWeather.h"
+
+#include <ctime>
+#include <string>
+#include <map>
 
 #include <vector>
 
-class DisplayWeather
+class WeatherIcon;
+class DisplayWeather : public eui::Element
 {
 public:
-    DisplayWeather(tinygles::GLES& pGL,const std::string& pIconFolder);
-    ~DisplayWeather() = default;
 
-    /**
-     * @brief Draws a set of icons to get a brief over view of the weather coming up.
-     * 
-     * @param pFB 
-     * @param pX 
-     * @param pY 
-     */
-    void RenderWeatherForcast(int pY,const tm& pCurrentTime,const TheWeather& pWeather,const Icons& pTheIcons);
-
-    /**
-     * @brief Renders a box with the temprature in it.
-     */
-    int RenderTemperature(int pX,int pY,const std::string& pOutsideTemperature);
+    DisplayWeather(eui::Graphics* graphics,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    ~DisplayWeather();
+    
+    virtual bool OnUpdate();
 
 private:
-    const uint32_t mIconFont = 0;
-    const uint32_t mTemperatureFont = 0;
-    tinygles::GLES& GL;
 
+    WeatherIcon* icons[6];
+    int tick = 0;
+    float anim = 0;
+
+    std::map<std::string,uint32_t>WeatherIcons;
+
+    const std::vector<std::string> files =
+    {
+        "01d",
+        "01n",
+        "02d",
+        "02n",
+        "03d",
+        "03n",
+        "04d",
+        "04n",
+        "09d",
+        "09n",
+        "10d",
+        "10n",
+        "11d",
+        "11n",
+        "13d",
+        "13n",
+        "50d",
+        "50n",
+    };
+
+    bool mHasWeather;
+    bool mFirstFail; //!< Sometimes just after boot the fetch fails. Normally if it does I wait an hour before trying again. But for the first time will try in one minutes time.
+    std::time_t mFetchLimiter;
+    std::time_t mHourlyUpdates;
+    tinyweather::OpenWeatherMap mWeather;
+
+    std::string mCurrentTemperature;
+
+    tinyweather::HourlyIconVector mNextHourlyIcons;
+
+    void LoadWeatherIcons(eui::Graphics* graphics);
+    uint32_t GetRandomIcon();
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H

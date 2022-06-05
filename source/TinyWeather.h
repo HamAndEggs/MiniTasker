@@ -34,7 +34,7 @@ struct HourlyIcon
 {
 	int hour;
 	std::string icon;
-	float temprature;
+	float temperature;
 };
 
 typedef std::vector<HourlyIcon> HourlyIconVector;

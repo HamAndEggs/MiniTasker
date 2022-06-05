@@ -15,63 +15,75 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "DisplayClock.h"
+#include <time.h>
+#include <chrono>
 
-#include <string>
-#include <array>
-
-
-DisplayClock::DisplayClock(tinygles::GLES& pGL,const std::string& pFontPath):
-    mTimeFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Bold.ttf",160)),
-    mDateFont( pGL.FontLoad( pFontPath + "liberation_serif_font/LiberationSerif-Regular.ttf",52)),
-    GL(pGL)
+DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
+    this->SetID("clock");
+    this->SetPos(0,0);
+
+    eui::Style s;
+    s.mBackground = eui::COLOUR_BLACK;
+    s.mBorderSize = BORDER_SIZE;
+    s.mBorder = eui::COLOUR_WHITE;
+    s.mRadius = 0.1f;
+    this->SetStyle(s);
+    this->SetPadding(CELL_PADDING);
+
+    clock = eui::Element::Create();
+        clock->SetPadding(0.05f);
+        clock->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
+        clock->SetFont(pBigFont);
+    this->Attach(clock);
+
+    dayName = eui::Element::Create();
+        dayName->SetPadding(0.05f);
+        dayName->GetStyle().mAlignment = eui::ALIGN_LEFT_BOTTOM;
+        dayName->SetFont(pNormalFont);
+    this->Attach(dayName);
+
+    dayNumber = eui::Element::Create();
+        dayNumber->SetPadding(0.05f);
+        dayNumber->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
+        dayNumber->SetFont(pNormalFont);
+    this->Attach(dayNumber);
 }
 
-DisplayClock::~DisplayClock()
+bool DisplayClock::OnUpdate()
 {
-
-}
-
-void DisplayClock::SetForground(uint8_t pR,uint8_t pG,uint8_t pB)
-{
-    GL.FontSetColour(mTimeFont,pR,pG,pB);
-    GL.FontSetColour(mDateFont,pR,pG,pB);
-}
-
-void DisplayClock::Update(int pX,int pY,const tm& pCurrentTime)
-{
-    GL.FillRoundedRectangle(pX-8,pY-8,pX + 400,pY + 230,35,255,255,255);
-    GL.FillRoundedRectangle(pX-4,pY-4,pX + 400-4,pY + 230-4,32,0,0,0);
-
-    DrawTime(pX,pY,pCurrentTime.tm_hour,pCurrentTime.tm_min);
-    DrawDay(pX + 8,pY + 140,pCurrentTime.tm_wday,pCurrentTime.tm_mday);
-}
-
-void DisplayClock::DrawTime(int pX,int pY,int pHour,int pMinute)
-{
-    GL.FontPrintf(mTimeFont,pX + 4,pY + 120,"%02d:%02d",pHour,pMinute);
-}
-
-void DisplayClock::DrawDay(int pX,int pY,int pWeekDay,int pMonthDay)
-{
-    static const std::array<std::string,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
-
-    GL.FontPrint(mDateFont,pX + 4,pY + 44,Days[pWeekDay].c_str());
-
-    // Do month day.
-    std::string monthDayTag = "th";
-    if( pMonthDay == 1 || pMonthDay == 21 || pMonthDay == 31 )
+    std::time_t result = std::time(nullptr);
+    tm *currentTime = localtime(&result);
+    if( currentTime )
     {
-        monthDayTag = "st";
-    }
-    else if( pMonthDay == 2 || pMonthDay == 22 )
-    {
-        monthDayTag = "nd";
-    }
-    else if( pMonthDay == 3 || pMonthDay == 23 )
-    {
-        monthDayTag = "rd";
-    }
+        clock->SetTextF("%02d:%02d",currentTime->tm_hour,currentTime->tm_min);
 
-    GL.FontPrintf(mDateFont,pX + 272,pY + 44,"%d%s",pMonthDay,monthDayTag.c_str());
+        const std::array<std::string,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+        dayName->SetText(Days[currentTime->tm_wday]);
+
+        // Do month day.
+        const char* monthDayTag = "th";
+        const int monthDay = currentTime->tm_mday;
+        if( monthDay == 1 || monthDay == 21 || monthDay == 31 )
+        {
+            monthDayTag = "st";
+        }
+        else if( monthDay == 2 || monthDay == 22 )
+        {
+            monthDayTag = "nd";
+        }
+        else if( monthDay == 3 || monthDay == 23 )
+        {
+            monthDayTag = "rd";
+        }
+
+        dayNumber->SetTextF("%d%s",monthDay,monthDayTag);
+    }
+    else
+    {
+        clock->SetText("NO CLOCK");
+        dayName->SetText("NO DAY");
+        dayNumber->SetText("NO DAY");
+    }
+    return true;
 }
