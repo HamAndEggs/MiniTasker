@@ -44,11 +44,11 @@ static std::string GetTimeString(const std::time_t pTime)
 	return std::to_string(currentTime.tm_hour) + ":" + std::to_string(currentTime.tm_min) + ":" + std::to_string(currentTime.tm_sec);
 }
 
-static std::string ReadWeatherKey()
+static std::string ReadWeatherKey(const std::string& pPath)
 {
     try
     {
-        return tinytools::file::LoadFileIntoString("weather.key");
+        return tinytools::file::LoadFileIntoString(pPath + "weather.key");
     }
     catch(std::runtime_error &e)
     {
