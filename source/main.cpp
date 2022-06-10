@@ -25,6 +25,7 @@
 #include "DisplayBitcoinPrice.h"
 
 #include <unistd.h>
+#include <filesystem>
 
 const float CELL_PADDING = 0.02f;
 const float RECT_RADIUS = 0.2f;
