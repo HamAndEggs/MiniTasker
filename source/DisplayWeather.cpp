@@ -109,7 +109,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     mFirstFail(true),
     mFetchLimiter(0),
     mHourlyUpdates(0),
-    mWeather(ReadWeatherKey())
+    mWeather(ReadWeatherKey(pPath))
 {
     LoadWeatherIcons(graphics,pPath);
 
