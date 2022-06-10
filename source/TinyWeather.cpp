@@ -313,6 +313,7 @@ bool OpenWeatherMap::DownloadWeatherReport(const std::string& pURL,std::string& 
 	CURL *curl = curl_easy_init();
 	if(curl)
 	{
+		std::clog << "Getting weather from:" << pURL << "\n";
 		char errorBuffer[CURL_ERROR_SIZE];
 		errorBuffer[0] = 0;
 
