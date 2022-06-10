@@ -32,22 +32,34 @@ const float BORDER_SIZE = 3.0f;
 
 int main(int argc, char *argv[])
 {
+// Crude argument list handling.
+    std::string path = "./";
+
+    std::string taskFile = "task-file.json";
+    if( argc == 2 && std::filesystem::directory_entry(argv[1]).exists() )
+    {
+        path = argv[1];
+        if( path.back() != '/' )
+            path += '/';
+    }
+
+
     eui::Graphics* graphics = eui::Graphics::Open();
 
     eui::ElementPtr mainScreen = eui::Element::Create();
     mainScreen->SetID("mainScreen");
     mainScreen->SetGrid(3,3);
 
-    int miniFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Regular.ttf",20);
-    int normalFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Regular.ttf",35);
-    int bigFont = graphics->FontLoad("./liberation_serif_font/LiberationSerif-Bold.ttf",130);
+    int miniFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",20);
+    int normalFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",35);
+    int bigFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
     mainScreen->SetFont(normalFont);
-    mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG("./images/bg-pastal-01.png");
+    mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG(path + "images/bg-pastal-01.png");
     mainScreen->GetStyle().mBackground = eui::COLOUR_WHITE;
 
     mainScreen->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mainScreen->Attach(new DisplayBitcoinPrice(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-    mainScreen->Attach(new DisplayWeather(graphics,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mainScreen->Attach(new DisplayWeather(graphics,path,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
 
     eui::ElementPtr status = eui::Element::Create();
     status->SetGrid(1,2);

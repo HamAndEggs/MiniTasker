@@ -33,7 +33,7 @@ class DisplayWeather : public eui::Element
 {
 public:
 
-    DisplayWeather(eui::Graphics* graphics,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayWeather();
     
     virtual bool OnUpdate();
@@ -78,7 +78,7 @@ private:
 
     tinyweather::HourlyIconVector mNextHourlyIcons;
 
-    void LoadWeatherIcons(eui::Graphics* graphics);
+    void LoadWeatherIcons(eui::Graphics* graphics,const std::string& pPath);
     uint32_t GetRandomIcon();
 };
 

@@ -104,14 +104,14 @@ public:
     }    
 };
 
-DisplayWeather::DisplayWeather(eui::Graphics* graphics,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) :
+DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) :
     mHasWeather(false),
     mFirstFail(true),
     mFetchLimiter(0),
     mHourlyUpdates(0),
     mWeather(ReadWeatherKey())
 {
-    LoadWeatherIcons(graphics);
+    LoadWeatherIcons(graphics,pPath);
 
     this->SetPos(0,1);
     this->SetGrid(6,1);
@@ -251,11 +251,11 @@ bool DisplayWeather::OnUpdate()
     return true;
 }
 
-void DisplayWeather::LoadWeatherIcons(eui::Graphics* graphics)
+void DisplayWeather::LoadWeatherIcons(eui::Graphics* graphics,const std::string& pPath)
 {
     for( std::string f : files )
     {
-        WeatherIcons[f] = graphics->TextureLoadPNG("./icons/" + f + ".png");
+        WeatherIcons[f] = graphics->TextureLoadPNG(pPath + "icons/" + f + ".png");
     }
 }
 
