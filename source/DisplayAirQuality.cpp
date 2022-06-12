@@ -30,11 +30,11 @@ DisplayAirQuality::DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,
     s.mBorderSize = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
+    SetStyle(s);
 
     this->SetID("environment status");
     this->SetPadding(CELL_PADDING);
     this->SetPos(0,1);
-
 
     eCO2 = eui::Element::Create();
         eCO2->SetPadding(0.05f);

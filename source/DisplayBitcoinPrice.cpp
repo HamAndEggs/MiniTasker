@@ -17,8 +17,8 @@ static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerD
 DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("bitcoin");
-    this->SetPos(1,0);
-    this->SetGrid(2,2);
+    this->SetPos(1,2);
+    this->SetGrid(2,3);
 
     eui::Style s;
     s.mBackground = eui::COLOUR_DARK_GREY;
@@ -43,27 +43,44 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniF
         mControls.PriceChange->SetPos(0,1);
     this->Attach(mControls.PriceChange);
 
-    mControls.High = eui::Element::Create(s);
-        mControls.High->SetPadding(0.05f);
-        mControls.High->SetFont(pNormalFont);
-        mControls.High->SetText("+XXXXXX");
-        mControls.High->SetPadding(CELL_PADDING);
-        mControls.High->SetPos(1,0);
-    this->Attach(mControls.High);
+    mControls.PriceChangePercent = eui::Element::Create(s);
+        mControls.PriceChangePercent->SetPadding(0.05f);
+        mControls.PriceChangePercent->SetFont(pNormalFont);
+        mControls.PriceChangePercent->SetText("+XXXXXX");
+        mControls.PriceChangePercent->SetPadding(CELL_PADDING);
+        mControls.PriceChangePercent->SetPos(0,2);
+    this->Attach(mControls.PriceChangePercent);
 
-    mControls.Low = eui::Element::Create(s);
-        mControls.Low->SetPadding(0.05f);
-        mControls.Low->SetFont(pNormalFont);
-        mControls.Low->SetText("£XXXXXX");
-        mControls.Low->SetPadding(CELL_PADDING);
-        mControls.Low->SetPos(1,1);
-    this->Attach(mControls.Low);
+
+    mControls.LastPriceUSD = eui::Element::Create(s);
+        mControls.LastPriceUSD->SetPadding(0.05f);
+        mControls.LastPriceUSD->SetFont(pNormalFont);
+        mControls.LastPriceUSD->SetText("£XXXXXX");
+        mControls.LastPriceUSD->SetPadding(CELL_PADDING);
+        mControls.LastPriceUSD->SetPos(1,0);
+    this->Attach(mControls.LastPriceUSD);
+
+    mControls.HighUSD = eui::Element::Create(s);
+        mControls.HighUSD->SetPadding(0.05f);
+        mControls.HighUSD->SetFont(pNormalFont);
+        mControls.HighUSD->SetText("+XXXXXX");
+        mControls.HighUSD->SetPadding(CELL_PADDING);
+        mControls.HighUSD->SetPos(1,1);
+    this->Attach(mControls.HighUSD);
+
+    mControls.LowUSD = eui::Element::Create(s);
+        mControls.LowUSD->SetPadding(0.05f);
+        mControls.LowUSD->SetFont(pNormalFont);
+        mControls.LowUSD->SetText("£XXXXXX");
+        mControls.LowUSD->SetPadding(CELL_PADDING);
+        mControls.LowUSD->SetPos(1,2);
+    this->Attach(mControls.LowUSD);
 
     mPriceUpdater.Tick(60*10,[this]()
     {
-        std::string jsonData;
         try
         {
+            std::string jsonData;
             const std::string url = "https://cex.io/api/ticker/BTC/GBP";
             if( DownloadReport(url,jsonData) )
             {
@@ -74,16 +91,40 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniF
                 tinyjson::JsonProcessor json(jsonData);
                 const tinyjson::JsonValue price = json.GetRoot();
 
-                mLastPrice = (int)std::stoi(price["last"].GetString());
-                mPriceChange = (int)std::stoi(price["priceChange"].GetString());
-                m24HourLow = (int)std::stoi(price["low"].GetString());
-                m24HourHigh = (int)std::stoi(price["high"].GetString());
+                mLastPrice = price["last"].GetString();
+                mPriceChange = price["priceChange"].GetString();
+                mPriceChangePercent = price["priceChangePercentage"].GetString();
             }
         }
         catch(std::runtime_error &e)
         {
-            std::cerr << "Failed to download bitcoin price: " << e.what() << "\n";
+            std::cerr << "Failed to download UK bitcoin price: " << e.what() << "\n";
         }
+
+        try
+        {
+            std::string jsonData;
+            // Now do dollar.
+            const std::string urlUSD = "https://cex.io/api/ticker/BTC/USD";
+            if( DownloadReport(urlUSD,jsonData) )
+            {
+                // We got it, now we need to build the weather object from the json.
+                // I would have used rapid json but that is a lot of files to add to this project.
+                // My intention is for someone to beable to drop these two files into their project and continue.
+                // And so I will make my own json reader, it's easy but not the best solution.
+                tinyjson::JsonProcessor json(jsonData);
+                const tinyjson::JsonValue price = json.GetRoot();
+
+                mLastPriceUSD = price["last"].GetString();
+                m24HourLowUSD = price["low"].GetString();
+                m24HourHighUSD = price["high"].GetString();
+            }
+        }
+        catch(std::runtime_error &e)
+        {
+            std::cerr << "Failed to download USD bitcoin price: " << e.what() << "\n";
+        }
+
     });
 }
 
@@ -94,16 +135,13 @@ DisplayBitcoinPrice::~DisplayBitcoinPrice()
 
 bool DisplayBitcoinPrice::OnUpdate()
 {
-    mControls.LastPrice->SetTextF("£%d",mLastPrice);
+    mControls.LastPrice->SetTextF("£%s",mLastPrice.c_str());
+    mControls.PriceChange->SetText(mPriceChange);
+    mControls.PriceChangePercent->SetTextF("%s%%",mPriceChangePercent.c_str());
 
-    std::string growth = std::to_string(mPriceChange);
-    if( mPriceChange > 0 )
-        growth = "+" + growth;
-
-    mControls.PriceChange->SetText(growth);
-
-    mControls.High->SetTextF("£%d",m24HourHigh);
-    mControls.Low->SetTextF("£%d",m24HourLow);
+    mControls.LastPriceUSD->SetTextF("$%s",mLastPriceUSD.c_str());
+    mControls.HighUSD->SetTextF("$%s",m24HourHighUSD.c_str());
+    mControls.LowUSD->SetTextF("$%s",m24HourLowUSD.c_str());
     return true;
 }
 
@@ -131,6 +169,12 @@ bool DisplayBitcoinPrice::DownloadReport(const std::string& pURL,std::string& rJ
                 }
             }
         }
+
+        if( result  == false )
+		{
+			std::cerr << "Lib curl, BITCOIN, failed, [" << errorBuffer << "]\n";
+		}
+
 
         /* always cleanup */ 
         curl_easy_cleanup(curl);

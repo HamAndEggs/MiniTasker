@@ -965,6 +965,7 @@ void SleepableThread::Tick(int pPauseInterval,std::function<void()> pTheWork)
 		TINYTOOLS_THROW("SleepableThread passed nullpoint for the work to do...");
 	}
 
+    mKeepGoing = true;
 	mWorkerThread = std::thread([this,pPauseInterval,pTheWork]()
 	{
 		while(mKeepGoing)

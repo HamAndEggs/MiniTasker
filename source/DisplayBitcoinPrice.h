@@ -16,17 +16,23 @@ public:
     virtual bool OnUpdate();
 
 private:
-    int mLastPrice = 0;
-    int mPriceChange = 0;
-    int m24HourLow = 0;
-    int m24HourHigh = 0;
+    std::string mLastPrice = "N/A";
+    std::string mPriceChange = "N/A";
+    std::string mPriceChangePercent = "N/A";
+
+    std::string mLastPriceUSD = "N/A";
+    std::string m24HourLowUSD = "N/A";
+    std::string m24HourHighUSD = "N/A";
 
     struct
     {
         eui::ElementPtr LastPrice;
         eui::ElementPtr PriceChange;
-        eui::ElementPtr Low;
-        eui::ElementPtr High;
+        eui::ElementPtr PriceChangePercent;
+
+        eui::ElementPtr LastPriceUSD;
+        eui::ElementPtr LowUSD;
+        eui::ElementPtr HighUSD;
     }mControls;
 
     tinytools::threading::SleepableThread  mPriceUpdater;

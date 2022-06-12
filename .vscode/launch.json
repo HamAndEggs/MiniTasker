@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/MiniTasker",
+            "program": "${workspaceFolder}/bin/x11/MiniTasker",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

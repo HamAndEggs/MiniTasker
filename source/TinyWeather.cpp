@@ -43,8 +43,6 @@ static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerD
 	if(writerData == NULL)
 		return 0;
 
-	std::cout << data << "\n";
-
 	writerData->append(data, size*nmemb);
 
 	return size * nmemb;
@@ -314,11 +312,10 @@ bool OpenWeatherMap::DownloadWeatherReport(const std::string& pURL,std::string& 
 	CURL *curl = curl_easy_init();
 	if(curl)
 	{
-		std::clog << "Getting weather from:" << pURL << "\n";
 		char errorBuffer[CURL_ERROR_SIZE];
 		errorBuffer[0] = 0;
 
-		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+//		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
 		const char* funcName = "CURLOPT_ERRORBUFFER";
 		if( curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK )
