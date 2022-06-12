@@ -67,7 +67,7 @@ static std::string ReadWeatherKey(const std::string& pPath)
 
     if( key.size() > 0 )
     {
-        key = tinytools::TrimWhiteSpace(key);
+        key = tinytools::string::TrimWhiteSpace(key);
     }
 
     if( key.size() < 4 )
