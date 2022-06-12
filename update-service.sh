@@ -4,6 +4,11 @@ APP_FOLDER="/usr/share/mini-tasker"
 echo "Updating repo"
 git pull
 
+echo "Updating EdgeUI repo"
+cd ./EdgeUI
+git pull
+cd ..
+
 ./update-resources.sh
 
 echo "Building application"
