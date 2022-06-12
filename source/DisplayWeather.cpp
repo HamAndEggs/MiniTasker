@@ -46,22 +46,36 @@ static std::string GetTimeString(const std::time_t pTime)
 
 static std::string ReadWeatherKey(const std::string& pPath)
 {
+    std::string key;
     try
     {
-        return tinytools::file::LoadFileIntoString(pPath + "weather.key");
+        key = tinytools::file::LoadFileIntoString(pPath + "weather.key");
     }
     catch(std::runtime_error &e)
     {
-        try
-        {
-            return tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/weather.key");
-        }
-        catch(std::runtime_error &e)
-        {
-            std::cerr << "Could not load weather key\n";
-        }
+        std::cerr << "Could not load weather key from current folder, trying hard coded path\n";
     }
-    return "";
+
+    try
+    {
+        key = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/weather.key");
+    }
+    catch(std::runtime_error &e)
+    {
+        std::cerr << "Could not load weather key from hard coded path\n";
+    }
+
+    if( key.size() > 0 )
+    {
+        key = tinytools::TrimWhiteSpace(key);
+    }
+
+    if( key.size() < 4 )
+    {
+        std::cerr << "Weather key too short, will not work\n";
+    }
+
+    return key;
 }
 
 class WeatherIcon : public eui::Element

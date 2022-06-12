@@ -164,7 +164,6 @@ OpenWeatherMap::OpenWeatherMap(const std::string& pAPIKey):
 	mTimezoneOffset(0),
 	mAPIKey(pAPIKey)
 {
-	std::clog << "Using key " << mAPIKey << "\n";
 	std::clog << "sizeof time_t = " << sizeof(time_t) << " sizeof uint64_t = " << sizeof(uint64_t) << '\n';
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
