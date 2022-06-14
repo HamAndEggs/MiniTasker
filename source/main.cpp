@@ -52,14 +52,17 @@ int main(int argc, char *argv[])
     mainScreen->SetGrid(3,3);
 
     int miniFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",20);
-    int normalFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",35);
+    int normalFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
     int bigFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
+
+    int bitcoinFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",50);
+
     mainScreen->SetFont(normalFont);
     mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG(path + "images/bg-pastal-01.png");
     mainScreen->GetStyle().mBackground = eui::COLOUR_WHITE;
 
     mainScreen->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-    mainScreen->Attach(new DisplayBitcoinPrice(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mainScreen->Attach(new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mainScreen->Attach(new DisplayWeather(graphics,path,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
 
     eui::ElementPtr status = eui::Element::Create();

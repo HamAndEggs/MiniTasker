@@ -14,11 +14,13 @@ static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerD
     return size * nmemb;
 }
 
-DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("bitcoin");
     this->SetPos(1,2);
-    this->SetGrid(2,3);
+    this->SetGrid(3,2);
+    this->SetSpan(2,1);
+    this->SetFont(pBitcoinFont);
 
     eui::Style s;
     s.mBackground = eui::COLOUR_DARK_GREY;
@@ -26,10 +28,24 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniF
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
     s.mAlignment = eui::ALIGN_CENTER_CENTER;
+    s.mForeground = eui::COLOUR_BLACK;
+
+    DownStyle.mBackground = eui::MakeColour(220,255,220);
+    UpStyle.mBorderSize = BORDER_SIZE;
+    UpStyle.mBorder = eui::COLOUR_WHITE;
+    UpStyle.mRadius = RECT_RADIUS;
+    UpStyle.mAlignment = eui::ALIGN_CENTER_CENTER;
+    UpStyle.mForeground = eui::COLOUR_BLACK;
+
+    DownStyle.mBackground = eui::MakeColour(255,220,220);
+    DownStyle.mBorderSize = BORDER_SIZE;
+    DownStyle.mBorder = eui::COLOUR_WHITE;
+    DownStyle.mRadius = RECT_RADIUS;
+    DownStyle.mAlignment = eui::ALIGN_CENTER_CENTER;
+    DownStyle.mForeground = eui::COLOUR_BLACK;
 
     mControls.LastPrice = eui::Element::Create(s);
         mControls.LastPrice->SetPadding(0.05f);
-        mControls.LastPrice->SetFont(pNormalFont);
         mControls.LastPrice->SetText("£XXXXXX");
         mControls.LastPrice->SetPadding(CELL_PADDING);
         mControls.LastPrice->SetPos(0,0);
@@ -37,32 +53,28 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniF
 
     mControls.PriceChange = eui::Element::Create(s);
         mControls.PriceChange->SetPadding(0.05f);
-        mControls.PriceChange->SetFont(pNormalFont);
         mControls.PriceChange->SetText("+XXXXXX");
         mControls.PriceChange->SetPadding(CELL_PADDING);
-        mControls.PriceChange->SetPos(0,1);
+        mControls.PriceChange->SetPos(1,0);
     this->Attach(mControls.PriceChange);
 
     mControls.PriceChangePercent = eui::Element::Create(s);
         mControls.PriceChangePercent->SetPadding(0.05f);
-        mControls.PriceChangePercent->SetFont(pNormalFont);
         mControls.PriceChangePercent->SetText("+XXXXXX");
         mControls.PriceChangePercent->SetPadding(CELL_PADDING);
-        mControls.PriceChangePercent->SetPos(0,2);
+        mControls.PriceChangePercent->SetPos(2,0);
     this->Attach(mControls.PriceChangePercent);
 
 
     mControls.LastPriceUSD = eui::Element::Create(s);
         mControls.LastPriceUSD->SetPadding(0.05f);
-        mControls.LastPriceUSD->SetFont(pNormalFont);
         mControls.LastPriceUSD->SetText("£XXXXXX");
         mControls.LastPriceUSD->SetPadding(CELL_PADDING);
-        mControls.LastPriceUSD->SetPos(1,0);
+        mControls.LastPriceUSD->SetPos(0,1);
     this->Attach(mControls.LastPriceUSD);
 
     mControls.HighUSD = eui::Element::Create(s);
         mControls.HighUSD->SetPadding(0.05f);
-        mControls.HighUSD->SetFont(pNormalFont);
         mControls.HighUSD->SetText("+XXXXXX");
         mControls.HighUSD->SetPadding(CELL_PADDING);
         mControls.HighUSD->SetPos(1,1);
@@ -70,10 +82,9 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniF
 
     mControls.LowUSD = eui::Element::Create(s);
         mControls.LowUSD->SetPadding(0.05f);
-        mControls.LowUSD->SetFont(pNormalFont);
         mControls.LowUSD->SetText("£XXXXXX");
         mControls.LowUSD->SetPadding(CELL_PADDING);
-        mControls.LowUSD->SetPos(1,2);
+        mControls.LowUSD->SetPos(2,1);
     this->Attach(mControls.LowUSD);
 
     mPriceUpdater.Tick(60*10,[this]()
@@ -135,6 +146,27 @@ DisplayBitcoinPrice::~DisplayBitcoinPrice()
 
 bool DisplayBitcoinPrice::OnUpdate()
 {
+    if( mPriceChange.find('-') == std::string::npos )
+    {
+        mControls.LastPrice->SetStyle(UpStyle);
+        mControls.PriceChange->SetStyle(UpStyle);
+        mControls.PriceChangePercent->SetStyle(UpStyle);
+
+        mControls.LastPriceUSD->SetStyle(UpStyle);
+        mControls.HighUSD->SetStyle(UpStyle);
+        mControls.LowUSD->SetStyle(UpStyle);        
+    }
+    else
+    {
+        mControls.LastPrice->SetStyle(DownStyle);
+        mControls.PriceChange->SetStyle(DownStyle);
+        mControls.PriceChangePercent->SetStyle(DownStyle);
+
+        mControls.LastPriceUSD->SetStyle(DownStyle);
+        mControls.HighUSD->SetStyle(DownStyle);
+        mControls.LowUSD->SetStyle(DownStyle);
+    }
+
     mControls.LastPrice->SetTextF("£%s",mLastPrice.c_str());
     mControls.PriceChange->SetText(mPriceChange);
     mControls.PriceChangePercent->SetTextF("%s%%",mPriceChangePercent.c_str());

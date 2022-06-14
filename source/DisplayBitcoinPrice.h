@@ -11,7 +11,7 @@ class DisplayBitcoinPrice : public eui::Element
 {
 public:
 
-    DisplayBitcoinPrice(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayBitcoinPrice();
     virtual bool OnUpdate();
 
@@ -23,6 +23,8 @@ private:
     std::string mLastPriceUSD = "N/A";
     std::string m24HourLowUSD = "N/A";
     std::string m24HourHighUSD = "N/A";
+
+    eui::Style UpStyle,DownStyle;
 
     struct
     {
