@@ -30,7 +30,7 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
     s.mAlignment = eui::ALIGN_CENTER_CENTER;
     s.mForeground = eui::COLOUR_BLACK;
 
-    DownStyle.mBackground = eui::MakeColour(220,255,220);
+    UpStyle.mBackground = eui::MakeColour(220,255,220);
     UpStyle.mBorderSize = BORDER_SIZE;
     UpStyle.mBorder = eui::COLOUR_WHITE;
     UpStyle.mRadius = RECT_RADIUS;
