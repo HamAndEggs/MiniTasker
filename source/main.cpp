@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     int normalFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
     int bigFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
 
-    int bitcoinFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",50);
+    int bitcoinFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
 
     mainScreen->SetFont(normalFont);
     mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG(path + "images/bg-pastal-01.png");

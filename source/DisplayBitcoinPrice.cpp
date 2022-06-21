@@ -17,9 +17,9 @@ static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerD
 DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("bitcoin");
-    this->SetPos(1,2);
+    this->SetPos(0,2);
     this->SetGrid(3,2);
-    this->SetSpan(2,1);
+    this->SetSpan(3,1);
     this->SetFont(pBitcoinFont);
 
     eui::Style s;
@@ -30,14 +30,14 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
     s.mAlignment = eui::ALIGN_CENTER_CENTER;
     s.mForeground = eui::COLOUR_BLACK;
 
-    UpStyle.mBackground = eui::MakeColour(200,255,200);
+    UpStyle.mBackground = eui::MakeColour(100,255,100);
     UpStyle.mBorderSize = BORDER_SIZE;
     UpStyle.mBorder = eui::COLOUR_WHITE;
     UpStyle.mRadius = RECT_RADIUS;
     UpStyle.mAlignment = eui::ALIGN_CENTER_CENTER;
     UpStyle.mForeground = eui::COLOUR_BLACK;
 
-    DownStyle.mBackground = eui::MakeColour(255,200,200);
+    DownStyle.mBackground = eui::MakeColour(255,100,100);
     DownStyle.mBorderSize = BORDER_SIZE;
     DownStyle.mBorder = eui::COLOUR_WHITE;
     DownStyle.mRadius = RECT_RADIUS;
