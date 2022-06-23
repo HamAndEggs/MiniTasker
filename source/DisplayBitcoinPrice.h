@@ -15,7 +15,14 @@ public:
     ~DisplayBitcoinPrice();
     virtual bool OnUpdate();
 
+    const eui::Style &GetUpStyle()const{return UpStyle;}
+    const eui::Style &GetDownStyle()const{return DownStyle;}
+
+    const double GetPriceGBP()const{return mPriceGBP;}
+
 private:
+    double mPriceGBP = 0.0;
+
     std::string mLastPrice = "N/A";
     std::string mPriceChange = "N/A";
     std::string mPriceChangePercent = "N/A";
@@ -35,6 +42,8 @@ private:
         eui::ElementPtr LastPriceUSD;
         eui::ElementPtr LowUSD;
         eui::ElementPtr HighUSD;
+
+        eui::ElementPtr MyInvestment;
     }mControls;
 
     tinytools::threading::SleepableThread  mPriceUpdater;

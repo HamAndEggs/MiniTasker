@@ -31,12 +31,51 @@ const float CELL_PADDING = 0.02f;
 const float RECT_RADIUS = 0.2f;
 const float BORDER_SIZE = 3.0f;
 
+static double ReadMyBTCInvestment(const std::string& pPath)
+{
+    std::string btc;
+    try
+    {
+        btc = tinytools::file::LoadFileIntoString(pPath + "my.btc");
+    }
+    catch(std::runtime_error &e)
+    {
+        std::cerr << "Could not load weather key from current folder, trying hard coded path\n";
+    }
+
+    try
+    {
+        btc = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/my.btc");
+    }
+    catch(std::runtime_error &e)
+    {
+        std::cerr << "Could not load weather key from hard coded path\n";
+    }
+
+    double myBTC = 1.0;
+    if( btc.size() > 0 )
+    {
+        try
+        {
+            btc = tinytools::string::TrimWhiteSpace(btc);
+            if( btc.size() > 0 )
+            {
+                myBTC = std::stod(btc);
+            }
+        }
+        catch(std::runtime_error &e)
+        {
+            std::cerr << "BTC string not a double\n";
+        }
+    }
+
+    return myBTC;
+}
+
 int main(int argc, char *argv[])
 {
 // Crude argument list handling.
     std::string path = "./";
-
-    std::string taskFile = "task-file.json";
     if( argc == 2 && std::filesystem::directory_entry(argv[1]).exists() )
     {
         path = argv[1];
@@ -44,6 +83,7 @@ int main(int argc, char *argv[])
             path += '/';
     }
 
+    const double myBTC = ReadMyBTCInvestment(path);
 
     eui::Graphics* graphics = eui::Graphics::Open();
 
@@ -61,8 +101,10 @@ int main(int argc, char *argv[])
     mainScreen->GetStyle().mTexture = graphics->TextureLoadPNG(path + "images/bg-pastal-01.png");
     mainScreen->GetStyle().mBackground = eui::COLOUR_WHITE;
 
+    DisplayBitcoinPrice* btc = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+
     mainScreen->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-    mainScreen->Attach(new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mainScreen->Attach(btc);
     mainScreen->Attach(new DisplayWeather(graphics,path,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
 
     eui::ElementPtr status = eui::Element::Create();
@@ -71,6 +113,24 @@ int main(int argc, char *argv[])
     mainScreen->Attach(status);
     status->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     status->Attach(new DisplayAirQuality(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+
+    // My bitcoin investment.
+    eui::ElementPtr MyInvestment = eui::Element::Create(btc->GetUpStyle());
+        MyInvestment->SetPadding(0.05f);
+        MyInvestment->SetText("£XXXXXX");
+        MyInvestment->SetPadding(CELL_PADDING);
+        MyInvestment->SetPos(1,0);
+        MyInvestment->SetFont(bitcoinFont);
+        MyInvestment->SetUpdate([btc,myBTC](eui::ElementPtr pElement)
+        {
+            std::stringstream ss;
+            ss << std::fixed << std::setprecision(2) << (btc->GetPriceGBP() * myBTC);
+
+            pElement->SetText(ss.str());
+            return true;
+        });
+    mainScreen->Attach(MyInvestment);
+
 
     // Use dependency injection to pass events onto the controls.
     // This means that we don't need a circular header dependency that can make it hard to port code.
