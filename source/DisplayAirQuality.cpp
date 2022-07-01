@@ -16,13 +16,7 @@
 
 #include "DisplayAirQuality.h"
 
-DisplayAirQuality::DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) : 
-    OutsideWeather("server",1883,topics,
-        [this](const std::string &pTopic,const std::string &pData)
-        {
-            outsideData[pTopic] = pData;
-            outsideTemperatureDelivered = std::time(nullptr);
-        })
+DisplayAirQuality::DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
 
     eui::Style s;
@@ -39,23 +33,16 @@ DisplayAirQuality::DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,
     eCO2 = eui::Element::Create();
         eCO2->SetPadding(0.05f);
         eCO2->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
-        eCO2->SetFont(pNormalFont);
+        eCO2->SetFont(pFont);
         eCO2->SetText("UP: XX:XX:XX");
     this->Attach(eCO2);
     
     tOC = eui::Element::Create();
         tOC->SetPadding(0.05f);
-        tOC->GetStyle().mAlignment = eui::ALIGN_CENTER_CENTER;
-        tOC->SetFont(pNormalFont);
+        tOC->GetStyle().mAlignment = eui::ALIGN_CENTER_BOTTOM;
+        tOC->SetFont(pFont);
         tOC->SetText("XX.XX.XX.XX");
     this->Attach(tOC);
-
-    outsideTemp = eui::Element::Create();
-        outsideTemp->SetPadding(0.05f);
-        outsideTemp->GetStyle().mAlignment = eui::ALIGN_CENTER_BOTTOM;
-        outsideTemp->SetFont(pNormalFont);
-        outsideTemp->SetText("XX.XC");
-    this->Attach(outsideTemp);
 
     indoorAirQuality.Start([this](int pResult,uint16_t pECO2,uint16_t pTVOC)
     {
@@ -66,8 +53,6 @@ DisplayAirQuality::DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,
             mTVOC = pTVOC;
         }
     });
-
-    outsideData["/outside/temperature"] = "Waiting";// Make sure there is data.
 }
 
 DisplayAirQuality::~DisplayAirQuality()
@@ -77,7 +62,6 @@ DisplayAirQuality::~DisplayAirQuality()
 
 bool DisplayAirQuality::OnUpdate()
 {
-    outsideTemp->SetText("Outside: " + outsideData["/outside/temperature"]);
     switch (mResult)
     {
     case i2c::SGP30::READING_RESULT_WARM_UP:

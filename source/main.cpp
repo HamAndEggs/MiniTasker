@@ -91,8 +91,10 @@ int main(int argc, char *argv[])
     mainScreen->SetID("mainScreen");
     mainScreen->SetGrid(3,3);
 
-    int miniFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",20);
+    int miniFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
     int normalFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
+    int largeFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",55);
+
     int bigFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
 
     int bitcoinFont = graphics->FontLoad(path + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
@@ -112,24 +114,54 @@ int main(int argc, char *argv[])
     status->SetPos(2,0);
     mainScreen->Attach(status);
     status->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-    status->Attach(new DisplayAirQuality(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    status->Attach(new DisplayAirQuality(largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+
+    // MQTT data
+    const std::vector<std::string>& topics = {"/outside/temperature","/outside/hartbeat"};
+    std::time_t outsideTemperatureDelivered = 0;
+    std::map<std::string,std::string> outsideData;
+    outsideData["/outside/temperature"] = "Waiting";// Make sure there is data.
+    MQTTData OutsideWeather("server",1883,topics,
+        [&outsideTemperatureDelivered,&outsideData](const std::string &pTopic,const std::string &pData)
+        {
+//            std::cout << pData << "\n";
+            outsideData[pTopic] = pData;
+            outsideTemperatureDelivered = std::time(nullptr);
+        });
 
     // My bitcoin investment.
-    eui::ElementPtr MyInvestment = eui::Element::Create(btc->GetUpStyle());
-        MyInvestment->SetPadding(0.05f);
-        MyInvestment->SetText("£XXXXXX");
-        MyInvestment->SetPadding(CELL_PADDING);
-        MyInvestment->SetPos(1,0);
-        MyInvestment->SetFont(bitcoinFont);
-        MyInvestment->SetUpdate([btc,myBTC](eui::ElementPtr pElement)
-        {
-            std::stringstream ss;
-            ss << std::fixed << std::setprecision(2) << (btc->GetPriceGBP() * myBTC);
+    eui::ElementPtr topCentre = eui::Element::Create();
+        topCentre->SetPos(1,0);
+        topCentre->SetGrid(1,2);
+        eui::ElementPtr MyInvestment = eui::Element::Create(btc->GetUpStyle());
+            MyInvestment->SetPadding(0.05f);
+            MyInvestment->SetText("£XXXXXX");
+            MyInvestment->SetPadding(CELL_PADDING);
+            MyInvestment->SetPos(0,0);
+            MyInvestment->SetFont(bitcoinFont);
+            MyInvestment->SetUpdate([btc,myBTC](eui::ElementPtr pElement)
+            {
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(2) << (btc->GetPriceGBP() * myBTC);
 
-            pElement->SetText(ss.str());
-            return true;
-        });
-    mainScreen->Attach(MyInvestment);
+                pElement->SetText(ss.str());
+                return true;
+            });
+        topCentre->Attach(MyInvestment);
+
+        eui::ElementPtr outSideTemp = eui::Element::Create(btc->GetUpStyle());
+            outSideTemp->SetPadding(0.05f);
+            outSideTemp->SetText("100.0C");
+            outSideTemp->SetPadding(CELL_PADDING);
+            outSideTemp->SetPos(0,1);
+            outSideTemp->SetFont(bitcoinFont);
+            outSideTemp->SetUpdate([&outsideData](eui::ElementPtr pElement)
+            {
+                pElement->SetText(outsideData["/outside/temperature"]);
+                return true;
+            });
+        topCentre->Attach(outSideTemp);
+    mainScreen->Attach(topCentre);
 
 
     // Use dependency injection to pass events onto the controls.

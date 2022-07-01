@@ -29,25 +29,18 @@ class DisplayAirQuality : public eui::Element
 {
 public:
 
-    DisplayAirQuality(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayAirQuality();
 
     virtual bool OnUpdate();
 
 private:
 
-    eui::ElementPtr eCO2,tOC,outsideTemp;
+    eui::ElementPtr eCO2,tOC;
     i2c::SGP30 indoorAirQuality;
     uint16_t mECO2 = 0;
     uint16_t mTVOC = 0;
     int mResult = i2c::SGP30::READING_RESULT_WARM_UP;
-    std::map<std::string,std::string> outsideData;
-    std::time_t outsideTemperatureDelivered = 0;
-
-    // MQTT data
-    const std::vector<std::string>& topics = {"/outside/temperature","/outside/hartbeat"};
-    MQTTData OutsideWeather;
-
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H
