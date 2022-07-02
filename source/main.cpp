@@ -129,10 +129,11 @@ int main(int argc, char *argv[])
             outsideTemperatureDelivered = std::time(nullptr);
         });
 
-    // My bitcoin investment.
     eui::ElementPtr topCentre = eui::Element::Create();
         topCentre->SetPos(1,0);
         topCentre->SetGrid(1,2);
+
+        // My bitcoin investment.
         eui::ElementPtr MyInvestment = eui::Element::Create(btc->GetUpStyle());
             MyInvestment->SetPadding(0.05f);
             MyInvestment->SetText("£XXXXXX");
@@ -148,7 +149,7 @@ int main(int argc, char *argv[])
                 return true;
             });
         topCentre->Attach(MyInvestment);
-
+        // The temperature outside
         eui::ElementPtr outSideTemp = eui::Element::Create(btc->GetUpStyle());
             outSideTemp->SetPadding(0.05f);
             outSideTemp->SetText("100.0C");
