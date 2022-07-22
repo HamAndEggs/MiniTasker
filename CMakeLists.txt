@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(MiniTasker VERSION 0.1.0)
 
-
-add_definitions(-DPLATFORM_X11_GL -DVERBOSE_BUILD -DVERBOSE_SHADER_BUILD)
-
 include_directories(
     /usr/include/freetype2
     /usr/include/libdrm
@@ -28,7 +25,7 @@ add_executable(MiniTasker
 )
 
 set_property(TARGET MiniTasker PROPERTY CXX_STANDARD 17)
-target_link_libraries(MiniTasker EdgeUI stdc++ pthread m freetype GL X11 z i2c mosquitto curl)
+target_link_libraries(MiniTasker EdgeUI.Wayland stdc++ pthread m freetype wayland-client wayland-server wayland-egl GLESv2 EGL z i2c mosquitto curl)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
