@@ -8,7 +8,7 @@ function ShowHelp() {
 }
 
 OUTPUT_EXEC="MiniTasker"
-OUTPUT_FOLDER="./build"
+OUTPUT_FOLDER="./build/debug"
 
 # Process the params
 while [ "$1" != "" ];
@@ -29,25 +29,10 @@ done
 # Remove exec so if build fails, we don't run old version.
 rm -f $OUTPUT_FOLDER/$OUTPUT_EXEC
 
-# If output folder not found, force rebuild. Maybe a fresh fetch of the code.
-if [ ! -d $OUTPUT_FOLDER ]; then
-    REBUILD_SOMETHING="TRUE"
-fi
+cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/debug --target MiniTasker -- -j8
 
-if [ -n "$REBUILD_SOMETHING" ]; then
-    echo "Cleaning folders"
-    rm -drf $OUTPUT_FOLDER
-    mkdir -p $OUTPUT_FOLDER
-    cd $OUTPUT_FOLDER
-    cmake .. -DCMAKE_BUILD_TYPE=Debug
-    cd ..
-    ls
-fi
-
-cd $OUTPUT_FOLDER
-make -j4
-
-cd ..
 if [ -n "$EXECUTE" ]; then
+    ls -lha $OUTPUT_FOLDER/$OUTPUT_EXEC
     $OUTPUT_FOLDER/$OUTPUT_EXEC
 fi

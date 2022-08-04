@@ -76,7 +76,7 @@ static void my_log_callback(struct mosquitto *mosq, void *userdata, int level, c
 }
 
 MQTTData::MQTTData(const char* pHost,int pPort,
-    const std::vector<std::string>& pTopics,
+    const std::vector<std::string> pTopics,
     std::function<void(const std::string &pTopic,const std::string &pData)> pOnData):
     mTopics(pTopics),
     mOnData(pOnData)

@@ -112,9 +112,12 @@ public:
 
     void SetInfo(uint32_t pIcon,const std::string& pTime,float pTemperature)
     {
-        image->GetStyle().mTexture = pIcon;
-        time->SetText(pTime);
-        temperature->SetTextF("%03.1fC",tinytools::math::RoundToPointFive(pTemperature));
+        if( image )
+        {
+            image->GetStyle().mTexture = pIcon;
+            time->SetText(pTime);
+            temperature->SetTextF("%03.1fC",tinytools::math::RoundToPointFive(pTemperature));
+        }
     }    
 };
 
@@ -154,7 +157,7 @@ bool DisplayWeather::OnUpdate()
 {
     std::time_t currentTime = std::time(nullptr);
 
-   if( mFetchLimiter < currentTime )
+    if( mFetchLimiter < currentTime )
     {
         mHasWeather = false;
         mWeather.Get(50.72824,-1.15244,[this,currentTime](bool pDownloadedOk,const auto &pTheWeather)
@@ -206,62 +209,69 @@ bool DisplayWeather::OnUpdate()
             else
                 log << "Updating icons " << GetTimeString(mHourlyUpdates) << ". ";
 
-            // Update in an hour and on the hour.
-            mHourlyUpdates = NextHour(currentTime);
-            log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
+            try
+            {
+                // Update in an hour and on the hour.
+                mHourlyUpdates = NextHour(currentTime);
+                log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
 
-            mNextHourlyIcons = mWeather.GetHourlyIconCodes(currentTime);
+                mNextHourlyIcons = mWeather.GetHourlyIconCodes(currentTime);
 
-            // Not building for C++20 so can't use std::format yet.... So go old school.
-            const float temperature = mWeather.GetHourlyTemperature(currentTime);
+                // Not building for C++20 so can't use std::format yet.... So go old school.
+                const float temperature = mWeather.GetHourlyTemperature(currentTime);
 
-            char buf[64];
-            snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
-            mCurrentTemperature = buf;
-            log << "This hours temperature is " << buf << " ";
-
-            // Output as one line.
-            std::clog << log.str();
+                char buf[64];
+                snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
+                mCurrentTemperature = buf;
+            }
+            catch( const std::runtime_error &e)
+            {
+                std::cerr << "Something went wrong reading the wearth\n";
+            }
         }
     }
 
     int n = 0;
 
-    for( const auto& fIcon : mNextHourlyIcons )
+    try
     {
-        // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
-        std::string hour; 
-        if( fIcon.hour == 0 )
-        {// Special case zero hundred, IE 12am...
-            hour = "Midnight";
-        }
-        else if( fIcon.hour < 12 )
+        for( const auto& fIcon : mNextHourlyIcons )
         {
-            hour = std::to_string(fIcon.hour) + "am";
-        }
-        else if( fIcon.hour == 12 )
-        {// Special case 12 hundred, IE 12pm, or am, or pm.......
-            hour = "Midday";
-        }
-        else
-        {
-            hour = std::to_string(fIcon.hour-12) + "pm";
-        }
+            // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
+            std::string hour; 
+            if( fIcon.hour == 0 )
+            {// Special case zero hundred, IE 12am...
+                hour = "Midnight";
+            }
+            else if( fIcon.hour < 12 )
+            {
+                hour = std::to_string(fIcon.hour) + "am";
+            }
+            else if( fIcon.hour == 12 )
+            {// Special case 12 hundred, IE 12pm, or am, or pm.......
+                hour = "Midday";
+            }
+            else
+            {
+                hour = std::to_string(fIcon.hour-12) + "pm";
+            }
 
-        if( WeatherIcons.find(fIcon.icon) != WeatherIcons.end() )
-        {
-            icons[n]->SetInfo(WeatherIcons[fIcon.icon],hour,fIcon.temperature);
-        }
+            if( WeatherIcons.find(fIcon.icon) != WeatherIcons.end() )
+            {
+                icons[n]->SetInfo(WeatherIcons[fIcon.icon],hour,fIcon.temperature);
+            }
 
-        n++;
-        if( n == 6 )
-        {// Sorry, this is crap. ;)
-            break;
+            n++;
+            if( n == 6 )
+            {// Sorry, this is crap. ;)
+                break;
+            }
         }
     }
-
-    // Draw temperature forcast, if we have one.
-//    RenderTemperature(GL.GetWidth(),pY-80,pWeather.GetCurrentTemperature());
+    catch( const std::runtime_error &e)
+    {
+        std::cerr << "Something went wrong reading the wearth\n";
+    }
     return true;
 }
 

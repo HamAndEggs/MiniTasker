@@ -34,7 +34,7 @@ class MQTTData
 {
 public:
     MQTTData(const char* pHost,int pPort,
-        const std::vector<std::string>& pTopics,
+        const std::vector<std::string> pTopics,
         std::function<void(const std::string &pTopic,const std::string &pData)> pOnData);
 
     ~MQTTData();
