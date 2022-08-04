@@ -113,7 +113,7 @@ MQTTData::MQTTData(const char* pHost,int pPort,
     }
     else
     {
-		std::cout << "MQTT Init Error: Out of memory\n";
+		std::cerr << "MQTT Init Error: Out of memory\n";
 	}
 }
 

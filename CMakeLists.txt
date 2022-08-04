@@ -30,8 +30,8 @@ add_executable(MiniTasker
 )
 
 set_property(TARGET MiniTasker PROPERTY CXX_STANDARD 17)
-#target_link_libraries(MiniTasker EdgeUI.GTK stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
-target_link_libraries(MiniTasker EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
+target_link_libraries(MiniTasker EdgeUI.GTK4 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
+#target_link_libraries(MiniTasker EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

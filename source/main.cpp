@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 #include <filesystem>
+#include <chrono>
 
 class MyUI : public eui::Element
 {
@@ -38,10 +39,12 @@ private:
     const float RECT_RADIUS = 0.2f;
     const float BORDER_SIZE = 3.0f;
     std::map<std::string,std::string> mOutsideData;
-    std::time_t mOutsideTemperatureDelivered = 0;
+    std::chrono::time_point<std::chrono::system_clock> mOutsideTemperatureDelivered = std::chrono::system_clock::now();
+    uint32_t mOutsideTemperatureUpdateSeconds = 0;
 
     double ReadMyBTCInvestment(const std::string& pPath);
 
+    MQTTData* mOutsideWeather = nullptr;
 };
 
 MyUI::MyUI(const std::string& path,eui::Graphics* pGraphics) : Element()
@@ -79,12 +82,13 @@ MyUI::MyUI(const std::string& path,eui::Graphics* pGraphics) : Element()
     // MQTT data
     const std::vector<std::string> topics = {"/outside/temperature","/outside/hartbeat"};
     mOutsideData["/outside/temperature"] = "Waiting";// Make sure there is data.
-    MQTTData OutsideWeather("server",1883,topics,
+    mOutsideWeather = new MQTTData("server",1883,topics,
         [this](const std::string &pTopic,const std::string &pData)
         {
-//            std::cout << pData << "\n";
+            std::cout << "MQTTData " << pData << "\n";
             mOutsideData[pTopic] = pData;
-            mOutsideTemperatureDelivered = std::time(nullptr);
+            mOutsideTemperatureUpdateSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - mOutsideTemperatureDelivered).count();
+            mOutsideTemperatureDelivered = std::chrono::system_clock::now();
         });
 
     eui::ElementPtr topCentre = eui::Element::Create();
@@ -114,9 +118,17 @@ MyUI::MyUI(const std::string& path,eui::Graphics* pGraphics) : Element()
             outSideTemp->SetPadding(CELL_PADDING);
             outSideTemp->SetPos(0,1);
             outSideTemp->SetFont(bitcoinFont);
-            outSideTemp->SetOnUpdate([this](eui::ElementPtr pElement)
+            outSideTemp->SetOnUpdate([this,btc](eui::ElementPtr pElement)
             {
                 pElement->SetText(mOutsideData["/outside/temperature"]);
+                if( mOutsideTemperatureUpdateSeconds > (60*60) )
+                {
+                    pElement->SetStyle(btc->GetDownStyle());
+                }
+                else
+                {
+                    pElement->SetStyle(btc->GetUpStyle());
+                }
                 return true;
             });
         topCentre->Attach(outSideTemp);
