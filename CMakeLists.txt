@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.18.0)
 project(MiniTasker VERSION 0.1.0)
 
 find_package(PkgConfig REQUIRED)
@@ -30,8 +30,16 @@ add_executable(MiniTasker
 )
 
 set_property(TARGET MiniTasker PROPERTY CXX_STANDARD 17)
-target_link_libraries(MiniTasker EdgeUI.GTK4 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
-#target_link_libraries(MiniTasker EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
+
+if( TARGET_PLATFORM STREQUAL "GTK4" )
+    target_link_libraries(MiniTasker EdgeUI.GTK4 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
+elseif( TARGET_PLATFORM STREQUAL "DRM" )
+    target_link_libraries(MiniTasker EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
+elseif( TARGET_PLATFORM STREQUAL "X11" )
+    target_link_libraries(MiniTasker EdgeUI.X11 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl X11 GL)
+else()
+    message(FATAL_ERROR "TARGET_PLATFORM not defined")
+endif()
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
