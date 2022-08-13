@@ -2,7 +2,7 @@
 #include "DisplayBitcoinPrice.h"
 #include "TinyJson.h"
 
-#include <curl/curl.h>
+#include <curl/curl.h> // libcurl4-openssl-dev
 
 static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
 {

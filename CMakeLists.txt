@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.18.0)
 project(MiniTasker VERSION 0.1.0)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK4 REQUIRED gtk4)
+#find_package(PkgConfig REQUIRED)
+#pkg_check_modules(GTK4 REQUIRED gtk4)
+#${GTK4_INCLUDE_DIRS}
 
 
 include_directories(
@@ -10,7 +11,6 @@ include_directories(
     /usr/include/libdrm
     ./EdgeUI/include
     ./source
-    ${GTK4_INCLUDE_DIRS}
 )
 
 add_subdirectory(./EdgeUI)

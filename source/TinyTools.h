@@ -103,7 +103,7 @@ private:
 	sum_t sum                 = 0;
 };
 
-};//namespace math{
+}//namespace math{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Common string types, not in string namespace as the types already start with String.
@@ -170,7 +170,7 @@ inline bool Search(const StringVec& pVec,const std::string& pLost)
    return std::find(pVec.begin(),pVec.end(),pLost) != pVec.end();
 }
 
-};//namespace string{
+}//namespace string{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace timers{
 class MillisecondTicker
@@ -205,7 +205,7 @@ private:
     std::chrono::system_clock::time_point mTrigger;
 };
 
-};//namespace timers{
+}//namespace timers{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace network{
 
@@ -290,7 +290,7 @@ size_t Encode7Bit(const uint8_t* p8Bit,size_t p8BitSize,uint8_t** r7Bit);
  */
 size_t Decode7Bit(const uint8_t* p7Bit,size_t p7BitSize,uint8_t** r8Bit);
 
-};// namespace network
+}//namespace network
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace system{
@@ -410,7 +410,7 @@ inline void ExecuteCommand(const std::string& pCommand,const std::vector<std::st
     ExecuteCommand(pCommand,pArgs,empty);
 }
 
-};//namespace system{
+}//namespace system{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace threading{
 
@@ -499,7 +499,7 @@ private:
 };
 
 
-};//namespace threading{
+}//namespace threading{
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CommandLineOptions
@@ -644,11 +644,11 @@ bool CompareFileTimes(const std::string& pSourceFile,const std::string& pDestFil
  */
 std::string LoadFileIntoString(const std::string& pFilename);
 
-};// namespace file
+}//namespace file
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};//namespace tinytools
+}//namespace tinytools
 	
 #endif //TINY_TOOLS_H

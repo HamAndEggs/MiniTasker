@@ -170,4 +170,4 @@ uint8_t SGP30::CalculateCRC(const uint8_t* pData,size_t pDataSize)const
 }
 
 //////////////////////////////////////////////////////////////////////////
-};//namespace i2c{
+}//namespace i2c{
