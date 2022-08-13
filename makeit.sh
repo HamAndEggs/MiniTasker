@@ -23,8 +23,9 @@ do
     elif [ "$1" == "--help" ]; then
         ShowHelp
         exit 0
+    elif [ "$1" == "DRM" ]; then
+        TARGET_PLATFORM="DRM"
     elif [ "$1" == "GTK4" ]; then
-        echo "Building GTK4"
         TARGET_PLATFORM="GTK4"
     elif [ "$1" == "X11" ]; then
         TARGET_PLATFORM="X11"
@@ -37,6 +38,8 @@ do
     # Each time you invoke shift,
     shift 
 done
+
+echo "Building $TARGET_PLATFORM"
 
 # Remove exec so if build fails, we don't run old version.
 rm -f $OUTPUT_FOLDER/$OUTPUT_EXEC
