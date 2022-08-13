@@ -31,19 +31,19 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
     this->SetStyle(s);
     this->SetPadding(CELL_PADDING);
 
-    clock = eui::Element::Create();
+    clock = new eui::Element;
         clock->SetPadding(0.05f);
         clock->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
         clock->SetFont(pBigFont);
     this->Attach(clock);
 
-    dayName = eui::Element::Create();
+    dayName = new eui::Element;
         dayName->SetPadding(0.05f);
         dayName->GetStyle().mAlignment = eui::ALIGN_LEFT_BOTTOM;
         dayName->SetFont(pNormalFont);
     this->Attach(dayName);
 
-    dayNumber = eui::Element::Create();
+    dayNumber = new eui::Element;
         dayNumber->SetPadding(0.05f);
         dayNumber->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
         dayNumber->SetFont(pNormalFont);

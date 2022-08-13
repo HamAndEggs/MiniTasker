@@ -858,7 +858,7 @@ bool ExecuteShellCommand(const std::string& pCommand,const std::vector<std::stri
     close(pipeSTDOUT[1]); /* Close writing end of pipes, don't need them */
     close(pipeSTDERR[1]); /* Close writing end of pipes, don't need them */
 
-    size_t BufSize = 1000;
+    const size_t BufSize = 1000;
     char buf[BufSize+1];
     buf[BufSize] = 0;
 

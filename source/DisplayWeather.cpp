@@ -93,17 +93,17 @@ public:
         SetStyle(s);
         SetPadding(CELL_PADDING);
 
-        image = eui::Element::Create();
+        image = new eui::Element;
         image->SetPadding(0.05f);
         image->GetStyle().mBackground = eui::COLOUR_WHITE;
         Attach(image);
 
-        time = eui::Element::Create();
+        time = new eui::Element;
         time->SetText("XX");
         time->SetPadding(0.07f);
         Attach(time);
 
-        temperature = eui::Element::Create();
+        temperature = new eui::Element;
         temperature->SetText("XX.XC");
         temperature->SetPadding(0.07f);
         temperature->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;

@@ -118,7 +118,8 @@ std::vector<uint16_t> SGP30::ReadResults(int pNumWords)
 
     // For each word of data sent the chip sends a CRC.
     const int numBytes = pNumWords * 3;
-    uint8_t buffer[numBytes];
+    assert(numBytes > 64);
+    uint8_t buffer[64];
 
     if( ReadData(buffer,numBytes) == numBytes )
     {

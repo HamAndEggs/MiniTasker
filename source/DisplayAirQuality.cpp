@@ -30,14 +30,14 @@ DisplayAirQuality::DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_S
     this->SetPadding(CELL_PADDING);
     this->SetPos(0,1);
 
-    eCO2 = eui::Element::Create();
+    eCO2 = new eui::Element;
         eCO2->SetPadding(0.05f);
         eCO2->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
         eCO2->SetFont(pFont);
         eCO2->SetText("UP: XX:XX:XX");
     this->Attach(eCO2);
     
-    tOC = eui::Element::Create();
+    tOC = new eui::Element;
         tOC->SetPadding(0.05f);
         tOC->GetStyle().mAlignment = eui::ALIGN_CENTER_BOTTOM;
         tOC->SetFont(pFont);
