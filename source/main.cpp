@@ -39,6 +39,8 @@ public:
     virtual void OnOpen(eui::Graphics* pGraphics);
     virtual void OnClose();
     virtual eui::ElementPtr GetRootElement(){return mRoot;}
+    virtual uint32_t GetUpdateInterval()const{return 1000;}
+
 
 private:
     const float CELL_PADDING = 0.02f;
@@ -58,6 +60,7 @@ private:
 
 MyUI::MyUI(const std::string& path):mPath(path)
 {
+
 }
 
 MyUI::~MyUI()
@@ -139,6 +142,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
             outSideTemp->SetFont(bitcoinFont);
             outSideTemp->SetOnUpdate([this,btc](eui::ElementPtr pElement)
             {
+                std::clog << ".";
                 pElement->SetText(mOutsideData["/outside/temperature"]);
                 if( mOutsideTemperatureUpdateSeconds > (60*60) )
                 {
@@ -153,6 +157,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
         topCentre->Attach(outSideTemp);
     mRoot->Attach(topCentre);
 }
+
 
 void MyUI::OnClose()
 {
