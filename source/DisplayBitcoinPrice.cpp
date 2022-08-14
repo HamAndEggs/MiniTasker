@@ -26,14 +26,12 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
     UpStyle.mBorderSize = BORDER_SIZE;
     UpStyle.mBorder = eui::COLOUR_WHITE;
     UpStyle.mRadius = RECT_RADIUS;
-    UpStyle.mAlignment = eui::ALIGN_CENTER_CENTER;
     UpStyle.mForeground = eui::COLOUR_BLACK;
 
     DownStyle.mBackground = eui::MakeColour(255,100,100);
     DownStyle.mBorderSize = BORDER_SIZE;
     DownStyle.mBorder = eui::COLOUR_WHITE;
     DownStyle.mRadius = RECT_RADIUS;
-    DownStyle.mAlignment = eui::ALIGN_CENTER_CENTER;
     DownStyle.mForeground = eui::COLOUR_BLACK;
 
     mControls.LastPrice = new eui::Element;

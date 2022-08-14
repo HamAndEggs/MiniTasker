@@ -89,7 +89,7 @@ public:
         eui::Style s;
             s.mBackground = eui::MakeColour(0,0,0,200);
             s.mRadius = RECT_RADIUS;
-            s.mAlignment = eui::ALIGN_CENTER_CENTER;
+
         SetStyle(s);
         SetPadding(CELL_PADDING);
 
@@ -101,6 +101,7 @@ public:
         time = new eui::Element;
         time->SetText("XX");
         time->SetPadding(0.07f);
+        time->GetStyle().mAlignment = eui::ALIGN_LEFT_TOP;
         Attach(time);
 
         temperature = new eui::Element;
@@ -139,7 +140,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     s.mBorderSize = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
-    s.mAlignment = eui::ALIGN_CENTER_CENTER;
+
     for( int n = 0 ; n < 6 ; n++ )
     {
         icons[n] = new WeatherIcon(CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
