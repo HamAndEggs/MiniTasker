@@ -137,7 +137,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     
     eui::Style s;
     s.mBackground = eui::MakeColour(200,200,200,160);
-    s.mBorderSize = BORDER_SIZE;
+    s.mThickness = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
 

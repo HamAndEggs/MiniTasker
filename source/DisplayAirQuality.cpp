@@ -21,7 +21,7 @@ DisplayAirQuality::DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_S
 
     eui::Style s;
     s.mBackground = eui::COLOUR_DARK_GREEN;
-    s.mBorderSize = BORDER_SIZE;
+    s.mThickness = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
     SetStyle(s);

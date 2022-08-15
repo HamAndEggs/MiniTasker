@@ -25,7 +25,7 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
 
     eui::Style s;
     s.mBackground = eui::COLOUR_BLACK;
-    s.mBorderSize = BORDER_SIZE;
+    s.mThickness = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = 0.1f;
     this->SetStyle(s);

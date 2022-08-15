@@ -58,7 +58,7 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
 
     eui::Style s;
     s.mBackground = eui::COLOUR_BLUE;
-    s.mBorderSize = BORDER_SIZE;
+    s.mThickness = BORDER_SIZE;
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
     this->SetStyle(s);
