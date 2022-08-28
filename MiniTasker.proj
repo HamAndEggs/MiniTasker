@@ -58,7 +58,8 @@
                 "NDEBUG",
                 "RELEASE_BUILD",
                 "PLATFORM_DRM_EGL",
-                "USE_FREETYPEFONTS"
+                "USE_FREETYPEFONTS",
+                "PLATFORM_GLES"
             ]
         },
         "x11": {
