@@ -23,7 +23,6 @@
 #define MQTT_QOS_AT_LEAST_ONCE  1 // QoS level 1 guarantees that a message is delivered at least one time to the receiver. 
 #define MQTT_QOS_EXACTLY_ONCE   2 // QoS 2 is the highest level of service in MQTT. This level guarantees that each message is received only once by the intended recipients.
 
-#include "MQTTData.h"
 
 
 #include <vector>

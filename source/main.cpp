@@ -25,10 +25,10 @@
 #include "DisplaySystemStatus.h"
 #include "DisplayAirQuality.h"
 #include "DisplayBitcoinPrice.h"
+#include "Temperature.h"
 
 #include <unistd.h>
 #include <filesystem>
-#include <chrono>
 
 class MyUI : public eui::Application
 {
@@ -49,13 +49,8 @@ private:
     const std::string mPath;
     eui::ElementPtr mRoot = nullptr;
 
-    std::map<std::string,std::string> mOutsideData;
-    std::chrono::time_point<std::chrono::system_clock> mOutsideTemperatureDelivered = std::chrono::system_clock::now();
-    uint32_t mOutsideTemperatureUpdateSeconds = 0;
-
     double ReadMyBTCInvestment(const std::string& pPath);
 
-    MQTTData* mOutsideWeather = nullptr;
 };
 
 MyUI::MyUI(const std::string& path):mPath(path)
@@ -78,6 +73,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
     int miniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
     int normalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
+    int temperatureFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",45);
     int largeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",55);
 
     int bigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
@@ -101,18 +97,6 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
     status->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     status->Attach(new DisplayAirQuality(largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
 
-    // MQTT data
-    const std::vector<std::string> topics = {"/outside/temperature","/outside/hartbeat"};
-    mOutsideData["/outside/temperature"] = "Waiting";// Make sure there is data.
-    mOutsideWeather = new MQTTData("server",1883,topics,
-        [this](const std::string &pTopic,const std::string &pData)
-        {
-            std::cout << "MQTTData " << pData << "\n";
-            mOutsideData[pTopic] = pData;
-            mOutsideTemperatureUpdateSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - mOutsideTemperatureDelivered).count();
-            mOutsideTemperatureDelivered = std::chrono::system_clock::now();
-        });
-
     eui::ElementPtr topCentre = new eui::Element;
         topCentre->SetPos(1,0);
         topCentre->SetGrid(1,2);
@@ -133,27 +117,10 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
                 return true;
             });
         topCentre->Attach(MyInvestment);
+        
         // The temperature outside
-        eui::ElementPtr outSideTemp = new eui::Element(btc->GetUpStyle());
-            outSideTemp->SetPadding(0.05f);
-            outSideTemp->SetText("100.0C");
-            outSideTemp->SetPadding(CELL_PADDING);
+        eui::ElementPtr outSideTemp = new Temperature(temperatureFont,btc->GetUpStyle(),CELL_PADDING);
             outSideTemp->SetPos(0,1);
-            outSideTemp->SetFont(bitcoinFont);
-            outSideTemp->SetOnUpdate([this,btc](eui::ElementPtr pElement)
-            {
-                std::clog << ".";
-                pElement->SetText(mOutsideData["/outside/temperature"]);
-                if( mOutsideTemperatureUpdateSeconds > (60*60) )
-                {
-                    pElement->SetStyle(btc->GetDownStyle());
-                }
-                else
-                {
-                    pElement->SetStyle(btc->GetUpStyle());
-                }
-                return true;
-            });
         topCentre->Attach(outSideTemp);
     mRoot->Attach(topCentre);
 }

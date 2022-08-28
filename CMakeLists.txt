@@ -23,6 +23,7 @@ add_executable(MiniTasker
     ./source/DisplayClock.cpp
     ./source/DisplaySystemStatus.cpp
     ./source/DisplayWeather.cpp
+    ./source/Temperature.cpp
     ./source/i2c_device.cpp
     ./source/main.cpp
     ./source/MQTTData.cpp

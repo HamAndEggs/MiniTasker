@@ -140,7 +140,7 @@ void MQTTData::Subscribe(const std::string& pTopic)
 {
     assert( pTopic.size() > 0 );
 
-    switch( mosquitto_subscribe(mMQTT, NULL, pTopic.c_str(), MQTT_QOS_AT_LEAST_ONCE) )
+    switch( mosquitto_subscribe(mMQTT, NULL, pTopic.c_str(), MQTT_QOS_AT_MOST_ONCE) )
     {
     case MOSQ_ERR_SUCCESS:
 #ifdef DEBUG_BUILD

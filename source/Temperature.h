@@ -13,33 +13,29 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
-
-#ifndef DISPLAY_AIR_QUALITY_H
-#define DISPLAY_AIR_QUALITY_H
+   
+#ifndef Temperature_H
+#define Temperature_H
 
 #include "Graphics.h"
 #include "Element.h"
-#include "sgp30.h"
+#include <chrono>
 
-#include <string>
-#include <map>
-
-class DisplayAirQuality : public eui::Element
+class MQTTData;
+class Temperature : public eui::Element
 {
 public:
 
-    DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
-    ~DisplayAirQuality();
-
-    virtual bool OnUpdate();
+    Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING);
+    virtual bool OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect);
 
 private:
+    MQTTData* mOutsideWeather = nullptr;
+    std::map<std::string,std::string> mOutsideData;
+    std::chrono::time_point<std::chrono::system_clock> mOutsideTemperatureDelivered = std::chrono::system_clock::now();
+    uint32_t mOutsideTemperatureUpdateSeconds = 0;
 
-    eui::ElementPtr eCO2,tOC;
-    i2c::SGP30 indoorAirQuality;
-    uint16_t mECO2 = 0;
-    uint16_t mTVOC = 0;
-    int mResult = i2c::SGP30::READING_RESULT_WARM_UP;
 };
 
-#endif //#ifndef DISPLAY_WEATHER_H
+
+#endif //#ifndef Temperature_H
