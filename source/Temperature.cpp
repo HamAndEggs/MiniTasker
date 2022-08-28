@@ -53,8 +53,8 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
     const std::string shed = "Shed: " + mOutsideData["/shed/temperature"];
     const int font = GetFont();
 
-    pGraphics->FontPrint(GetFont(),textRect,eui::ALIGN_CENTER_TOP,GetStyle().mForeground,outside);
-    pGraphics->FontPrint(GetFont(),textRect,eui::ALIGN_CENTER_BOTTOM,GetStyle().mForeground,shed);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_TOP,GetStyle().mForeground,outside);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_BOTTOM,GetStyle().mForeground,shed);
 
     return true;
 }
