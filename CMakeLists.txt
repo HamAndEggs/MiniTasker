@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18.0)
-project(MiniTasker VERSION 0.1.0)
+set(THIS_PROJECT mini-tasker)
+project(${THIS_PROJECT} VERSION 0.1.0)
 
 if( TARGET_PLATFORM STREQUAL "GTK4" )
     find_package(PkgConfig REQUIRED)
@@ -17,7 +18,7 @@ include_directories(
 
 add_subdirectory(./EdgeUI)
 
-add_executable(MiniTasker
+add_executable(${THIS_PROJECT}
     ./source/DisplayAirQuality.cpp
     ./source/DisplayBitcoinPrice.cpp
     ./source/DisplayClock.cpp
@@ -32,14 +33,14 @@ add_executable(MiniTasker
     ./source/TinyWeather.cpp
 )
 
-set_property(TARGET MiniTasker PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${THIS_PROJECT} PROPERTY CXX_STANDARD 17)
 
 if( TARGET_PLATFORM STREQUAL "GTK4" )
-    target_link_libraries(MiniTasker EdgeUI.GTK4 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
+    target_link_libraries(${THIS_PROJECT} EdgeUI.GTK4 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl ${GTK4_LINK_LIBRARIES})
 elseif( TARGET_PLATFORM STREQUAL "DRM" )
-    target_link_libraries(MiniTasker EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
+    target_link_libraries(${THIS_PROJECT} EdgeUI.DRM stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl gbm drm)
 elseif( TARGET_PLATFORM STREQUAL "X11" )
-    target_link_libraries(MiniTasker EdgeUI.X11 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl X11 GL)
+    target_link_libraries(${THIS_PROJECT} EdgeUI.X11 stdc++ pthread m freetype GLESv2 EGL z i2c mosquitto curl X11 GL)
 else()
     message(FATAL_ERROR "TARGET_PLATFORM not defined")
 endif()

@@ -49,12 +49,19 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
 
     const eui::Rectangle textRect = pContentRect.GetScaled(0.8f);
 
-    const std::string outside = "Front: " + mOutsideData["/outside/temperature"];
-    const std::string shed = "Shed: " + mOutsideData["/shed/temperature"];
     const int font = GetFont();
 
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_TOP,GetStyle().mForeground,outside);
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_BOTTOM,GetStyle().mForeground,shed);
+//    const std::string outside = "Front: " + mOutsideData["/outside/temperature"];
+//    const std::string shed = "Shed: " + mOutsideData["/shed/temperature"];
+//
+//    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_TOP,GetStyle().mForeground,outside);
+//    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_BOTTOM,GetStyle().mForeground,shed);
+
+    const std::string outside = mOutsideData["/outside/temperature"];
+    const std::string shed = mOutsideData["/shed/temperature"];
+
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,GetStyle().mForeground,outside);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,GetStyle().mForeground,shed);
 
     return true;
 }

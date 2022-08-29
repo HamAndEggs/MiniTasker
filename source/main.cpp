@@ -175,6 +175,12 @@ double MyUI::ReadMyBTCInvestment(const std::string& pPath)
 
 int main(const int argc,const char *argv[])
 {
+#ifdef NDEBUG
+    std::cout << "Release\n";
+#else
+    std::cout << "Debug\n";
+#endif
+
 // Crude argument list handling.
     std::string path = "./";
     if( argc == 2 && std::filesystem::directory_entry(argv[1]).exists() )

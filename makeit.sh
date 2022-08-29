@@ -7,8 +7,8 @@ function ShowHelp() {
 	echo ""
 }
 
-OUTPUT_EXEC="MiniTasker"
-OUTPUT_FOLDER="./build/debug"
+BUILD_TARGET="mini-tasker"
+OUTPUT_EXEC="mini-tasker"
 TARGET_PLATFORM="DRM"
 NUMBER_OF_THREADS=$(nproc --all)
 CMAKE_BUILD_TYPE="Debug"
@@ -39,7 +39,8 @@ do
     shift 
 done
 
-echo "Building $TARGET_PLATFORM"
+echo "Building $TARGET_PLATFORM $CMAKE_BUILD_TYPE"
+OUTPUT_FOLDER="./build/$CMAKE_BUILD_TYPE"
 
 # Remove exec so if build fails, we don't run old version.
 rm -f $OUTPUT_FOLDER/$OUTPUT_EXEC
@@ -48,10 +49,11 @@ if [ -n "$REBUILD_SOMETHING" ]; then
     rm -drf $OUTPUT_FOLDER
 fi
 
-cmake -D TARGET_PLATFORM=$TARGET_PLATFORM -S . -B build/debug -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
-cmake --build build/debug --target MiniTasker -- -j$NUMBER_OF_THREADS
+cmake -D TARGET_PLATFORM=$TARGET_PLATFORM -S . -B $OUTPUT_FOLDER -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+cmake --build $OUTPUT_FOLDER --target $BUILD_TARGET -- -j$NUMBER_OF_THREADS
 
 if [ -n "$EXECUTE" ]; then
     ls -lha $OUTPUT_FOLDER/$OUTPUT_EXEC
     $OUTPUT_FOLDER/$OUTPUT_EXEC
 fi
+
