@@ -16,6 +16,7 @@
 
 #include "Temperature.h"
 #include "MQTTData.h"
+#include "TinyTools.h"
 
 Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) : eui::Element(pStyle)
 {
@@ -33,8 +34,19 @@ Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) 
         {
             std::cout << "MQTTData " << pTopic << " " << pData << "\n";
             mOutsideData[pTopic] = pData;
-            mOutsideTemperatureUpdateSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - mOutsideTemperatureDelivered).count();
-            mOutsideTemperatureDelivered = std::chrono::system_clock::now();
+
+            // Record when we last seen a change, if we don't see one for a while something is wrong.
+            // I send an 'hartbeat' with new data that is just a value incrementing.
+            // This means we get an update even if the tempareture does not change.
+            if( tinytools::string::CompareNoCase(pTopic,"/outside") )
+            {
+                mOutsideHartbeat.lastUpdate = std::chrono::system_clock::now();
+            }
+
+            if( tinytools::string::CompareNoCase(pTopic,"/shed") )
+            {
+                mShedHartbeat.lastUpdate = std::chrono::system_clock::now();
+            }
         });
 
     SetPadding(0.05f);
@@ -51,17 +63,23 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
 
     const int font = GetFont();
 
-//    const std::string outside = "Front: " + mOutsideData["/outside/temperature"];
-//    const std::string shed = "Shed: " + mOutsideData["/shed/temperature"];
-//
-//    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_TOP,GetStyle().mForeground,outside);
-//    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_BOTTOM,GetStyle().mForeground,shed);
-
     const std::string outside = mOutsideData["/outside/temperature"];
     const std::string shed = mOutsideData["/shed/temperature"];
 
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,GetStyle().mForeground,outside);
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,GetStyle().mForeground,shed);
+    eui::Colour outSideColour = GetStyle().mForeground;
+    eui::Colour shedColour = GetStyle().mForeground;
+    if( mOutsideHartbeat.GetIsOnline() == false )
+    {
+        outSideColour = eui::COLOUR_RED;
+    }
+
+    if( mShedHartbeat.GetIsOnline() == false )
+    {
+        shedColour = eui::COLOUR_RED;
+    }
+
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
 
     return true;
 }

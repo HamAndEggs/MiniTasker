@@ -32,8 +32,17 @@ public:
 private:
     MQTTData* mOutsideWeather = nullptr;
     std::map<std::string,std::string> mOutsideData;
-    std::chrono::time_point<std::chrono::system_clock> mOutsideTemperatureDelivered = std::chrono::system_clock::now();
-    uint32_t mOutsideTemperatureUpdateSeconds = 0;
+
+    struct Hartbeat
+    {
+        std::chrono::time_point<std::chrono::system_clock> lastUpdate;
+        bool GetIsOnline()const
+        {
+            const uint32_t TimeOut = 60 * 30;// 30 Minutes.
+            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastUpdate).count() < TimeOut;
+        }
+
+    }mOutsideHartbeat,mShedHartbeat;
 
 };
 

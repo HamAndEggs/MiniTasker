@@ -43,7 +43,6 @@ private:
         eui::ElementPtr LowUSD;
         eui::ElementPtr HighUSD;
 
-        eui::ElementPtr MyInvestment;
     }mControls;
 
     tinytools::threading::SleepableThread  mPriceUpdater;

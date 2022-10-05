@@ -13,7 +13,7 @@ cd ..
 
 echo "Building application"
 #appbuild
-./makeit DRM Release
+./makeit.sh DRM Release
 
 echo "Updaing service"
 sudo systemctl stop mini-tasker
