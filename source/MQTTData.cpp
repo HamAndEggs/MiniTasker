@@ -18,8 +18,10 @@
 #include "MQTTData.h"
 
 #include <assert.h>
-#include <iostream>
 #include <unistd.h>
+
+#include <iostream>
+
 
 void MQTTData::CallbackConnected(struct mosquitto *mosq, void *userdata, int result)
 {
@@ -81,50 +83,67 @@ MQTTData::MQTTData(const char* pHost,int pPort,
     mTopics(pTopics),
     mOnData(pOnData)
 {
+
     assert(pHost && pPort);
 
-	int keepalive = 60;
-	bool clean_session = true;
 
-	mosquitto_lib_init();
-	mMQTT = mosquitto_new(NULL, clean_session, this);
-	if( mMQTT )
+    bool clean_session = true;
+    mosquitto_lib_init();
+    mMQTT = mosquitto_new(NULL, clean_session, this);
+    if( mMQTT )
     {
-        mosquitto_log_callback_set(mMQTT, my_log_callback);
-        mosquitto_connect_callback_set(mMQTT, CallbackConnected);
-        mosquitto_message_callback_set(mMQTT, CallbackMessage);
-        mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
+        mKeepGoing = true;
+        mThreadMQTT = std::thread([this,pHost, pPort]()
+        {
+            int keepalive = 60;
+            mosquitto_log_callback_set(mMQTT, my_log_callback);
+            mosquitto_connect_callback_set(mMQTT, CallbackConnected);
+            mosquitto_message_callback_set(mMQTT, CallbackMessage);
+            mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
 
-        while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
-        {
-            // Try again in a bit.
-            sleep(5);
-        }
+            while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
+            {
+                // Try again in a bit.
+                sleep(5);
+            }
 
-        // Now start the loop.
-        if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
-        {
-            mOk = true;
-        }
-        else
-        {
-            std::cout << "MQTT Init Error: Failed to start networking loop\n";
-        }
+            // Now start the loop.
+            while( mKeepGoing )
+            {
+                if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
+                {
+                    mOk = true;
+                }
+                else
+                {
+                    std::cout << "MQTT Init Error: Failed to start networking loop\n";
+                }
+            };
+        });
     }
     else
     {
-		std::cerr << "MQTT Init Error: Out of memory\n";
-	}
+        std::cerr << "MQTT Init Error: Out of memory\n";
+    }
 }
 
 MQTTData::~MQTTData()
 {
-	mosquitto_destroy(mMQTT);
-    if( mosquitto_loop_stop(mMQTT,false) != MOSQ_ERR_SUCCESS )
+    mKeepGoing = false;
+    if( mThreadMQTT.joinable() )
     {
-        mosquitto_loop_stop(mMQTT,true);// Force the close.
+        mThreadMQTT.join();
     }
-	mosquitto_lib_cleanup();
+
+    if( mMQTT )
+    {
+        mosquitto_destroy(mMQTT);
+        if( mosquitto_loop_stop(mMQTT,false) != MOSQ_ERR_SUCCESS )
+        {
+            mosquitto_loop_stop(mMQTT,true);// Force the close.
+        }
+    }
+    mosquitto_lib_cleanup();
 }
 
 void MQTTData::OnConnected()
@@ -139,6 +158,7 @@ void MQTTData::OnConnected()
 void MQTTData::Subscribe(const std::string& pTopic)
 {
     assert( pTopic.size() > 0 );
+    assert( mMQTT );
 
     switch( mosquitto_subscribe(mMQTT, NULL, pTopic.c_str(), MQTT_QOS_AT_MOST_ONCE) )
     {

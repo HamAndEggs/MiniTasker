@@ -28,6 +28,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <thread>
 
 class MQTTData
 {
@@ -44,8 +45,11 @@ public:
 private:
     const std::vector<std::string> mTopics;
     std::function<void(const std::string &pTopic,const std::string &pData)> mOnData;
-    struct mosquitto *mMQTT = NULL;
     bool mOk = false;
+    std::thread mThreadMQTT;
+    bool mKeepGoing = false;
+    struct mosquitto *mMQTT = NULL;
+
 
     static void CallbackConnected(struct mosquitto *mosq, void *userdata, int result);
     static void CallbackMessage(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message);

@@ -20,6 +20,8 @@
 
 Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) : eui::Element(pStyle)
 {
+    SET_DEFAULT_ID();
+
     // MQTT data
     const std::vector<std::string> topics =
     {
@@ -57,7 +59,7 @@ Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) 
 
 bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect)
 {
-    pGraphics->DrawRectangle(pContentRect,GetStyle());
+    DrawRectangle(pGraphics,pContentRect,GetStyle());
 
     const eui::Rectangle textRect = pContentRect.GetScaled(0.8f);
 

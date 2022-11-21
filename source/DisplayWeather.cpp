@@ -86,6 +86,8 @@ public:
 
     WeatherIcon(float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
     {
+        SET_DEFAULT_ID();
+
         eui::Style s;
             s.mBackground = eui::MakeColour(0,0,0,200);
             s.mRadius = RECT_RADIUS;
@@ -129,6 +131,8 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     mHourlyUpdates(0),
     mWeather(ReadWeatherKey(pPath))
 {
+    SET_DEFAULT_ID();
+
     LoadWeatherIcons(graphics,pPath);
 
     this->SetPos(0,1);

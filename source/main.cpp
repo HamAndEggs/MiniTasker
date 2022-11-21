@@ -108,7 +108,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
             MyInvestment->SetPadding(CELL_PADDING);
             MyInvestment->SetPos(0,0);
             MyInvestment->SetFont(bitcoinFont);
-            MyInvestment->SetOnUpdate([btc,myBTC](eui::ElementPtr pElement)
+            MyInvestment->SetOnUpdate([btc,myBTC](eui::ElementPtr pElement,const eui::Rectangle& pContentRect)
             {
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(2) << (btc->GetPriceGBP() * myBTC);
