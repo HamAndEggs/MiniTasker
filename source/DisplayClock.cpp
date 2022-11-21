@@ -50,7 +50,7 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
     this->Attach(dayNumber);
 }
 
-bool DisplayClock::OnUpdate()
+bool DisplayClock::OnUpdate(const eui::Rectangle& pContentRect)
 {
     std::time_t result = std::time(nullptr);
     tm *currentTime = localtime(&result);

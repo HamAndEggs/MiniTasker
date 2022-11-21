@@ -13,7 +13,7 @@ public:
 
     DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayBitcoinPrice();
-    virtual bool OnUpdate();
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
     const eui::Style &GetUpStyle()const{return UpStyle;}
     const eui::Style &GetDownStyle()const{return DownStyle;}

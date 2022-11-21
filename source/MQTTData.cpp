@@ -92,34 +92,27 @@ MQTTData::MQTTData(const char* pHost,int pPort,
     mMQTT = mosquitto_new(NULL, clean_session, this);
     if( mMQTT )
     {
-        mKeepGoing = true;
-        mThreadMQTT = std::thread([this,pHost, pPort]()
+        int keepalive = 60;
+        mosquitto_log_callback_set(mMQTT, my_log_callback);
+        mosquitto_connect_callback_set(mMQTT, CallbackConnected);
+        mosquitto_message_callback_set(mMQTT, CallbackMessage);
+        mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
+
+        while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
         {
-            int keepalive = 60;
-            mosquitto_log_callback_set(mMQTT, my_log_callback);
-            mosquitto_connect_callback_set(mMQTT, CallbackConnected);
-            mosquitto_message_callback_set(mMQTT, CallbackMessage);
-            mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
+            // Try again in a bit.
+            sleep(5);
+        }
 
-            while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
-            {
-                // Try again in a bit.
-                sleep(5);
-            }
-
-            // Now start the loop.
-            while( mKeepGoing )
-            {
-                if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
-                {
-                    mOk = true;
-                }
-                else
-                {
-                    std::cout << "MQTT Init Error: Failed to start networking loop\n";
-                }
-            };
-        });
+        // Now start the loop.
+        if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
+        {
+            mOk = true;
+        }
+        else
+        {
+            std::cout << "MQTT Init Error: Failed to start networking loop\n";
+        }
     }
     else
     {
@@ -129,12 +122,6 @@ MQTTData::MQTTData(const char* pHost,int pPort,
 
 MQTTData::~MQTTData()
 {
-    mKeepGoing = false;
-    if( mThreadMQTT.joinable() )
-    {
-        mThreadMQTT.join();
-    }
-
     if( mMQTT )
     {
         mosquitto_destroy(mMQTT);

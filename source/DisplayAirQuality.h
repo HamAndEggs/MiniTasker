@@ -31,7 +31,7 @@ public:
     DisplayAirQuality(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayAirQuality();
 
-    virtual bool OnUpdate();
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
 private:
 

@@ -136,7 +136,7 @@ DisplayBitcoinPrice::~DisplayBitcoinPrice()
     mPriceUpdater.TellThreadToExitAndWait();
 }
 
-bool DisplayBitcoinPrice::OnUpdate()
+bool DisplayBitcoinPrice::OnUpdate(const eui::Rectangle& pContentRect)
 {
     if( mPriceChange.find('-') == std::string::npos )
     {

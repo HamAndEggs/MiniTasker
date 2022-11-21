@@ -36,7 +36,7 @@ public:
     DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplayWeather();
     
-    virtual bool OnUpdate();
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
 private:
 

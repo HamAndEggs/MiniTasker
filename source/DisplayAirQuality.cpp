@@ -60,7 +60,7 @@ DisplayAirQuality::~DisplayAirQuality()
     indoorAirQuality.Stop();
 }
 
-bool DisplayAirQuality::OnUpdate()
+bool DisplayAirQuality::OnUpdate(const eui::Rectangle& pContentRect)
 {
     switch (mResult)
     {

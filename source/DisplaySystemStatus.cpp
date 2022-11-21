@@ -69,7 +69,7 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
     tinytools::system::GetCPULoad(trackingData,totalSystemLoad,CPULoads);
 }
 
-bool DisplaySystemStatus::OnUpdate()
+bool DisplaySystemStatus::OnUpdate(const eui::Rectangle& pContentRect)
 {
 // Render the uptime
     uint64_t upDays,upHours,upMinutes;

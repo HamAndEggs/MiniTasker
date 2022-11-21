@@ -46,8 +46,6 @@ private:
     const std::vector<std::string> mTopics;
     std::function<void(const std::string &pTopic,const std::string &pData)> mOnData;
     bool mOk = false;
-    std::thread mThreadMQTT;
-    bool mKeepGoing = false;
     struct mosquitto *mMQTT = NULL;
 
 

@@ -158,7 +158,7 @@ DisplayWeather::~DisplayWeather()
 
 }
 
-bool DisplayWeather::OnUpdate()
+bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
 {
     std::time_t currentTime = std::time(nullptr);
 

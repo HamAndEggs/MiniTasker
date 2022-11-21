@@ -29,7 +29,7 @@ class DisplaySystemStatus : public eui::Element
 public:
 
     DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
-    virtual bool OnUpdate();
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
 private:
     eui::ElementPtr uptime;
