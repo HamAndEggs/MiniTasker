@@ -31,7 +31,7 @@ Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) 
 
     mOutsideData["/outside/temperature"] = "--.-C";// Make sure there is data.
     mOutsideData["/shed/temperature"] = "--.-C";// Make sure there is data.
-    mOutsideWeather = new MQTTData("server",1883,topics,
+    mOutsideWeather = new MQTTData("MQTT",1883,topics,
         [this](const std::string &pTopic,const std::string &pData)
         {
             std::cout << "MQTTData " << pTopic << " " << pData << "\n";
