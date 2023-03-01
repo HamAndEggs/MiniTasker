@@ -25,10 +25,12 @@
 #include "DisplaySystemStatus.h"
 #include "DisplayAirQuality.h"
 #include "DisplayBitcoinPrice.h"
+#include "DisplayTideData.h"
 #include "Temperature.h"
 
 #include <unistd.h>
 #include <filesystem>
+#include <curl/curl.h> // libcurl4-openssl-dev
 
 class MyUI : public eui::Application
 {
@@ -55,16 +57,17 @@ private:
 
 MyUI::MyUI(const std::string& path):mPath(path)
 {
-
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 MyUI::~MyUI()
 {
-
+	curl_global_cleanup();
 }
 
 void MyUI::OnOpen(eui::Graphics* pGraphics)
 {
+    
     mRoot = new eui::Element;
     const double myBTC = ReadMyBTCInvestment(mPath);
 
@@ -84,8 +87,18 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
     mRoot->GetStyle().mTexture = pGraphics->TextureLoadPNG(mPath + "images/bg-pastal-01.png");
     mRoot->GetStyle().mBackground = eui::COLOUR_WHITE;
 
-    DisplayBitcoinPrice* btc = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
-    mRoot->Attach(btc);
+    eui::ElementPtr BottomPannel = new eui::Element;
+        BottomPannel->SetPos(0,2);
+        BottomPannel->SetGrid(3,2);
+        BottomPannel->SetSpan(3,1);
+        DisplayBitcoinPrice* btc = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+            BottomPannel->Attach(btc);
+
+        DisplayTideData* tide = new DisplayTideData(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+            tide->SetPos(0,1);
+            tide->SetSpan(3,1);
+            BottomPannel->Attach(tide);
+    mRoot->Attach(BottomPannel);
 
     mRoot->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mRoot->Attach(new DisplayWeather(pGraphics,mPath,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));

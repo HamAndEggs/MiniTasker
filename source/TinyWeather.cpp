@@ -22,10 +22,10 @@
 #include <assert.h>
 
 #include <stdio.h>
-#include <curl/curl.h>
 
 #include "TinyWeather.h"
 #include "TinyJson.h"
+#include "FileDownload.h"
 
 namespace tinyweather{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,16 +36,6 @@ const std::time_t ONE_DAY = (ONE_HOUR*24);
 static const std::time_t RoundToHour(const std::time_t pTime)
 {
     return pTime - (pTime%ONE_HOUR);
-}
-
-static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
-{
-	if(writerData == NULL)
-		return 0;
-
-	writerData->append(data, size*nmemb);
-
-	return size * nmemb;
 }
 
 static void ReadWeatherData(const tinyjson::JsonValue pJson,WeatherData& rWeather)
@@ -163,12 +153,11 @@ OpenWeatherMap::OpenWeatherMap(const std::string& pAPIKey):
 	mAPIKey(pAPIKey)
 {
 	std::clog << "sizeof time_t = " << sizeof(time_t) << " sizeof uint64_t = " << sizeof(uint64_t) << '\n';
-	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 OpenWeatherMap::~OpenWeatherMap()
 {
-	curl_global_cleanup();
+
 }
 
 void OpenWeatherMap::Get(double pLatitude,double pLongitude,std::function<void(bool pDownloadedOk,const OpenWeatherMap& pWeather)> pReturnFunction)
@@ -308,47 +297,9 @@ HourlyIconVector OpenWeatherMap::GetHourlyIconCodes(std::time_t pNowUTC)const
 
 bool OpenWeatherMap::DownloadWeatherReport(const std::string& pURL,std::string& rJson)const
 {
-	bool result = false;
-	CURL *curl = curl_easy_init();
-	if(curl)
-	{
-		char errorBuffer[CURL_ERROR_SIZE];
-		errorBuffer[0] = 0;
+    rJson = DownloadJson(pURL,"OpenWeatherMap");
+    return rJson.size() > 2;
 
-//		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-		const char* funcName = "CURLOPT_ERRORBUFFER";
-		if( curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK )
-		{
-			funcName = "CURLOPT_URL";
-			if( curl_easy_setopt(curl, CURLOPT_URL, pURL.c_str()) == CURLE_OK )
-			{
-				funcName = "CURLOPT_WRITEFUNCTION";
-				if( curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLWriter) == CURLE_OK )
-				{
-					funcName = "CURLOPT_WRITEDATA";
-					if( curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rJson) == CURLE_OK )
-					{
-						funcName = "curl_easy_perform";
-						if( curl_easy_perform(curl) == CURLE_OK )
-						{
-							result = true;
-						}
-					}
-				}
-			}
-		}
-
-		if( result  == false )
-		{
-			std::cerr << "Lib curl " << funcName << " failed, [" << errorBuffer << "]\n";
-		}
-
-		/* always cleanup */ 
-		curl_easy_cleanup(curl);
-	}
-
-	return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -77,20 +77,28 @@ static void my_log_callback(struct mosquitto *mosq, void *userdata, int level, c
 #endif
 }
 
-MQTTData::MQTTData(const char* pHost,int pPort,
+MQTTData::MQTTData(const std::string& pHost,int pPort,
     const std::vector<std::string> pTopics,
     std::function<void(const std::string &pTopic,const std::string &pData)> pOnData):
+    mHost(pHost),
+    mPort(pPort),
     mTopics(pTopics),
     mOnData(pOnData)
 {
-
-    assert(pHost && pPort);
-
+    assert(pHost.size() > 0 && pPort);
 
     bool clean_session = true;
     mosquitto_lib_init();
     mMQTT = mosquitto_new(NULL, clean_session, this);
-    if( mMQTT )
+    if( !mMQTT )
+    {
+        std::cerr << "MQTT Init Error: Out of memory\n";
+    }
+}
+
+void MQTTData::Tick()
+{
+    if( mMQTT && mConnected == false )
     {
         int keepalive = 60;
         mosquitto_log_callback_set(mMQTT, my_log_callback);
@@ -98,27 +106,26 @@ MQTTData::MQTTData(const char* pHost,int pPort,
         mosquitto_message_callback_set(mMQTT, CallbackMessage);
         mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
 
-        while( mosquitto_connect(mMQTT, pHost, pPort, keepalive) != MOSQ_ERR_SUCCESS )
+        if( mosquitto_connect(mMQTT, mHost.c_str(), mPort, keepalive) == MOSQ_ERR_SUCCESS )
         {
-            // Try again in a bit.
-            sleep(5);
-        }
-
-        // Now start the loop.
-        if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
-        {
-            mOk = true;
+            mConnected = true;
+            // Now start the loop.
+            if( mosquitto_loop_start(mMQTT) == MOSQ_ERR_SUCCESS )
+            {
+                mOk = true;
+            }
+            else
+            {
+                std::cout << "MQTT Init Error: Failed to start networking loop\n";
+            }
         }
         else
         {
-            std::cout << "MQTT Init Error: Failed to start networking loop\n";
+            std::cout << "No connection\n";
         }
     }
-    else
-    {
-        std::cerr << "MQTT Init Error: Out of memory\n";
-    }
 }
+
 
 MQTTData::~MQTTData()
 {

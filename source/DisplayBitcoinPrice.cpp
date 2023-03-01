@@ -1,25 +1,12 @@
 
 #include "DisplayBitcoinPrice.h"
 #include "TinyJson.h"
+#include "FileDownload.h"
 
-#include <curl/curl.h> // libcurl4-openssl-dev
-
-static int CURLWriter(char *data, size_t size, size_t nmemb,std::string *writerData)
-{
-    if(writerData == NULL)
-        return 0;
-
-    writerData->append(data, size*nmemb);
-
-    return size * nmemb;
-}
 
 DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("bitcoin");
-    this->SetPos(0,2);
-    this->SetGrid(3,2);
-    this->SetSpan(3,1);
     this->SetFont(pBitcoinFont);
 
     UpStyle.mBackground = eui::MakeColour(100,255,100);
@@ -34,19 +21,19 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
     DownStyle.mRadius = RECT_RADIUS;
     DownStyle.mForeground = eui::COLOUR_BLACK;
 
-    mControls.LastPrice = new eui::Element;
-        mControls.LastPrice->SetPadding(0.05f);
-        mControls.LastPrice->SetText("£XXXXXX");
-        mControls.LastPrice->SetPadding(CELL_PADDING);
-        mControls.LastPrice->SetPos(0,0);
-    this->Attach(mControls.LastPrice);
+    mControls.LastPriceUK = new eui::Element;
+        mControls.LastPriceUK->SetPadding(0.05f);
+        mControls.LastPriceUK->SetText("£XXXXXX");
+        mControls.LastPriceUK->SetPadding(CELL_PADDING);
+        mControls.LastPriceUK->SetPos(0,0);
+    this->Attach(mControls.LastPriceUK);
 
-    mControls.PriceChange = new eui::Element;
-        mControls.PriceChange->SetPadding(0.05f);
-        mControls.PriceChange->SetText("+XXXXXX");
-        mControls.PriceChange->SetPadding(CELL_PADDING);
-        mControls.PriceChange->SetPos(1,0);
-    this->Attach(mControls.PriceChange);
+    mControls.LastPriceUSD = new eui::Element;
+        mControls.LastPriceUSD->SetPadding(0.05f);
+        mControls.LastPriceUSD->SetText("£XXXXXX");
+        mControls.LastPriceUSD->SetPadding(CELL_PADDING);
+        mControls.LastPriceUSD->SetPos(1,0);
+    this->Attach(mControls.LastPriceUSD);
 
     mControls.PriceChangePercent = new eui::Element;
         mControls.PriceChangePercent->SetPadding(0.05f);
@@ -54,28 +41,6 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
         mControls.PriceChangePercent->SetPadding(CELL_PADDING);
         mControls.PriceChangePercent->SetPos(2,0);
     this->Attach(mControls.PriceChangePercent);
-
-
-    mControls.LastPriceUSD = new eui::Element;
-        mControls.LastPriceUSD->SetPadding(0.05f);
-        mControls.LastPriceUSD->SetText("£XXXXXX");
-        mControls.LastPriceUSD->SetPadding(CELL_PADDING);
-        mControls.LastPriceUSD->SetPos(0,1);
-    this->Attach(mControls.LastPriceUSD);
-
-    mControls.HighUSD = new eui::Element;
-        mControls.HighUSD->SetPadding(0.05f);
-        mControls.HighUSD->SetText("+XXXXXX");
-        mControls.HighUSD->SetPadding(CELL_PADDING);
-        mControls.HighUSD->SetPos(1,1);
-    this->Attach(mControls.HighUSD);
-
-    mControls.LowUSD = new eui::Element;
-        mControls.LowUSD->SetPadding(0.05f);
-        mControls.LowUSD->SetText("£XXXXXX");
-        mControls.LowUSD->SetPadding(CELL_PADDING);
-        mControls.LowUSD->SetPos(2,1);
-    this->Attach(mControls.LowUSD);
 
     mPriceUpdater.Tick(60*10,[this]()
     {
@@ -92,11 +57,11 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
                 tinyjson::JsonProcessor json(jsonData);
                 const tinyjson::JsonValue price = json.GetRoot();
 
-                mLastPrice = price["last"].GetString();
+                mLastPriceUK = price["last"].GetString();
                 mPriceChange = price["priceChange"].GetString();
                 mPriceChangePercent = price["priceChangePercentage"].GetString();
 
-                mPriceGBP = std::stod(mLastPrice);
+                mPriceGBP = std::stod(mLastPriceUK);
             }
         }
         catch(std::runtime_error &e)
@@ -119,8 +84,6 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
                 const tinyjson::JsonValue price = json.GetRoot();
 
                 mLastPriceUSD = price["last"].GetString();
-                m24HourLowUSD = price["low"].GetString();
-                m24HourHighUSD = price["high"].GetString();
             }
         }
         catch(std::runtime_error &e)
@@ -140,69 +103,29 @@ bool DisplayBitcoinPrice::OnUpdate(const eui::Rectangle& pContentRect)
 {
     if( mPriceChange.find('-') == std::string::npos )
     {
-        mControls.LastPrice->SetStyle(UpStyle);
-        mControls.PriceChange->SetStyle(UpStyle);
+        mControls.LastPriceUK->SetStyle(UpStyle);
         mControls.PriceChangePercent->SetStyle(UpStyle);
 
         mControls.LastPriceUSD->SetStyle(UpStyle);
-        mControls.HighUSD->SetStyle(UpStyle);
-        mControls.LowUSD->SetStyle(UpStyle);        
     }
     else
     {
-        mControls.LastPrice->SetStyle(DownStyle);
-        mControls.PriceChange->SetStyle(DownStyle);
+        mControls.LastPriceUK->SetStyle(DownStyle);
         mControls.PriceChangePercent->SetStyle(DownStyle);
 
         mControls.LastPriceUSD->SetStyle(DownStyle);
-        mControls.HighUSD->SetStyle(DownStyle);
-        mControls.LowUSD->SetStyle(DownStyle);
     }
 
-    mControls.LastPrice->SetTextF("£%s",mLastPrice.c_str());
-    mControls.PriceChange->SetText(mPriceChange);
+    mControls.LastPriceUK->SetTextF("£%s",mLastPriceUK.c_str());
     mControls.PriceChangePercent->SetTextF("%s%%",mPriceChangePercent.c_str());
 
     mControls.LastPriceUSD->SetTextF("$%s",mLastPriceUSD.c_str());
-    mControls.HighUSD->SetTextF("$%s",m24HourHighUSD.c_str());
-    mControls.LowUSD->SetTextF("$%s",m24HourLowUSD.c_str());
+
     return true;
 }
 
 bool DisplayBitcoinPrice::DownloadReport(const std::string& pURL,std::string& rJson)const
 {
-    bool result = false;
-    CURL *curl = curl_easy_init();
-    if(curl)
-    {
-        char errorBuffer[CURL_ERROR_SIZE];
-        errorBuffer[0] = 0;
-        if( curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorBuffer) == CURLE_OK )
-        {
-            if( curl_easy_setopt(curl, CURLOPT_URL, pURL.c_str()) == CURLE_OK )
-            {
-                if( curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLWriter) == CURLE_OK )
-                {
-                    if( curl_easy_setopt(curl, CURLOPT_WRITEDATA, &rJson) == CURLE_OK )
-                    {
-                        if( curl_easy_perform(curl) == CURLE_OK )
-                        {
-                            result = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if( result  == false )
-		{
-			std::cerr << "Lib curl, BITCOIN, failed, [" << errorBuffer << "]\n";
-		}
-
-
-        /* always cleanup */ 
-        curl_easy_cleanup(curl);
-    }
-
-    return result;
+    rJson = DownloadJson(pURL,"DisplayBitcoinPrice");
+    return rJson.size() > 2;
 }

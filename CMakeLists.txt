@@ -31,6 +31,8 @@ add_executable(${THIS_PROJECT}
     ./source/sgp30.cpp
     ./source/TinyTools.cpp
     ./source/TinyWeather.cpp
+    ./source/DisplayTideData.cpp
+    ./source/FileDownload.cpp
 )
 
 set_property(TARGET ${THIS_PROJECT} PROPERTY CXX_STANDARD 17)

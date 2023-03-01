@@ -28,7 +28,8 @@ public:
 
     Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING);
     virtual bool OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect);
-
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
+    
 private:
     MQTTData* mOutsideWeather = nullptr;
     std::map<std::string,std::string> mOutsideData;

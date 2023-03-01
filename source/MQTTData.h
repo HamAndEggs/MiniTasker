@@ -33,19 +33,24 @@
 class MQTTData
 {
 public:
-    MQTTData(const char* pHost,int pPort,
+    MQTTData(const std::string& pHost,int pPort,
         const std::vector<std::string> pTopics,
         std::function<void(const std::string &pTopic,const std::string &pData)> pOnData);
 
     ~MQTTData();
 
     bool GetOK()const{return mOk;}
+    bool GetConnected()const{return mConnected;}
+    void Tick();
 
 
 private:
+    const std::string mHost;
+    const int mPort;
     const std::vector<std::string> mTopics;
     std::function<void(const std::string &pTopic,const std::string &pData)> mOnData;
     bool mOk = false;
+    bool mConnected = false;
     struct mosquitto *mMQTT = NULL;
 
 

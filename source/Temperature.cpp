@@ -65,23 +65,39 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
 
     const int font = GetFont();
 
-    const std::string outside = mOutsideData["/outside/temperature"];
-    const std::string shed = mOutsideData["/shed/temperature"];
-
-    eui::Colour outSideColour = GetStyle().mForeground;
-    eui::Colour shedColour = GetStyle().mForeground;
-    if( mOutsideHartbeat.GetIsOnline() == false )
+    if( mOutsideWeather && mOutsideWeather->GetConnected() )
     {
-        outSideColour = eui::COLOUR_RED;
+        const std::string outside = mOutsideData["/outside/temperature"];
+        const std::string shed = mOutsideData["/shed/temperature"];
+
+        eui::Colour outSideColour = GetStyle().mForeground;
+        eui::Colour shedColour = GetStyle().mForeground;
+        if( mOutsideHartbeat.GetIsOnline() == false )
+        {
+            outSideColour = eui::COLOUR_RED;
+        }
+
+        if( mShedHartbeat.GetIsOnline() == false )
+        {
+            shedColour = eui::COLOUR_RED;
+        }
+
+        pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
+        pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
+    }
+    else
+    {
+        pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,eui::COLOUR_DARK_GREY,"Connecting...");
     }
 
-    if( mShedHartbeat.GetIsOnline() == false )
+    return true;
+}
+
+bool Temperature::OnUpdate(const eui::Rectangle& pContentRect)
+{
+    if( mOutsideWeather )
     {
-        shedColour = eui::COLOUR_RED;
+        mOutsideWeather->Tick();
     }
-
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
-
     return true;
 }

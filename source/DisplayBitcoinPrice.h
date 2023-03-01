@@ -23,26 +23,19 @@ public:
 private:
     double mPriceGBP = 0.0;
 
-    std::string mLastPrice = "N/A";
+    std::string mLastPriceUK = "N/A";
+    std::string mLastPriceUSD = "N/A";
+
     std::string mPriceChange = "N/A";
     std::string mPriceChangePercent = "N/A";
-
-    std::string mLastPriceUSD = "N/A";
-    std::string m24HourLowUSD = "N/A";
-    std::string m24HourHighUSD = "N/A";
 
     eui::Style UpStyle,DownStyle;
 
     struct
     {
-        eui::ElementPtr LastPrice;
-        eui::ElementPtr PriceChange;
-        eui::ElementPtr PriceChangePercent;
-
+        eui::ElementPtr LastPriceUK;
         eui::ElementPtr LastPriceUSD;
-        eui::ElementPtr LowUSD;
-        eui::ElementPtr HighUSD;
-
+        eui::ElementPtr PriceChangePercent;
     }mControls;
 
     tinytools::threading::SleepableThread  mPriceUpdater;
