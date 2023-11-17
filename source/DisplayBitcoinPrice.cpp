@@ -35,13 +35,6 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
         mControls.LastPriceUSD->SetPos(1,0);
     this->Attach(mControls.LastPriceUSD);
 
-    mControls.PriceChangePercent = new eui::Element;
-        mControls.PriceChangePercent->SetPadding(0.05f);
-        mControls.PriceChangePercent->SetText("+XXXXXX");
-        mControls.PriceChangePercent->SetPadding(CELL_PADDING);
-        mControls.PriceChangePercent->SetPos(2,0);
-    this->Attach(mControls.PriceChangePercent);
-
     mPriceUpdater.Tick(60*10,[this]()
     {
         try
@@ -59,7 +52,6 @@ DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,flo
 
                 mLastPriceUK = price["last"].GetString();
                 mPriceChange = price["priceChange"].GetString();
-                mPriceChangePercent = price["priceChangePercentage"].GetString();
 
                 mPriceGBP = std::stod(mLastPriceUK);
             }
@@ -104,21 +96,15 @@ bool DisplayBitcoinPrice::OnUpdate(const eui::Rectangle& pContentRect)
     if( mPriceChange.find('-') == std::string::npos )
     {
         mControls.LastPriceUK->SetStyle(UpStyle);
-        mControls.PriceChangePercent->SetStyle(UpStyle);
-
         mControls.LastPriceUSD->SetStyle(UpStyle);
     }
     else
     {
         mControls.LastPriceUK->SetStyle(DownStyle);
-        mControls.PriceChangePercent->SetStyle(DownStyle);
-
         mControls.LastPriceUSD->SetStyle(DownStyle);
     }
 
     mControls.LastPriceUK->SetTextF("£%s",mLastPriceUK.c_str());
-    mControls.PriceChangePercent->SetTextF("%s%%",mPriceChangePercent.c_str());
-
     mControls.LastPriceUSD->SetTextF("$%s",mLastPriceUSD.c_str());
 
     return true;

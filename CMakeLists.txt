@@ -24,6 +24,7 @@ add_executable(${THIS_PROJECT}
     ./source/DisplayClock.cpp
     ./source/DisplaySystemStatus.cpp
     ./source/DisplayWeather.cpp
+    ./source/DisplaySolaX.cpp
     ./source/Temperature.cpp
     ./source/i2c_device.cpp
     ./source/main.cpp
@@ -31,6 +32,7 @@ add_executable(${THIS_PROJECT}
     ./source/sgp30.cpp
     ./source/TinyTools.cpp
     ./source/TinyWeather.cpp
+    ./source/TinySolaX.cpp
     ./source/DisplayTideData.cpp
     ./source/FileDownload.cpp
 )

@@ -56,13 +56,16 @@ static std::string ReadWeatherKey(const std::string& pPath)
         std::cerr << "Could not load weather key from current folder, trying hard coded path\n";
     }
 
-    try
+    if( key.size() == 0 )
     {
-        key = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/weather.key");
-    }
-    catch(std::runtime_error &e)
-    {
-        std::cerr << "Could not load weather key from hard coded path\n";
+        try
+        {
+            key = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/weather.key");
+        }
+        catch(std::runtime_error &e)
+        {
+            std::cerr << "Could not load weather key from hard coded path\n";
+        }
     }
 
     if( key.size() > 0 )

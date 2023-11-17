@@ -22,6 +22,7 @@
 
 #include "DisplayClock.h"
 #include "DisplayWeather.h"
+#include "DisplaySolaX.h"
 #include "DisplaySystemStatus.h"
 #include "DisplayAirQuality.h"
 #include "DisplayBitcoinPrice.h"
@@ -67,6 +68,7 @@ MyUI::~MyUI()
 
 void MyUI::OnOpen(eui::Graphics* pGraphics)
 {
+    std::cout << "mPath = " << mPath << "\n";
     
     mRoot = new eui::Element;
     const double myBTC = ReadMyBTCInvestment(mPath);
@@ -98,6 +100,8 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
             tide->SetPos(0,1);
             tide->SetSpan(3,1);
             BottomPannel->Attach(tide);
+
+        BottomPannel->Attach(new DisplaySolaX(pGraphics,mPath,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mRoot->Attach(BottomPannel);
 
     mRoot->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));

@@ -35,7 +35,6 @@ private:
     {
         eui::ElementPtr LastPriceUK;
         eui::ElementPtr LastPriceUSD;
-        eui::ElementPtr PriceChangePercent;
     }mControls;
 
     tinytools::threading::SleepableThread  mPriceUpdater;
