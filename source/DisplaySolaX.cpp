@@ -104,7 +104,7 @@ static std::string ReadSolaXSerialNumber(const std::string& keyFile)
     return SN;
 }
 
-DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) :
+DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) :
     mSerialNumber(ReadSolaXSerialNumber(ReadSolaXKeyFile(pPath))),
     mHasData(false),
     mFirstFail(true),
@@ -116,6 +116,7 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     this->SetID("solaX");
     this->SetPos(2,0);
     this->SetGrid(2,1);
+    this->SetFont(pFont);
 
     eui::Style SOCStyle;
     SOCStyle.mBackground = eui::MakeColour(100,255,100);
@@ -132,6 +133,14 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     mBatterySOC->SetPos(0,0);
     mBatterySOC->SetStyle(SOCStyle);
     this->Attach(mBatterySOC);
+
+    mYeld = new eui::Element;
+    mYeld->SetPadding(0.05f);
+    mYeld->SetText("Fetching");
+    mYeld->SetPadding(CELL_PADDING);
+    mYeld->SetPos(1,0);
+    mYeld->SetStyle(SOCStyle);
+    this->Attach(mYeld);
 
 //    this->SetPos(0,0);
 
@@ -164,7 +173,7 @@ bool DisplaySolaX::OnUpdate(const eui::Rectangle& pContentRect)
                 mFetchLimiter = currentTime + (ONE_MINUTE * 5);
 
                 mBatterySOC->SetTextF("%d%%",(int)pData.BatterySOC);
-                mYieldToday = pData.Inverter.energyOutDaily;
+                mYeld->SetTextF("%2.2f",pData.Inverter.energyOutDaily);
 
                 std::cout << "Uploaded " << pData.Uploadtime << '\n';
                 std::cout << "State of Charge: " << pData.BatterySOC << "%\n";

@@ -101,7 +101,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
             tide->SetSpan(3,1);
             BottomPannel->Attach(tide);
 
-        BottomPannel->Attach(new DisplaySolaX(pGraphics,mPath,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+        BottomPannel->Attach(new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mRoot->Attach(BottomPannel);
 
     mRoot->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
