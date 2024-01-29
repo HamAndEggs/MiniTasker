@@ -28,6 +28,7 @@
 #include "DisplayBitcoinPrice.h"
 #include "DisplayTideData.h"
 #include "Temperature.h"
+#include "MQTTData.h"
 
 #include <unistd.h>
 #include <filesystem>
@@ -41,6 +42,11 @@ public:
 
     virtual void OnOpen(eui::Graphics* pGraphics);
     virtual void OnClose();
+    virtual void OnUpdate()
+    {
+        MQTT->Tick();
+    }
+
     virtual eui::ElementPtr GetRootElement(){return mRoot;}
     virtual uint32_t GetUpdateInterval()const{return 1000;}
 
@@ -51,8 +57,17 @@ private:
     const float BORDER_SIZE = 3.0f;
     const std::string mPath;
     eui::ElementPtr mRoot = nullptr;
+    MQTTData* MQTT = nullptr;
+    std::map<std::string,std::string> mMQTTData;
 
-    double ReadMyBTCInvestment(const std::string& pPath);
+    Temperature *mOutSideTemp;
+    DisplayBitcoinPrice* mBTC; 
+    std::string myBTC = "n/a";
+
+    DisplaySolaX* mSolar = nullptr;
+
+
+    void StartMQTT();
 
 };
 
@@ -63,6 +78,7 @@ MyUI::MyUI(const std::string& path):mPath(path)
 
 MyUI::~MyUI()
 {
+    delete MQTT;
 	curl_global_cleanup();
 }
 
@@ -71,10 +87,11 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
     std::cout << "mPath = " << mPath << "\n";
     
     mRoot = new eui::Element;
-    const double myBTC = ReadMyBTCInvestment(mPath);
 
     mRoot->SetID("mainScreen");
     mRoot->SetGrid(3,3);
+
+    StartMQTT();    
 
     int miniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
     int normalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
@@ -93,15 +110,16 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
         BottomPannel->SetPos(0,2);
         BottomPannel->SetGrid(3,2);
         BottomPannel->SetSpan(3,1);
-        DisplayBitcoinPrice* btc = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
-            BottomPannel->Attach(btc);
+        mBTC = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+        BottomPannel->Attach(mBTC);
 
-        DisplayTideData* tide = new DisplayTideData(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+        DisplayTideData* tide = new DisplayTideData(largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
             tide->SetPos(0,1);
             tide->SetSpan(3,1);
             BottomPannel->Attach(tide);
 
-        BottomPannel->Attach(new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+        mSolar = new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+        BottomPannel->Attach(mSolar);
     mRoot->Attach(BottomPannel);
 
     mRoot->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
@@ -119,26 +137,23 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
         topCentre->SetGrid(1,2);
 
         // My bitcoin investment.
-        eui::ElementPtr MyInvestment = new eui::Element(btc->GetUpStyle());
+        eui::ElementPtr MyInvestment = new eui::Element(mBTC->GetUpStyle());
             MyInvestment->SetPadding(0.05f);
             MyInvestment->SetText("£XXXXXX");
             MyInvestment->SetPadding(CELL_PADDING);
             MyInvestment->SetPos(0,0);
             MyInvestment->SetFont(bitcoinFont);
-            MyInvestment->SetOnUpdate([btc,myBTC](eui::ElementPtr pElement,const eui::Rectangle& pContentRect)
+            MyInvestment->SetOnUpdate([this](eui::ElementPtr pElement,const eui::Rectangle& pContentRect)
             {
-                std::stringstream ss;
-                ss << std::fixed << std::setprecision(2) << (btc->GetPriceGBP() * myBTC);
-
-                pElement->SetText(ss.str());
+                pElement->SetText(myBTC);
                 return true;
             });
         topCentre->Attach(MyInvestment);
         
         // The temperature outside
-        eui::ElementPtr outSideTemp = new Temperature(temperatureFont,btc->GetUpStyle(),CELL_PADDING);
-            outSideTemp->SetPos(0,1);
-        topCentre->Attach(outSideTemp);
+        mOutSideTemp = new Temperature(temperatureFont,mBTC->GetUpStyle(),CELL_PADDING);
+            mOutSideTemp->SetPos(0,1);
+        topCentre->Attach(mOutSideTemp);
     mRoot->Attach(topCentre);
 }
 
@@ -149,45 +164,77 @@ void MyUI::OnClose()
     mRoot = nullptr;
 }
 
-double MyUI::ReadMyBTCInvestment(const std::string& pPath)
+void MyUI::StartMQTT()
 {
-    std::string btc;
-    try
+    // MQTT data
+    const std::vector<std::string> topics =
     {
-        btc = tinytools::file::LoadFileIntoString(pPath + "my.btc");
-    }
-    catch(std::runtime_error &e)
+        "/outside/temperature","/outside/hartbeat",
+        "/shed/temperature","/shed/hartbeat",
+        "/btc/gb",
+        "/btc/usd",
+        "/btc/change",
+        "/btc/diskused",
+        "/btc/verificationprogress",
+        "/btc/blockdate",
+        "/btc/mine",
+        "/solar/battery/total",
+        "/solar/inverter/total",
+        "/solar/grid/total",
+        "/solar/yeld",
+        "/solar/panel/front",
+        "/solar/panel/rear"        
+    };
+
+    for( auto t : topics )
     {
-        std::cerr << "Could not load weather key from current folder, trying hard coded path\n";
+        mMQTTData[t] = "N/A";
     }
 
-    try
-    {
-        btc = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/my.btc");
-    }
-    catch(std::runtime_error &e)
-    {
-        std::cerr << "Could not load weather key from hard coded path\n";
-    }
+    // Make sure there is data.
+    mMQTTData["/outside/temperature"] = "--.-C";
+    mMQTTData["/shed/temperature"] = "--.-C";
+    mMQTTData["/shed/temperature"] = "--.-C";
 
-    double myBTC = 1.0;
-    if( btc.size() > 0 )
-    {
-        try
+    MQTT = new MQTTData("MQTT",1883,topics,
+        [this](const std::string &pTopic,const std::string &pData)
         {
-            btc = tinytools::string::TrimWhiteSpace(btc);
-            if( btc.size() > 0 )
+            std::cout << "MQTTData " << pTopic << " " << pData << "\n";
+            mMQTTData[pTopic] = pData;
+
+            // Record when we last seen a change, if we don't see one for a while something is wrong.
+            // I send an 'hartbeat' with new data that is just a value incrementing.
+            // This means we get an update even if the tempareture does not change.
+            if( tinytools::string::CompareNoCase(pTopic,"/outside") && mOutSideTemp )
             {
-                myBTC = std::stod(btc);
+                mOutSideTemp->NewShedOutSide(pData);
             }
-        }
-        catch(std::runtime_error &e)
-        {
-            std::cerr << "BTC string not a double\n";
-        }
-    }
+            else if( tinytools::string::CompareNoCase(pTopic,"/shed") )
+            {
+                mOutSideTemp->NewShedTemperature(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/btc/gb") )
+            {
+                mBTC->UpdateGBP(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/btc/usd") )
+            {
+                mBTC->UpdateUSD(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/btc/change") )
+            {
+                mBTC->UpdateChange(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/btc/mine") )
+            {
+                myBTC = pData;
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/solar/",7) )
+            {
+                mSolar->UpdateData(pTopic,pData);
+            }
+        });
 
-    return myBTC;
 }
 
 int main(const int argc,const char *argv[])
@@ -197,6 +244,7 @@ int main(const int argc,const char *argv[])
 #else
     std::cout << "Debug\n";
 #endif
+
 
 // Crude argument list handling.
     std::string path = "./";

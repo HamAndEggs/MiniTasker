@@ -69,7 +69,7 @@ static void my_log_callback(struct mosquitto *mosq, void *userdata, int level, c
 {
     assert(mosq);
 	// Print all log messages regardless of level.
-#ifdef DEBUG_BUILD
+#ifdef VERBOSE_BUILD
     if( str )
     {
 	    std::cout << str << "\n";
@@ -142,6 +142,10 @@ MQTTData::~MQTTData()
 
 void MQTTData::OnConnected()
 {
+#ifdef DEBUG_BUILD
+    std::cout << "MQTT OnConnected\n";
+#endif
+
     // Subscribe to broker information topics on successful connect.
     for( auto topic : mTopics )
     {
@@ -154,8 +158,13 @@ void MQTTData::Subscribe(const std::string& pTopic)
     assert( pTopic.size() > 0 );
     assert( mMQTT );
 
-    switch( mosquitto_subscribe(mMQTT, NULL, pTopic.c_str(), MQTT_QOS_AT_MOST_ONCE) )
+    const int ret = mosquitto_subscribe(mMQTT, NULL, pTopic.c_str(), MQTT_QOS_AT_MOST_ONCE);
+    switch( ret )
     {
+    default:
+        std::cerr << "Subscribing too " << pTopic << " failed with unknown error:" << ret << "\n";
+        break;
+
     case MOSQ_ERR_SUCCESS:
 #ifdef DEBUG_BUILD
          std::cout << "Subscribing too " << pTopic << "\n";
@@ -163,23 +172,23 @@ void MQTTData::Subscribe(const std::string& pTopic)
         break;
 
     case MOSQ_ERR_INVAL:
-        std::cout << "MQTT Subscribe Error: [" << pTopic << "] The input parameters were invalid";
+        std::cerr << "MQTT Subscribe Error: [" << pTopic << "] The input parameters were invalid";
         break;
 
     case MOSQ_ERR_NOMEM:
-        std::cout << "MQTT Subscribe Error: [" << pTopic << "]an out of memory condition occurred\n";
+        std::cerr << "MQTT Subscribe Error: [" << pTopic << "]an out of memory condition occurred\n";
         break;
 
     case MOSQ_ERR_NO_CONN:
-        std::cout << "MQTT Subscribe Error: [" << pTopic << "]the client isn't connected to a broker.\n";
+        std::cerr << "MQTT Subscribe Error: [" << pTopic << "]the client isn't connected to a broker.\n";
         break;
 
     case MOSQ_ERR_MALFORMED_UTF8:
-        std::cout << "MQTT Subscribe Error: [" << pTopic << "]the topic is not valid UTF-8\n";
+        std::cerr << "MQTT Subscribe Error: [" << pTopic << "]the topic is not valid UTF-8\n";
         break;
 #if LIBMOSQUITTO_REVISION > 7
     case MOSQ_ERR_OVERSIZE_PACKET:
-        std::cout << "MQTT Subscribe Error: [" << pTopic << "] Over sized packet\n";
+        std::cerr << "MQTT Subscribe Error: [" << pTopic << "] Over sized packet\n";
         break;
 #endif
     }

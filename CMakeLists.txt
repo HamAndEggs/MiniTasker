@@ -32,7 +32,6 @@ add_executable(${THIS_PROJECT}
     ./source/sgp30.cpp
     ./source/TinyTools.cpp
     ./source/TinyWeather.cpp
-    ./source/TinySolaX.cpp
     ./source/DisplayTideData.cpp
     ./source/FileDownload.cpp
 )

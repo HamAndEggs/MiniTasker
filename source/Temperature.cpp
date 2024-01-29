@@ -15,41 +15,13 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "Temperature.h"
-#include "MQTTData.h"
+
 #include "TinyTools.h"
 
 Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) : eui::Element(pStyle)
 {
     SET_DEFAULT_ID();
 
-    // MQTT data
-    const std::vector<std::string> topics =
-    {
-        "/outside/temperature","/outside/hartbeat",
-        "/shed/temperature","/shed/hartbeat"
-    };
-
-    mOutsideData["/outside/temperature"] = "--.-C";// Make sure there is data.
-    mOutsideData["/shed/temperature"] = "--.-C";// Make sure there is data.
-    mOutsideWeather = new MQTTData("MQTT",1883,topics,
-        [this](const std::string &pTopic,const std::string &pData)
-        {
-            std::cout << "MQTTData " << pTopic << " " << pData << "\n";
-            mOutsideData[pTopic] = pData;
-
-            // Record when we last seen a change, if we don't see one for a while something is wrong.
-            // I send an 'hartbeat' with new data that is just a value incrementing.
-            // This means we get an update even if the tempareture does not change.
-            if( tinytools::string::CompareNoCase(pTopic,"/outside") )
-            {
-                mOutsideHartbeat.lastUpdate = std::chrono::system_clock::now();
-            }
-
-            if( tinytools::string::CompareNoCase(pTopic,"/shed") )
-            {
-                mShedHartbeat.lastUpdate = std::chrono::system_clock::now();
-            }
-        });
 
     SetPadding(0.05f);
     SetText("100.0C");
@@ -65,39 +37,35 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
 
     const int font = GetFont();
 
-    if( mOutsideWeather && mOutsideWeather->GetConnected() )
+    const std::string outside = mOutside.temperature;
+    const std::string shed = mShed.temperature;
+
+    eui::Colour outSideColour = GetStyle().mForeground;
+    eui::Colour shedColour = GetStyle().mForeground;
+    if( mOutside.GetIsOnline() == false )
     {
-        const std::string outside = mOutsideData["/outside/temperature"];
-        const std::string shed = mOutsideData["/shed/temperature"];
-
-        eui::Colour outSideColour = GetStyle().mForeground;
-        eui::Colour shedColour = GetStyle().mForeground;
-        if( mOutsideHartbeat.GetIsOnline() == false )
-        {
-            outSideColour = eui::COLOUR_RED;
-        }
-
-        if( mShedHartbeat.GetIsOnline() == false )
-        {
-            shedColour = eui::COLOUR_RED;
-        }
-
-        pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
-        pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
+        outSideColour = eui::COLOUR_RED;
     }
-    else
+
+    if( mShed.GetIsOnline() == false )
     {
-        pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,eui::COLOUR_DARK_GREY,"Connecting...");
+        shedColour = eui::COLOUR_RED;
     }
+
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
 
     return true;
 }
 
-bool Temperature::OnUpdate(const eui::Rectangle& pContentRect)
+void Temperature::NewShedTemperature(const std::string pTemperature)
 {
-    if( mOutsideWeather )
-    {
-        mOutsideWeather->Tick();
-    }
-    return true;
+    mShed.lastUpdate = std::chrono::system_clock::now();
+    mShed.temperature = pTemperature;
+}
+
+void Temperature::NewShedOutSide(const std::string pTemperature)
+{
+    mOutside.lastUpdate = std::chrono::system_clock::now();
+    mOutside.temperature = pTemperature;
 }

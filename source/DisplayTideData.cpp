@@ -8,7 +8,7 @@
 
 DisplayTideData::DisplayTideData(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
-    SetGrid(2,1);
+    SetGrid(3,1);
 
     eui::Style timeStyle;
     timeStyle.mBackground = eui::MakeColour(100,100,255);

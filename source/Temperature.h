@@ -28,13 +28,13 @@ public:
 
     Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING);
     virtual bool OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect);
-    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
-    
-private:
-    MQTTData* mOutsideWeather = nullptr;
-    std::map<std::string,std::string> mOutsideData;
 
-    struct Hartbeat
+    void NewShedTemperature(const std::string pTemperature);
+    void NewShedOutSide(const std::string pTemperature);
+
+private:
+
+    struct Data
     {
         std::chrono::time_point<std::chrono::system_clock> lastUpdate;
         bool GetIsOnline()const
@@ -42,8 +42,9 @@ private:
             const uint32_t TimeOut = 60 * 30;// 30 Minutes.
             return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - lastUpdate).count() < TimeOut;
         }
+        std::string temperature;
 
-    }mOutsideHartbeat,mShedHartbeat;
+    }mOutside,mShed;
 
 };
 

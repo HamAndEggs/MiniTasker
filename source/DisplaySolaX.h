@@ -20,8 +20,6 @@
 #include "Graphics.h"
 #include "Element.h"
 
-#include "TinySolaX.h"
-
 #include <ctime>
 #include <string>
 #include <map>
@@ -34,17 +32,13 @@ public:
 
     DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
     ~DisplaySolaX();
-    
-    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
+
+    void UpdateData(const std::string& pTopic,const std::string& pData);
 
 private:
 
-    const std::string mSerialNumber;
-    bool mHasData;
-    bool mFirstFail; //!< Sometimes just after boot the fetch fails. Normally if it does I wait an hour before trying again. But for the first time will try in one minutes time.
-    std::time_t mFetchLimiter;
-    solax::TinySolaX mSolaX;
-    eui::ElementPtr mBatterySOC,mYeld;
+    eui::ElementPtr mBatterySOC,mYeld,mInverter,mFeedIn,mFrontPanels,mBackPanels;
+    eui::Style ImportStyle,ExportStyle;
 
 };
 

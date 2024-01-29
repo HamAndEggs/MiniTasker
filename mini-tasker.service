@@ -8,3 +8,4 @@ ExecStart=/usr/bin/mini-tasker /usr/share/mini-tasker
 
 [Install]
 WantedBy=multi-user.target
+

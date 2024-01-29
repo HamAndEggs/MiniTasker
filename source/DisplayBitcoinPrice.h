@@ -20,6 +20,10 @@ public:
 
     const double GetPriceGBP()const{return mPriceGBP;}
 
+    void UpdateGBP(const std::string& pPrice);
+    void UpdateUSD(const std::string& pPrice);
+    void UpdateChange(const std::string& pPrice);
+
 private:
     double mPriceGBP = 0.0;
 
@@ -27,7 +31,6 @@ private:
     std::string mLastPriceUSD = "N/A";
 
     std::string mPriceChange = "N/A";
-    std::string mPriceChangePercent = "N/A";
 
     eui::Style UpStyle,DownStyle;
 
@@ -36,10 +39,6 @@ private:
         eui::ElementPtr LastPriceUK;
         eui::ElementPtr LastPriceUSD;
     }mControls;
-
-    tinytools::threading::SleepableThread  mPriceUpdater;
-
-    bool DownloadReport(const std::string& pURL,std::string& rJson)const;
 
 };
 
