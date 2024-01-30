@@ -44,6 +44,7 @@ public:
     virtual void OnClose();
     virtual void OnUpdate()
     {
+        std::cout << "OnUpdate: " << (n++) << "\n";
         MQTT->Tick();
     }
 
@@ -65,6 +66,7 @@ private:
     std::string myBTC = "n/a";
 
     DisplaySolaX* mSolar = nullptr;
+    int n = 0;
 
 
     void StartMQTT();
