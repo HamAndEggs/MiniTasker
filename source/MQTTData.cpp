@@ -102,7 +102,7 @@ MQTTData::MQTTData(const std::string& pHost,int pPort,
 
 void MQTTData::Tick()
 {
-    std::cout << "MQTT tick\n";
+
     if( mMQTT && mConnected == false )
     {
         int keepalive = 60;

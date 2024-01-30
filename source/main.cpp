@@ -44,7 +44,6 @@ public:
     virtual void OnClose();
     virtual void OnUpdate()
     {
-        std::cout << "OnUpdate: " << (n++) << "\n";
         MQTT->Tick();
     }
 
@@ -203,7 +202,7 @@ void MyUI::StartMQTT()
     MQTT = new MQTTData("MQTT",1883,topics,
         [this](const std::string &pTopic,const std::string &pData)
         {
-            std::cout << "MQTTData " << pTopic << " " << pData << "\n";
+//            std::cout << "MQTTData " << pTopic << " " << pData << "\n";
             mMQTTData[pTopic] = pData;
 
             // Record when we last seen a change, if we don't see one for a while something is wrong.
