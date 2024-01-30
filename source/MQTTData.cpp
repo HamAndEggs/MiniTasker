@@ -57,18 +57,18 @@ static void my_subscribe_callback(struct mosquitto *mosq, void *userdata, int mi
 {
 	int i;
 
-	printf("Subscribed (mid: %d): %d", mid, granted_qos[0]);
+	std::cout << "Subscribed (mid: " << mid << "): " << granted_qos[0];
 	for(i=1; i<qos_count; i++)
     {
-		printf(", %d", granted_qos[i]);
+		std::cout << ", " << granted_qos[i];
 	}
-	printf("\n");
+    std::cout << "\n";
 }
 
 static void my_log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str)
 {
     assert(mosq);
-	// Print all log messages regardless of level.
+
 #ifdef VERBOSE_BUILD
     if( str )
     {
@@ -94,10 +94,15 @@ MQTTData::MQTTData(const std::string& pHost,int pPort,
     {
         std::cerr << "MQTT Init Error: Out of memory\n";
     }
+    else
+    {
+        std::cout << "MQTT started\n";
+    }
 }
 
 void MQTTData::Tick()
 {
+    std::cout << "MQTT tick\n";
     if( mMQTT && mConnected == false )
     {
         int keepalive = 60;
