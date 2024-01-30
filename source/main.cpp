@@ -155,6 +155,8 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
             mOutSideTemp->SetPos(0,1);
         topCentre->Attach(mOutSideTemp);
     mRoot->Attach(topCentre);
+
+    std::cout << "UI started\n";
 }
 
 
