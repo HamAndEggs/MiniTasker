@@ -208,11 +208,11 @@ void MyUI::StartMQTT()
             // Record when we last seen a change, if we don't see one for a while something is wrong.
             // I send an 'hartbeat' with new data that is just a value incrementing.
             // This means we get an update even if the tempareture does not change.
-            if( tinytools::string::CompareNoCase(pTopic,"/outside") && mOutSideTemp )
+            if( tinytools::string::CompareNoCase(pTopic,"/outside/temperature") && mOutSideTemp )
             {
                 mOutSideTemp->NewShedOutSide(pData);
             }
-            else if( tinytools::string::CompareNoCase(pTopic,"/shed") )
+            else if( tinytools::string::CompareNoCase(pTopic,"/shed/temperature") && mOutSideTemp)
             {
                 mOutSideTemp->NewShedTemperature(pData);
             }
