@@ -139,7 +139,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     LoadWeatherIcons(graphics,pPath);
 
     this->SetPos(0,1);
-    this->SetGrid(6,1);
+    this->SetGrid(4,1);
     this->SetSpan(3,1);
     
     eui::Style s;
@@ -148,7 +148,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     s.mBorder = eui::COLOUR_WHITE;
     s.mRadius = RECT_RADIUS;
 
-    for( int n = 0 ; n < 6 ; n++ )
+    for( int n = 0 ; n < 4 ; n++ )
     {
         icons[n] = new WeatherIcon(CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
         icons[n]->SetPos(n,0);

@@ -22,6 +22,8 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
 {
     this->SetID("clock");
     this->SetPos(0,0);
+    this->SetSpan(2,1);
+
 
     eui::Style s;
     s.mBackground = eui::COLOUR_BLACK;

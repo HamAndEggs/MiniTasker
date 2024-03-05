@@ -27,10 +27,10 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     SET_DEFAULT_ID();
 
     this->SetID("solaX");
-    this->SetPos(2,0);
-    this->SetGrid(2,3);
+    this->SetPos(0,0);
+    this->SetGrid(3,2);
     this->SetFont(pFont);
-    this->SetSpan(1,2);
+    this->SetSpan(3,2);
 
     eui::Style SOCStyle;
     SOCStyle.mBackground = eui::MakeColour(100,255,100);
@@ -40,43 +40,29 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     SOCStyle.mForeground = eui::COLOUR_BLACK;
 
 
-    mBatterySOC = new eui::Element;
-    mBatterySOC->SetPadding(0.05f);
-    mBatterySOC->SetText("Fetching");
-    mBatterySOC->SetPadding(CELL_PADDING);
-    mBatterySOC->SetPos(0,0);
-    mBatterySOC->SetStyle(SOCStyle);
-    this->Attach(mBatterySOC);
+mYeld = nullptr;
+//    mYeld = new eui::Element;
+//    mYeld->SetPadding(0.05f);
+//    mYeld->SetText("Fetching");
+//    mYeld->SetPadding(CELL_PADDING);
+//    mYeld->SetPos(1,0);
+//    mYeld->SetStyle(SOCStyle);
+//    this->Attach(mYeld);
 
-    mYeld = new eui::Element;
-    mYeld->SetPadding(0.05f);
-    mYeld->SetText("Fetching");
-    mYeld->SetPadding(CELL_PADDING);
-    mYeld->SetPos(1,0);
-    mYeld->SetStyle(SOCStyle);
-    this->Attach(mYeld);
-
-    mInverter = new eui::Element;
-    mInverter->SetPadding(0.05f);
-    mInverter->SetText("Fetching");
-    mInverter->SetPadding(CELL_PADDING);
-    mInverter->SetPos(0,1);
-    mInverter->SetStyle(SOCStyle);
-    this->Attach(mInverter);
-
-    mFeedIn = new eui::Element;
-    mFeedIn->SetPadding(0.05f);
-    mFeedIn->SetText("Fetching");
-    mFeedIn->SetPadding(CELL_PADDING);
-    mFeedIn->SetPos(1,1);
-    mFeedIn->SetStyle(SOCStyle);
-    this->Attach(mFeedIn);
+mFeedIn = nullptr   ;
+//    mFeedIn = new eui::Element;
+//    mFeedIn->SetPadding(0.05f);
+//    mFeedIn->SetText("Fetching");
+//    mFeedIn->SetPadding(CELL_PADDING);
+//    mFeedIn->SetPos(2,0);
+//    mFeedIn->SetStyle(SOCStyle);
+//    this->Attach(mFeedIn);
 
     mFrontPanels = new eui::Element;
     mFrontPanels->SetPadding(0.05f);
     mFrontPanels->SetText("Fetching");
     mFrontPanels->SetPadding(CELL_PADDING);
-    mFrontPanels->SetPos(0,2);
+    mFrontPanels->SetPos(0,0);
     mFrontPanels->SetStyle(SOCStyle);
     this->Attach(mFrontPanels);
 
@@ -84,10 +70,25 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     mBackPanels->SetPadding(0.05f);
     mBackPanels->SetText("Fetching");
     mBackPanels->SetPadding(CELL_PADDING);
-    mBackPanels->SetPos(1,2);
+    mBackPanels->SetPos(1,0);
     mBackPanels->SetStyle(SOCStyle);
     this->Attach(mBackPanels);
 
+    mBatterySOC = new eui::Element;
+    mBatterySOC->SetPadding(0.05f);
+    mBatterySOC->SetText("Fetching");
+    mBatterySOC->SetPadding(CELL_PADDING);
+    mBatterySOC->SetPos(2,0);
+    mBatterySOC->SetStyle(SOCStyle);
+    this->Attach(mBatterySOC);
+    
+    mInverter = new eui::Element;
+    mInverter->SetPadding(0.05f);
+    mInverter->SetText("Fetching");
+    mInverter->SetPadding(CELL_PADDING);
+    mInverter->SetPos(2,1);
+    mInverter->SetStyle(SOCStyle);
+    this->Attach(mInverter);
 
     ExportStyle.mBackground = eui::MakeColour(100,255,100);
     ExportStyle.mThickness = BORDER_SIZE;
@@ -113,7 +114,7 @@ void DisplaySolaX::UpdateData(const std::string& pTopic,const std::string& pData
     {
         mBatterySOC->SetTextF("%d%%",std::stoi(pData));
     }
-    else if( tinytools::string::CompareNoCase(pTopic,"/solar/yeld") )
+    else if( mYeld && tinytools::string::CompareNoCase(pTopic,"/solar/yeld") )
     {
         mYeld->SetTextF("%2.2f",std::stof(pData));
     }
@@ -121,7 +122,7 @@ void DisplaySolaX::UpdateData(const std::string& pTopic,const std::string& pData
     {
         mInverter->SetTextF("%d",std::stoi(pData));
     }
-    else if( tinytools::string::CompareNoCase(pTopic,"/solar/grid/total") )
+    else if( mFeedIn && tinytools::string::CompareNoCase(pTopic,"/solar/grid/total") )
     {
         const int total = std::stoi(pData);
         if( total < 0 )

@@ -61,8 +61,6 @@ private:
     std::map<std::string,std::string> mMQTTData;
 
     Temperature *mOutSideTemp;
-    DisplayBitcoinPrice* mBTC; 
-    std::string myBTC = "n/a";
 
     DisplaySolaX* mSolar = nullptr;
     int n = 0;
@@ -101,61 +99,38 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
     int bigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
 
-    int bitcoinFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
+    //int bitcoinFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
 
     mRoot->SetFont(normalFont);
     mRoot->GetStyle().mTexture = pGraphics->TextureLoadPNG(mPath + "images/bg-pastal-01.png");
     mRoot->GetStyle().mBackground = eui::COLOUR_WHITE;
 
+    eui::Style UpStyle;
+    UpStyle.mBackground = eui::MakeColour(100,255,100);
+    UpStyle.mThickness = BORDER_SIZE;
+    UpStyle.mBorder = eui::COLOUR_WHITE;
+    UpStyle.mRadius = RECT_RADIUS;
+    UpStyle.mForeground = eui::COLOUR_BLACK;
+
     eui::ElementPtr BottomPannel = new eui::Element;
         BottomPannel->SetPos(0,2);
         BottomPannel->SetGrid(3,2);
         BottomPannel->SetSpan(3,1);
-        mBTC = new DisplayBitcoinPrice(bitcoinFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
-        BottomPannel->Attach(mBTC);
-
-        DisplayTideData* tide = new DisplayTideData(largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
-            tide->SetPos(0,1);
-            tide->SetSpan(3,1);
-            BottomPannel->Attach(tide);
 
         mSolar = new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
         BottomPannel->Attach(mSolar);
+
+        mOutSideTemp = new Temperature(temperatureFont,UpStyle,CELL_PADDING);
+            mOutSideTemp->SetPos(0,1);
+            mOutSideTemp->SetSpan(2,1);
+        BottomPannel->Attach(mOutSideTemp);
+
     mRoot->Attach(BottomPannel);
 
     mRoot->Attach(new DisplayClock(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
     mRoot->Attach(new DisplayWeather(pGraphics,mPath,bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
+    mRoot->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,0.1f));
 
-    eui::ElementPtr status = new eui::Element;
-    status->SetGrid(1,2);
-    status->SetPos(2,0);
-    mRoot->Attach(status);
-    status->Attach(new DisplaySystemStatus(bigFont,normalFont,miniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-    status->Attach(new DisplayAirQuality(largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS));
-
-    eui::ElementPtr topCentre = new eui::Element;
-        topCentre->SetPos(1,0);
-        topCentre->SetGrid(1,2);
-
-        // My bitcoin investment.
-        eui::ElementPtr MyInvestment = new eui::Element(mBTC->GetUpStyle());
-            MyInvestment->SetPadding(0.05f);
-            MyInvestment->SetText("£XXXXXX");
-            MyInvestment->SetPadding(CELL_PADDING);
-            MyInvestment->SetPos(0,0);
-            MyInvestment->SetFont(bitcoinFont);
-            MyInvestment->SetOnUpdate([this](eui::ElementPtr pElement,const eui::Rectangle& pContentRect)
-            {
-                pElement->SetText(myBTC);
-                return true;
-            });
-        topCentre->Attach(MyInvestment);
-        
-        // The temperature outside
-        mOutSideTemp = new Temperature(temperatureFont,mBTC->GetUpStyle(),CELL_PADDING);
-            mOutSideTemp->SetPos(0,1);
-        topCentre->Attach(mOutSideTemp);
-    mRoot->Attach(topCentre);
 
     std::cout << "UI started\n";
 }
@@ -215,22 +190,6 @@ void MyUI::StartMQTT()
             else if( tinytools::string::CompareNoCase(pTopic,"/shed/temperature") && mOutSideTemp)
             {
                 mOutSideTemp->NewShedTemperature(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/btc/gb") )
-            {
-                mBTC->UpdateGBP(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/btc/usd") )
-            {
-                mBTC->UpdateUSD(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/btc/change") )
-            {
-                mBTC->UpdateChange(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/btc/mine") )
-            {
-                myBTC = pData;
             }
             else if( tinytools::string::CompareNoCase(pTopic,"/solar/",7) )
             {

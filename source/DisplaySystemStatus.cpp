@@ -19,41 +19,47 @@
 DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("system status");
-    this->SetPos(0,0);
+    this->SetPos(2,0);
+    this->SetGrid(1,4);
 
     uptime = new eui::Element;
         uptime->SetPadding(0.05f);
-        uptime->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
+//        uptime->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
         uptime->SetFont(pNormalFont);
         uptime->SetText("UP: XX:XX:XX");
+        uptime->SetPos(0,0);
     this->Attach(uptime);
 
     localIP = new eui::Element;
         localIP->SetPadding(0.05f);
-        localIP->GetStyle().mAlignment = eui::ALIGN_LEFT_CENTER;
+//        localIP->GetStyle().mAlignment = eui::ALIGN_LEFT_CENTER;
         localIP->SetFont(pMiniFont);
         localIP->SetText("XX.XX.XX.XX");
+        localIP->SetPos(0,1);
     this->Attach(localIP);
 
     hostName = new eui::Element;
         hostName->SetPadding(0.05f);
-        hostName->GetStyle().mAlignment = eui::ALIGN_RIGHT_CENTER;
+//        hostName->GetStyle().mAlignment = eui::ALIGN_RIGHT_CENTER;
         hostName->SetFont(pMiniFont);
         hostName->SetText("--------");
+        hostName->SetPos(0,2);
     this->Attach(hostName);
 
     cpuLoad = new eui::Element;
         cpuLoad->SetPadding(0.05f);
-        cpuLoad->GetStyle().mAlignment = eui::ALIGN_LEFT_BOTTOM;
+        cpuLoad->GetStyle().mAlignment = eui::ALIGN_LEFT_CENTER;
         cpuLoad->SetFont(pMiniFont);
         cpuLoad->SetText("XX.XX.XX.XX");
+        cpuLoad->SetPos(0,3);
     this->Attach(cpuLoad);
 
     ramUsed = new eui::Element;
         ramUsed->SetPadding(0.05f);
-        ramUsed->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
+        ramUsed->GetStyle().mAlignment = eui::ALIGN_RIGHT_CENTER;
         ramUsed->SetFont(pMiniFont);
         ramUsed->SetText("--------");
+        ramUsed->SetPos(0,3);
     this->Attach(ramUsed);
 
     eui::Style s;

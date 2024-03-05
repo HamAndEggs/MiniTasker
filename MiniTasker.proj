@@ -5,6 +5,7 @@
         "./source/DisplayClock.cpp",
         "./source/DisplaySystemStatus.cpp",
         "./source/DisplayWeather.cpp",
+        "./source/DisplaySolaX.cpp",
         "./source/Temperature.cpp",
         "./source/i2c_device.cpp",
         "./source/main.cpp",
@@ -12,6 +13,8 @@
         "./source/sgp30.cpp",
         "./source/TinyTools.cpp",
         "./source/TinyWeather.cpp",
+        "./source/DisplayTideData.cpp",
+        "./source/FileDownload.cpp",
         "./EdgeUI/source/Element.cpp",
         "./EdgeUI/source/TinyPNG.cpp",
         "./EdgeUI/source/GL/FreeTypeFont.cpp",
@@ -71,6 +74,7 @@
             "debug_level": "2",
             "include": [
                 "/usr/include/freetype2",
+                "/usr/include/",
                 "./EdgeUI/include",
                 "./EdgeUI/source",
                 "./"
