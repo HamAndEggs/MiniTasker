@@ -114,7 +114,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
     eui::ElementPtr BottomPannel = new eui::Element;
         BottomPannel->SetPos(0,2);
-        BottomPannel->SetGrid(3,2);
+        BottomPannel->SetGrid(6,2);
         BottomPannel->SetSpan(3,1);
 
         mSolar = new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
@@ -122,7 +122,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
         mOutSideTemp = new Temperature(temperatureFont,UpStyle,CELL_PADDING);
             mOutSideTemp->SetPos(0,1);
-            mOutSideTemp->SetSpan(2,1);
+            mOutSideTemp->SetSpan(3,1);
         BottomPannel->Attach(mOutSideTemp);
 
     mRoot->Attach(BottomPannel);

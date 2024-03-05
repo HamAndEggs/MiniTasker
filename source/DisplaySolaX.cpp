@@ -28,9 +28,9 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
 
     this->SetID("solaX");
     this->SetPos(0,0);
-    this->SetGrid(3,2);
+    this->SetGrid(6,2);
     this->SetFont(pFont);
-    this->SetSpan(3,2);
+    this->SetSpan(6,2);
 
     eui::Style SOCStyle;
     SOCStyle.mBackground = eui::MakeColour(100,255,100);
@@ -49,36 +49,12 @@ mYeld = nullptr;
 //    mYeld->SetStyle(SOCStyle);
 //    this->Attach(mYeld);
 
-mFeedIn = nullptr   ;
-//    mFeedIn = new eui::Element;
-//    mFeedIn->SetPadding(0.05f);
-//    mFeedIn->SetText("Fetching");
-//    mFeedIn->SetPadding(CELL_PADDING);
-//    mFeedIn->SetPos(2,0);
-//    mFeedIn->SetStyle(SOCStyle);
-//    this->Attach(mFeedIn);
-
-    mFrontPanels = new eui::Element;
-    mFrontPanels->SetPadding(0.05f);
-    mFrontPanels->SetText("Fetching");
-    mFrontPanels->SetPadding(CELL_PADDING);
-    mFrontPanels->SetPos(0,0);
-    mFrontPanels->SetStyle(SOCStyle);
-    this->Attach(mFrontPanels);
-
-    mBackPanels = new eui::Element;
-    mBackPanels->SetPadding(0.05f);
-    mBackPanels->SetText("Fetching");
-    mBackPanels->SetPadding(CELL_PADDING);
-    mBackPanels->SetPos(1,0);
-    mBackPanels->SetStyle(SOCStyle);
-    this->Attach(mBackPanels);
-
     mBatterySOC = new eui::Element;
     mBatterySOC->SetPadding(0.05f);
     mBatterySOC->SetText("Fetching");
     mBatterySOC->SetPadding(CELL_PADDING);
-    mBatterySOC->SetPos(2,0);
+    mBatterySOC->SetPos(0,0);
+    mBatterySOC->SetSpan(2,1);
     mBatterySOC->SetStyle(SOCStyle);
     this->Attach(mBatterySOC);
     
@@ -86,9 +62,40 @@ mFeedIn = nullptr   ;
     mInverter->SetPadding(0.05f);
     mInverter->SetText("Fetching");
     mInverter->SetPadding(CELL_PADDING);
-    mInverter->SetPos(2,1);
+    mInverter->SetPos(2,0);
+    mInverter->SetSpan(2,1);
     mInverter->SetStyle(SOCStyle);
     this->Attach(mInverter);
+
+    mFeedIn = new eui::Element;
+    mFeedIn->SetPadding(0.05f);
+    mFeedIn->SetText("Fetching");
+    mFeedIn->SetPadding(CELL_PADDING);
+    mFeedIn->SetPos(4,0);
+    mFeedIn->SetStyle(SOCStyle);
+    mFeedIn->SetSpan(2,1);
+    this->Attach(mFeedIn);
+
+    eui::ElementPtr pannels = new eui::Element;
+        pannels->SetPos(3,1);
+        pannels->SetSpan(3,1);
+        pannels->SetGrid(2,1);
+        mFrontPanels = new eui::Element;
+            mFrontPanels->SetPadding(0.05f);
+            mFrontPanels->SetText("...");
+            mFrontPanels->SetPadding(CELL_PADDING);
+            mFrontPanels->SetPos(0,0);
+            mFrontPanels->SetStyle(SOCStyle);
+        pannels->Attach(mFrontPanels);
+
+        mBackPanels = new eui::Element;
+            mBackPanels->SetPadding(0.05f);
+            mBackPanels->SetText("...");
+            mBackPanels->SetPadding(CELL_PADDING);
+            mBackPanels->SetPos(1,0);
+            mBackPanels->SetStyle(SOCStyle);
+        pannels->Attach(mBackPanels);
+    this->Attach(pannels);
 
     ExportStyle.mBackground = eui::MakeColour(100,255,100);
     ExportStyle.mThickness = BORDER_SIZE;
