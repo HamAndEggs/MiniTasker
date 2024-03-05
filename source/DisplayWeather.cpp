@@ -270,7 +270,7 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
             }
 
             n++;
-            if( n == 6 )
+            if( n == 4 )
             {// Sorry, this is crap. ;)
                 break;
             }

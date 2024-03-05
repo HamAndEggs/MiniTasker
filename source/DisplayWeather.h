@@ -40,7 +40,7 @@ public:
 
 private:
 
-    WeatherIcon* icons[6];
+    WeatherIcon* icons[4];
     int tick = 0;
     float anim = 0;
 
