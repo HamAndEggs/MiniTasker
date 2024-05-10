@@ -24,9 +24,11 @@ Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) 
 
 
     SetPadding(0.05f);
-    SetText("100.0C");
     SetPadding(CELL_PADDING);
     SetFont(pFont);
+
+    mShed.temperature = "N/A";
+    mOutside.temperature = "N/A";
 }
 
 bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect)
@@ -39,9 +41,20 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
 
     const std::string outside = mOutside.temperature;
     const std::string shed = mShed.temperature;
+    float loft = 0;
+
+    if( mLoft.temperature.size()>0 )
+    {
+        loft = std::stof(mLoft.temperature);
+    }
+
+    char loftS[16];
+    sprintf(loftS,"%2.2fC",loft);
 
     eui::Colour outSideColour = GetStyle().mForeground;
     eui::Colour shedColour = GetStyle().mForeground;
+    eui::Colour loftColour = GetStyle().mForeground;
+
     if( mOutside.GetIsOnline() == false )
     {
         outSideColour = eui::COLOUR_RED;
@@ -52,8 +65,14 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
         shedColour = eui::COLOUR_RED;
     }
 
+    if( mLoft.GetIsOnline() == false )
+    {
+        loftColour = eui::COLOUR_RED;
+    }
+
     pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
-    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,shedColour,shed);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_CENTER,shedColour,shed);
+    pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,loftColour,loftS);
 
     return true;
 }
@@ -64,8 +83,14 @@ void Temperature::NewShedTemperature(const std::string pTemperature)
     mShed.temperature = pTemperature;
 }
 
-void Temperature::NewShedOutSide(const std::string pTemperature)
+void Temperature::NewOutSideTemperature(const std::string pTemperature)
 {
     mOutside.lastUpdate = std::chrono::system_clock::now();
     mOutside.temperature = pTemperature;
+}
+
+void Temperature::NewLoftTemperature(const std::string pTemperature)
+{
+    mLoft.lastUpdate = std::chrono::system_clock::now();
+    mLoft.temperature = pTemperature;
 }

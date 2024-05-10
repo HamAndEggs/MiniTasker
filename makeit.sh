@@ -10,7 +10,8 @@ function ShowHelp() {
 BUILD_TARGET="mini-tasker"
 OUTPUT_EXEC="mini-tasker"
 TARGET_PLATFORM="DRM"
-NUMBER_OF_THREADS=$(nproc --all)
+#NUMBER_OF_THREADS=$(nproc --all)
+NUMBER_OF_THREADS=2
 CMAKE_BUILD_TYPE="Debug"
 
 # Process the params

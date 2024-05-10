@@ -50,6 +50,9 @@ public:
     virtual eui::ElementPtr GetRootElement(){return mRoot;}
     virtual uint32_t GetUpdateInterval()const{return 1000;}
 
+    virtual int GetEmulatedWidth()const{return 720;}
+    virtual int GetEmulatedHeight()const{return 720;}
+
 
 private:
     const float CELL_PADDING = 0.02f;
@@ -94,12 +97,9 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
     int miniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
     int normalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
-    int temperatureFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",49);
-    int largeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",55);
+    int largeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",42);
 
     int bigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
-
-    //int bitcoinFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
 
     mRoot->SetFont(normalFont);
     mRoot->GetStyle().mTexture = pGraphics->TextureLoadPNG(mPath + "images/bg-pastal-01.png");
@@ -120,9 +120,9 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
         mSolar = new DisplaySolaX(pGraphics,mPath,largeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
         BottomPannel->Attach(mSolar);
 
-        mOutSideTemp = new Temperature(temperatureFont,UpStyle,CELL_PADDING);
+        mOutSideTemp = new Temperature(largeFont,UpStyle,CELL_PADDING);
             mOutSideTemp->SetPos(0,1);
-            mOutSideTemp->SetSpan(3,1);
+            mOutSideTemp->SetSpan(4,1);
         BottomPannel->Attach(mOutSideTemp);
 
     mRoot->Attach(BottomPannel);
@@ -149,6 +149,7 @@ void MyUI::StartMQTT()
     {
         "/outside/temperature","/outside/hartbeat",
         "/shed/temperature","/shed/hartbeat",
+        "/loft/temperature","/loft/hartbeat",
         "/btc/gb",
         "/btc/usd",
         "/btc/change",
@@ -161,7 +162,7 @@ void MyUI::StartMQTT()
         "/solar/grid/total",
         "/solar/yeld",
         "/solar/panel/front",
-        "/solar/panel/rear"        
+        "/solar/panel/rear"
     };
 
     for( auto t : topics )
@@ -172,7 +173,7 @@ void MyUI::StartMQTT()
     // Make sure there is data.
     mMQTTData["/outside/temperature"] = "--.-C";
     mMQTTData["/shed/temperature"] = "--.-C";
-    mMQTTData["/shed/temperature"] = "--.-C";
+    mMQTTData["/loft/temperature"] = "--.-C";
 
     MQTT = new MQTTData("MQTT",1883,topics,
         [this](const std::string &pTopic,const std::string &pData)
@@ -183,9 +184,13 @@ void MyUI::StartMQTT()
             // Record when we last seen a change, if we don't see one for a while something is wrong.
             // I send an 'hartbeat' with new data that is just a value incrementing.
             // This means we get an update even if the tempareture does not change.
-            if( tinytools::string::CompareNoCase(pTopic,"/outside/temperature") && mOutSideTemp )
+            if( tinytools::string::CompareNoCase(pTopic,"/loft/temperature") && mOutSideTemp )
             {
-                mOutSideTemp->NewShedOutSide(pData);
+                mOutSideTemp->NewLoftTemperature(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/outside/temperature") && mOutSideTemp )
+            {
+                mOutSideTemp->NewOutSideTemperature(pData);
             }
             else if( tinytools::string::CompareNoCase(pTopic,"/shed/temperature") && mOutSideTemp)
             {

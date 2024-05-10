@@ -77,8 +77,8 @@ mYeld = nullptr;
     this->Attach(mFeedIn);
 
     eui::ElementPtr pannels = new eui::Element;
-        pannels->SetPos(3,1);
-        pannels->SetSpan(3,1);
+        pannels->SetPos(4,1);
+        pannels->SetSpan(2,1);
         pannels->SetGrid(2,1);
         mFrontPanels = new eui::Element;
             mFrontPanels->SetPadding(0.05f);

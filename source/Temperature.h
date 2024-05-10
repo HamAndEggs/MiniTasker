@@ -30,7 +30,8 @@ public:
     virtual bool OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect);
 
     void NewShedTemperature(const std::string pTemperature);
-    void NewShedOutSide(const std::string pTemperature);
+    void NewOutSideTemperature(const std::string pTemperature);
+    void NewLoftTemperature(const std::string pTemperature);
 
 private:
 
@@ -44,7 +45,7 @@ private:
         }
         std::string temperature;
 
-    }mOutside,mShed;
+    }mOutside,mShed,mLoft;
 
 };
 

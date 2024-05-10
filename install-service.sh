@@ -9,7 +9,7 @@ read -p "(y/n)?" answer
 
 if [ $answer == "y" ] || [ $answer == "Y" ] ;then
     echo "Building application"
-    appbuild
+    appbuild -n 2
 
     ./update-resources.sh
 
