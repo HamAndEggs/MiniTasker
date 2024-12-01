@@ -16,6 +16,10 @@ include_directories(
     ${GTK4_INCLUDE_DIRS}
 )
 
+#message(FATAL_ERROR "GTK4_LINK_LIBRARIES = ${GTK4_LINK_LIBRARIES}")
+#message(FATAL_ERROR "GTK4_INCLUDE_DIRS = ${GTK4_INCLUDE_DIRS}")
+
+
 add_subdirectory(./EdgeUI)
 
 add_executable(${THIS_PROJECT}
