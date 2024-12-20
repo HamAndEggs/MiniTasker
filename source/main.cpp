@@ -65,6 +65,8 @@ public:
     virtual int GetEmulatedWidth()const{return 720;}
     virtual int GetEmulatedHeight()const{return 720;}
 
+//    virtual int GetEmulatedWidth()const{return 1280;}
+//    virtual int GetEmulatedHeight()const{return 720;}
 
 private:
     const float CELL_PADDING = 0.02f;
@@ -134,10 +136,20 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
     
     StartMQTT();
 
-    mMiniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
-    mNormalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",40);
-    mLargeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",42);
-    mBigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
+    if( GetEmulatedWidth() > 720 )
+    {
+        mMiniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",35);
+        mNormalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",70);
+        mLargeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",70);
+        mBigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
+    }
+    else
+    {
+        mMiniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",25);
+        mNormalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",42);
+        mLargeFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",42);
+        mBigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
+    }
 
 
     mDayTime = MakeDayTimeDisplay(pGraphics);
