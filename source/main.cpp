@@ -136,7 +136,7 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
     
     StartMQTT();
 
-    if( GetEmulatedWidth() > 720 )
+    if( pGraphics->GetDisplayWidth() > 720 )
     {
         mMiniFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",35);
         mNormalFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Regular.ttf",70);
