@@ -16,6 +16,7 @@
         "./source/FileDownload.cpp",
         "./EdgeUI/source/Element.cpp",
         "./EdgeUI/source/TinyPNG.cpp",
+        "./EdgeUI/source/ResourceMap.cpp",
         "./EdgeUI/source/GL/FreeTypeFont.cpp",
         "./EdgeUI/source/GL/GLDiagnostics.cpp",
         "./EdgeUI/source/GL/GLShader.cpp",
@@ -121,8 +122,7 @@
             "define": [
                 "DEBUG_BUILD",
                 "USE_FREETYPEFONTS",
-                "PLATFORM_GLES",
-                "DEVELOPMENT_TASK_FILE=\"/usr/share/mini-tasker/task-file.json\""
+                "PLATFORM_GLES"
             ]
         }
     },

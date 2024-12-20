@@ -264,7 +264,7 @@ void DisplayWeather::LoadWeatherIcons(eui::Graphics* graphics,const std::string&
 {
     for( std::string f : files )
     {
-        WeatherIcons[f] = graphics->TextureLoadPNG(pPath + "icons/" + f + ".png");
+        WeatherIcons[f] = graphics->TextureLoad(pPath + "icons/" + f + ".png");
     }
 }
 

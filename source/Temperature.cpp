@@ -25,7 +25,7 @@ Temperature::Temperature(int pFont,int pSmallFont,const eui::Style &pStyle,float
 
     SetPadding(0.05f);
     SetPadding(CELL_PADDING);
-    SetFont(pFont);
+    GetStyle().mFont = pFont;
 
     mShed.temperature = "N/A";
     mOutside.temperature = "N/A";

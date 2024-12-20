@@ -212,8 +212,8 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
     root->SetID("Day time root");
     root->SetGrid(3,3);
 
-    root->SetFont(mNormalFont);
-    root->GetStyle().mTexture = pGraphics->TextureLoadPNG(mPath + "images/bg-pastal-01.png");
+    root->GetStyle().mFont = (mNormalFont);
+    root->GetStyle().mTexture = pGraphics->TextureLoad(mPath + "images/bg-pastal-01.png");
     root->GetStyle().mBackground = eui::COLOUR_WHITE;
 
     eui::Style UpStyle;
@@ -253,7 +253,7 @@ eui::ElementPtr MyUI::MakeNightTimeDisplay(eui::Graphics* pGraphics)
     root->SetID("Night time root");
     root->SetGrid(3,3);
 
-    root->SetFont(mNormalFont);
+    root->GetStyle().mFont = (mNormalFont);
     root->GetStyle().mBackground = eui::COLOUR_BLACK;
     root->GetStyle().mForeground = eui::COLOUR_BLACK;
 

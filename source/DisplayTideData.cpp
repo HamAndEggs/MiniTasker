@@ -20,7 +20,7 @@ DisplayTideData::DisplayTideData(int pFont,float CELL_PADDING,float BORDER_SIZE,
     mHighTide = new eui::Element;
         mHighTide->SetPadding(0.05f);
         mHighTide->GetStyle().mAlignment = eui::ALIGN_CENTER_CENTER;
-        mHighTide->SetFont(pFont);
+        mHighTide->GetStyle().mFont = (pFont);
         mHighTide->SetStyle(timeStyle);
         mHighTide->SetPadding(CELL_PADDING);
     this->Attach(mHighTide);
@@ -28,7 +28,7 @@ DisplayTideData::DisplayTideData(int pFont,float CELL_PADDING,float BORDER_SIZE,
     mLowTide = new eui::Element;
         mLowTide->SetPadding(0.05f);
         mLowTide->GetStyle().mAlignment = eui::ALIGN_CENTER_CENTER;
-        mLowTide->SetFont(pFont);
+        mLowTide->GetStyle().mFont = (pFont);
         mLowTide->SetStyle(timeStyle);
         mLowTide->SetPadding(CELL_PADDING);
     this->Attach(mLowTide);

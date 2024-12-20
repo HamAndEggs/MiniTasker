@@ -29,7 +29,7 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     this->SetID("solaX");
     this->SetPos(0,0);
     this->SetGrid(6,2);
-    this->SetFont(pFont);
+    this->GetStyle().mFont = (pFont);
     this->SetSpan(6,2);
 
     eui::Style SOCStyle;

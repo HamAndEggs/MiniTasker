@@ -7,7 +7,7 @@
 DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
 {
     this->SetID("bitcoin");
-    this->SetFont(pBitcoinFont);
+    this->GetStyle().mFont = pBitcoinFont;
 
     UpStyle.mBackground = eui::MakeColour(100,255,100);
     UpStyle.mThickness = BORDER_SIZE;
