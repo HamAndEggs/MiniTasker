@@ -1,0 +1,3 @@
+[submodule "OpenMeteoFetch"]
+	path = OpenMeteoFetch
+	url = https://github.com/HamAndEggs/OpenMeteoFetch.git

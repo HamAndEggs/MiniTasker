@@ -12,7 +12,6 @@
         "./source/MQTTData.cpp",
         "./source/sgp30.cpp",
         "./source/TinyTools.cpp",
-        "./source/TinyWeather.cpp",
         "./source/DisplayTideData.cpp",
         "./source/FileDownload.cpp",
         "./EdgeUI/source/Element.cpp",
@@ -20,7 +19,8 @@
         "./EdgeUI/source/GL/FreeTypeFont.cpp",
         "./EdgeUI/source/GL/GLDiagnostics.cpp",
         "./EdgeUI/source/GL/GLShader.cpp",
-        "./EdgeUI/source/GL/Graphics_GL.cpp"
+        "./EdgeUI/source/GL/Graphics_GL.cpp",
+        "./OpenMeteoFetch/open-meteo.cpp"
     ],
     "configurations": {
         "release": {
@@ -68,33 +68,60 @@
         "x11": {
             "source_files":
             [
-                "./EdgeUI/source/GL/PlatformInterface_X11.cpp"
+                "./EdgeUI/source/GL/PlatformInterface_GTK4.cpp"
             ],
             "optimisation": "0",
             "debug_level": "2",
             "include": [
                 "/usr/include/freetype2",
                 "/usr/include/",
+                "/usr/include/gtk-4.0",
+                "/usr/include/pango-1.0",
+                "/usr/include/glib-2.0",
+                "/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+                "/usr/include/harfbuzz",
+                "/usr/include/freetype2",
+                "/usr/include/libpng16",
+                "/usr/include/libmount",
+                "/usr/include/blkid",
+                "/usr/include/fribidi",
+                "/usr/include/cairo",
+                "/usr/include/pixman-1",
+                "/usr/include/gdk-pixbuf-2.0",
+                "/usr/include/x86_64-linux-gnu",
+                "/usr/include/graphene-1.0",
+                "/usr/lib/x86_64-linux-gnu/graphene-1.0/include",
                 "./EdgeUI/include",
                 "./EdgeUI/source",
+                "./EdgeUI/TinyJson",
                 "./"
             ],
             "libs": [
-                "m",
+               "m",
                 "stdc++",
                 "pthread",
-                "X11",
                 "GL",
                 "freetype",
                 "curl",
                 "z",
                 "mosquitto",
-                "i2c"
+                "i2c",
+                "libgtk-4.so",
+                "libpangocairo-1.0.so",
+                "libpango-1.0.so",
+                "libharfbuzz.so",
+                "libgdk_pixbuf-2.0.so",
+                "libcairo-gobject.so",
+                "libcairo.so",
+                "libgraphene-1.0.so",
+                "libgio-2.0.so",
+                "libgobject-2.0.so",
+                "libglib-2.0.so"
             ],
             "define": [
                 "DEBUG_BUILD",
-                "PLATFORM_X11_GL",
                 "USE_FREETYPEFONTS",
+                "PLATFORM_GLES",
                 "DEVELOPMENT_TASK_FILE=\"/usr/share/mini-tasker/task-file.json\""
             ]
         }

@@ -17,8 +17,10 @@
 #include "TinyJson.h"
 #include "TinyTools.h"
 #include "DisplayWeather.h"
+#include "FileDownload.h"
 
 #include <ctime>
+#include <time.h>
 #include <string>
 #include <array>
 
@@ -27,75 +29,18 @@ const std::time_t ONE_MINUTE = (60);
 const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
 const std::time_t ONE_DAY = (ONE_HOUR*24);
 
-static const std::time_t RoundToHour(const std::time_t pTime)
-{
-    return pTime - (pTime%ONE_HOUR);
-}
-
-static const std::time_t NextHour(const std::time_t pTime)
-{
-    return RoundToHour(pTime) + ONE_HOUR;
-}
-
-// Mainly for debugging.
-static std::string GetTimeString(const std::time_t pTime)
-{
-    tm currentTime = *localtime((time_t*)&pTime);
-	return std::to_string(currentTime.tm_hour) + ":" + std::to_string(currentTime.tm_min) + ":" + std::to_string(currentTime.tm_sec);
-}
-
-static std::string ReadWeatherKey(const std::string& pPath)
-{
-    std::string key;
-    try
-    {
-        key = tinytools::file::LoadFileIntoString(pPath + "weather.key");
-    }
-    catch(std::runtime_error &e)
-    {
-        std::cerr << "Could not load weather key from current folder, trying hard coded path\n";
-    }
-
-    if( key.size() == 0 )
-    {
-        try
-        {
-            key = tinytools::file::LoadFileIntoString("/usr/share/mini-tasker/weather.key");
-        }
-        catch(std::runtime_error &e)
-        {
-            std::cerr << "Could not load weather key from hard coded path\n";
-        }
-    }
-
-    if( key.size() > 0 )
-    {
-        key = tinytools::string::TrimWhiteSpace(key);
-    }
-
-    if( key.size() < 4 )
-    {
-        std::cerr << "Weather key too short, will not work\n";
-    }
-
-    return key;
-}
 
 class WeatherIcon : public eui::Element
 {
     eui::ElementPtr image,time,temperature;
+    const bool mDayDisplay;
 
 public:
 
-    WeatherIcon(float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+    WeatherIcon(float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay):mDayDisplay(pDayDisplay)
     {
         SET_DEFAULT_ID();
 
-        eui::Style s;
-            s.mBackground = eui::MakeColour(0,0,0,200);
-            s.mRadius = RECT_RADIUS;
-
-        SetStyle(s);
         SetPadding(CELL_PADDING);
 
         image = new eui::Element;
@@ -114,25 +59,55 @@ public:
         temperature->SetPadding(0.07f);
         temperature->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
         Attach(temperature);
+
+        if( mDayDisplay )
+        {
+            eui::Style s;
+            s.mBackground = eui::MakeColour(0,0,0,200);
+            s.mRadius = RECT_RADIUS;
+            SetStyle(s);
+        }
+        else
+        {
+            eui::Style s;
+            s.mBorder = eui::COLOUR_DARK_GREY;
+            s.mThickness = 3;
+            s.mRadius = RECT_RADIUS;
+            SetStyle(s);
+
+            time->GetStyle().mForeground = eui::COLOUR_GREY;
+            temperature->GetStyle().mForeground = eui::COLOUR_GREY;
+
+        }        
     }
 
-    void SetInfo(uint32_t pIcon,const std::string& pTime,float pTemperature)
+    void SetInfo(uint32_t pIcon,const std::string& pTime,float pTemperature,bool is_day)
     {
         if( image )
         {
             image->GetStyle().mTexture = pIcon;
+            if( mDayDisplay )
+            {
+                if( is_day )
+                {
+                    GetStyle().mBackground = eui::MakeColour(50,50,150,200);
+                }
+                else
+                {
+                    GetStyle().mBackground = eui::MakeColour(0,0,0,200);
+                }
+            }
             time->SetText(pTime);
             temperature->SetTextF("%03.1fC",tinytools::math::RoundToPointFive(pTemperature));
         }
-    }    
+    }
 };
 
-DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS) :
+DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay) :
     mHasWeather(false),
     mFirstFail(true),
     mFetchLimiter(0),
-    mHourlyUpdates(0),
-    mWeather(ReadWeatherKey(pPath))
+    mHourlyUpdates(0)
 {
     SET_DEFAULT_ID();
 
@@ -141,16 +116,10 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
     this->SetPos(0,1);
     this->SetGrid(4,1);
     this->SetSpan(3,1);
-    
-    eui::Style s;
-    s.mBackground = eui::MakeColour(200,200,200,160);
-    s.mThickness = BORDER_SIZE;
-    s.mBorder = eui::COLOUR_WHITE;
-    s.mRadius = RECT_RADIUS;
 
     for( int n = 0 ; n < 4 ; n++ )
     {
-        icons[n] = new WeatherIcon(CELL_PADDING,BORDER_SIZE,RECT_RADIUS);
+        icons[n] = new WeatherIcon(CELL_PADDING,BORDER_SIZE,RECT_RADIUS,pDayDisplay);
         icons[n]->SetPos(n,0);
         this->Attach(icons[n]);
     }
@@ -168,24 +137,66 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
     if( mFetchLimiter < currentTime )
     {
         mHasWeather = false;
-        mWeather.Get(50.72824,-1.15244,[this,currentTime](bool pDownloadedOk,const auto &pTheWeather)
+        if( LoadWeather() )
         {
-            if( pDownloadedOk )
+//            std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
+            mHasWeather = true;
+
+            try
             {
-                std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
-                mHasWeather = true;
+                std::time_t t = currentTime;
+                for( int n = 0 ; n < 4 ; n++, t += (60*60) )
+                {
+                    openmeteo::Hourly Hourly;
+                    if( DisplayWeather::GetForcast(t,Hourly) )
+                    {
+                        if( n == 0 )
+                        {
+                            mIsDay = Hourly.is_day;
+                        }
+                        // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
+                        std::string hour;
+                        if( Hourly.ctime.tm_hour == 0 )
+                        {// Special case zero hundred, IE 12am...
+                            hour = "Midnight";
+                        }
+                        else if( Hourly.ctime.tm_hour < 12 )
+                        {
+                            hour = std::to_string(Hourly.ctime.tm_hour) + "am";
+                        }
+                        else if( Hourly.ctime.tm_hour == 12 )
+                        {// Special case 12 hundred, IE 12pm, or am, or pm.......
+                            hour = "Midday";
+                        }
+                        else
+                        {
+                            hour = std::to_string(Hourly.ctime.tm_hour-12) + "pm";
+                        }
 
-                // It worked, do the next fetch in a days time.
-                mFetchLimiter = currentTime + ONE_DAY;
-                // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
-                mFetchLimiter -= (mFetchLimiter%ONE_DAY);
-                mFetchLimiter += ONE_MINUTE;
+                        if( WeatherIcons.find(Hourly.icon_code) != WeatherIcons.end() )
+                        {
+                            icons[n]->SetInfo(WeatherIcons[Hourly.icon_code],hour,Hourly.temperature_2m,Hourly.is_day);
+                        }
+                    }
+                }
+            }
+            catch( const std::runtime_error &e)
+            {
+                std::cerr << "Something went wrong reading the wearth\n";
+            }
 
-                const tinyweather::WeatherTime nextDownload(mFetchLimiter);
-                std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
+            // It worked, do the next fetch in a days time.
+            mFetchLimiter = currentTime + ONE_DAY;
+            // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
+            mFetchLimiter -= (mFetchLimiter%ONE_DAY);
+            mFetchLimiter += ONE_MINUTE;
 
-                // Reset this time out to force a rebuild.
-                mHourlyUpdates = 0;
+//            const tinyweather::WeatherTime nextDownload(mFetchLimiter);
+ //           std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
+
+            // Reset this time out to force a rebuild.
+            mHourlyUpdates = 0;
+            /*
             }
             else
             {
@@ -202,9 +213,10 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
                     mFetchLimiter = currentTime + (60*60);// If it fails, this will make the next attempt an hour later.
                 }
             }
-        });
+            */
+        }
     }
-
+/*
     if( mHasWeather )
     {
         // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
@@ -219,67 +231,32 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
 
             try
             {
-                // Update in an hour and on the hour.
-                mHourlyUpdates = NextHour(currentTime);
-                log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
+                const openmeteo::Hourly* Hourly = DisplayWeather::GetForcast(currentTime);
+                if( Hourly != null )
+                {
+                    // Update in an hour and on the hour.
+                    mHourlyUpdates = NextHour(currentTime);
+                    log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
 
-                mNextHourlyIcons = mWeather.GetHourlyIconCodes(currentTime);
+//                    mNextHourlyIcons = mWeather.GetHourlyIconCodes(currentTime);
+//                    mNextHourlyIcons
 
-                // Not building for C++20 so can't use std::format yet.... So go old school.
-                const float temperature = mWeather.GetHourlyTemperature(currentTime);
+                    // Not building for C++20 so can't use std::format yet.... So go old school.
+                    const float temperature = mWeather.GetHourlyTemperature(currentTime);
 
-                char buf[64];
-                snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
-                mCurrentTemperature = buf;
+                    char buf[64];
+                    snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
+                    mCurrentTemperature = buf;
+                }
             }
             catch( const std::runtime_error &e)
             {
                 std::cerr << "Something went wrong reading the wearth\n";
             }
         }
-    }
+    }*/
 
-    int n = 0;
 
-    try
-    {
-        for( const auto& fIcon : mNextHourlyIcons )
-        {
-            // https://www.npl.co.uk/resources/q-a/is-midnight-12am-or-12pm
-            std::string hour; 
-            if( fIcon.hour == 0 )
-            {// Special case zero hundred, IE 12am...
-                hour = "Midnight";
-            }
-            else if( fIcon.hour < 12 )
-            {
-                hour = std::to_string(fIcon.hour) + "am";
-            }
-            else if( fIcon.hour == 12 )
-            {// Special case 12 hundred, IE 12pm, or am, or pm.......
-                hour = "Midday";
-            }
-            else
-            {
-                hour = std::to_string(fIcon.hour-12) + "pm";
-            }
-
-            if( WeatherIcons.find(fIcon.icon) != WeatherIcons.end() )
-            {
-                icons[n]->SetInfo(WeatherIcons[fIcon.icon],hour,fIcon.temperature);
-            }
-
-            n++;
-            if( n == 4 )
-            {// Sorry, this is crap. ;)
-                break;
-            }
-        }
-    }
-    catch( const std::runtime_error &e)
-    {
-        std::cerr << "Something went wrong reading the wearth\n";
-    }
     return true;
 }
 
@@ -294,4 +271,36 @@ void DisplayWeather::LoadWeatherIcons(eui::Graphics* graphics,const std::string&
 uint32_t DisplayWeather::GetRandomIcon()
 {
     return WeatherIcons[files[rand()%files.size()]];
+}
+
+bool DisplayWeather::LoadWeather()
+{
+    const std::string openMeta =
+        "https://api.open-meteo.com/v1/forecast?"
+        "latitude=51.50985954887405&"
+        "longitude=-0.12022833383470222&"
+        "hourly=temperature_2m,precipitation_probability,weather_code,cloud_cover,visibility,wind_speed_10m,is_day";
+
+    const std::string weatherJson = DownloadJson(openMeta,"Weather");
+    openmeteo::OpenMeteo weather(weatherJson);
+    mForcast = weather.GetForcast();
+    return true;
+}
+
+bool DisplayWeather::GetForcast(std::time_t theTime,openmeteo::Hourly& found)const
+{
+    tm myTM = *gmtime(&theTime);
+
+    for( openmeteo::Hourly h : mForcast )
+	{
+		if( h.ctime.tm_mday == myTM.tm_mday &&
+			h.ctime.tm_mon == myTM.tm_mon &&
+			h.ctime.tm_year == myTM.tm_year &&
+			h.ctime.tm_hour == myTM.tm_hour)
+		{
+            found = h;
+			return true;
+		}
+	}
+    return false; 
 }

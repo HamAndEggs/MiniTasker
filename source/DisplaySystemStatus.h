@@ -28,7 +28,7 @@ class DisplaySystemStatus : public eui::Element
 {
 public:
 
-    DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
 private:

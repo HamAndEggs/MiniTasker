@@ -30,7 +30,7 @@ class DisplaySolaX : public eui::Element
 {
 public:
 
-    DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
     ~DisplaySolaX();
 
     void UpdateData(const std::string& pTopic,const std::string& pData);

@@ -18,19 +18,12 @@
 #include <time.h>
 #include <chrono>
 
-DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
 {
     this->SetID("clock");
     this->SetPos(0,0);
     this->SetSpan(2,1);
-
-
-    eui::Style s;
-    s.mBackground = eui::COLOUR_BLACK;
-    s.mThickness = BORDER_SIZE;
-    s.mBorder = eui::COLOUR_WHITE;
-    s.mRadius = 0.1f;
-    this->SetStyle(s);
+    
     this->SetPadding(CELL_PADDING);
 
     clock = new eui::Element;
@@ -50,6 +43,23 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
         dayNumber->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
         dayNumber->SetFont(pNormalFont);
     this->Attach(dayNumber);
+
+    if( pDayDisplay )
+    {
+        eui::Style s;
+        s.mBackground = eui::COLOUR_BLACK;
+        s.mThickness = BORDER_SIZE;
+        s.mBorder = eui::COLOUR_WHITE;
+        s.mRadius = 0.1f;
+        this->SetStyle(s);
+    }
+    else
+    {
+        clock->GetStyle().mForeground = eui::COLOUR_GREY;
+        dayName->GetStyle().mForeground = eui::COLOUR_GREY;
+        dayNumber->GetStyle().mForeground = eui::COLOUR_GREY;
+    }
+
 }
 
 bool DisplayClock::OnUpdate(const eui::Rectangle& pContentRect)

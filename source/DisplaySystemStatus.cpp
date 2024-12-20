@@ -16,7 +16,7 @@
 
 #include "DisplaySystemStatus.h"
 
-DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
 {
     this->SetID("system status");
     this->SetPos(2,0);
@@ -62,12 +62,32 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
         ramUsed->SetPos(0,3);
     this->Attach(ramUsed);
 
-    eui::Style s;
-    s.mBackground = eui::COLOUR_BLUE;
-    s.mThickness = BORDER_SIZE;
-    s.mBorder = eui::COLOUR_WHITE;
-    s.mRadius = RECT_RADIUS;
-    this->SetStyle(s);
+    if( pDayDisplay )
+    {
+        eui::Style s;
+        s.mBackground = eui::COLOUR_BLUE;
+        s.mThickness = BORDER_SIZE;
+        s.mBorder = eui::COLOUR_WHITE;
+        s.mRadius = RECT_RADIUS;
+        this->SetStyle(s);
+    }
+    else
+    {
+        eui::Style s;
+        s.mForeground = eui::COLOUR_GREY;
+        s.mThickness = BORDER_SIZE;
+        s.mBorder = eui::COLOUR_DARK_GREY;
+        s.mRadius = RECT_RADIUS;
+        this->SetStyle(s);
+
+        uptime->GetStyle().mForeground = eui::COLOUR_GREY;
+        localIP->GetStyle().mForeground = eui::COLOUR_GREY;
+        hostName->GetStyle().mForeground = eui::COLOUR_GREY;
+        cpuLoad->GetStyle().mForeground = eui::COLOUR_GREY;
+        ramUsed->GetStyle().mForeground = eui::COLOUR_GREY;
+
+    }
+
     this->SetPadding(CELL_PADDING);
 
     std::map<int,int> CPULoads;

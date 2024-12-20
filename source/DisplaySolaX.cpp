@@ -22,7 +22,7 @@
 #include <string>
 #include <array>
 
-DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
 {
     SET_DEFAULT_ID();
 
@@ -33,11 +33,18 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     this->SetSpan(6,2);
 
     eui::Style SOCStyle;
-    SOCStyle.mBackground = eui::MakeColour(100,255,100);
-    SOCStyle.mThickness = BORDER_SIZE;
-    SOCStyle.mBorder = eui::COLOUR_WHITE;
-    SOCStyle.mRadius = RECT_RADIUS;
-    SOCStyle.mForeground = eui::COLOUR_BLACK;
+    if( pDayDisplay )
+    {
+        SOCStyle.mBackground = eui::MakeColour(100,255,100);
+        SOCStyle.mThickness = BORDER_SIZE;
+        SOCStyle.mBorder = eui::COLOUR_WHITE;
+        SOCStyle.mRadius = RECT_RADIUS;
+        SOCStyle.mForeground = eui::COLOUR_BLACK;
+    }
+    else
+    {
+        SOCStyle.mForeground = eui::COLOUR_GREY;
+    }
 
 
 mYeld = nullptr;
@@ -97,17 +104,25 @@ mYeld = nullptr;
         pannels->Attach(mBackPanels);
     this->Attach(pannels);
 
-    ExportStyle.mBackground = eui::MakeColour(100,255,100);
-    ExportStyle.mThickness = BORDER_SIZE;
-    ExportStyle.mBorder = eui::COLOUR_WHITE;
-    ExportStyle.mRadius = RECT_RADIUS;
-    ExportStyle.mForeground = eui::COLOUR_BLACK;
+    if( pDayDisplay )
+    {
+        ExportStyle.mBackground = eui::MakeColour(100,255,100);
+        ExportStyle.mThickness = BORDER_SIZE;
+        ExportStyle.mBorder = eui::COLOUR_WHITE;
+        ExportStyle.mRadius = RECT_RADIUS;
+        ExportStyle.mForeground = eui::COLOUR_BLACK;
 
-    ImportStyle.mBackground = eui::MakeColour(255,100,100);
-    ImportStyle.mThickness = BORDER_SIZE;
-    ImportStyle.mBorder = eui::COLOUR_WHITE;
-    ImportStyle.mRadius = RECT_RADIUS;
-    ImportStyle.mForeground = eui::COLOUR_BLACK;
+        ImportStyle.mBackground = eui::MakeColour(255,100,100);
+        ImportStyle.mThickness = BORDER_SIZE;
+        ImportStyle.mBorder = eui::COLOUR_WHITE;
+        ImportStyle.mRadius = RECT_RADIUS;
+        ImportStyle.mForeground = eui::COLOUR_BLACK;
+    }
+    else
+    {
+        ExportStyle.mForeground = eui::COLOUR_DARK_GREEN;
+        ImportStyle.mForeground = eui::COLOUR_DARK_RED;
+    }
 }
 
 DisplaySolaX::~DisplaySolaX()

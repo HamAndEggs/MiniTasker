@@ -53,17 +53,17 @@ void MQTTData::CallbackMessage(struct mosquitto *mosq, void *userdata, const str
 	}
 }
 
+#ifdef VERBOSE_BUILD
 static void my_subscribe_callback(struct mosquitto *mosq, void *userdata, int mid, int qos_count, const int *granted_qos)
 {
-	int i;
-
 	std::cout << "Subscribed (mid: " << mid << "): " << granted_qos[0];
-	for(i=1; i<qos_count; i++)
+	for(int i=1; i<qos_count; i++)
     {
 		std::cout << ", " << granted_qos[i];
 	}
     std::cout << "\n";
 }
+#endif
 
 static void my_log_callback(struct mosquitto *mosq, void *userdata, int level, const char *str)
 {
@@ -109,7 +109,9 @@ void MQTTData::Tick()
         mosquitto_log_callback_set(mMQTT, my_log_callback);
         mosquitto_connect_callback_set(mMQTT, CallbackConnected);
         mosquitto_message_callback_set(mMQTT, CallbackMessage);
+#ifdef VERBOSE_BUILD
         mosquitto_subscribe_callback_set(mMQTT, my_subscribe_callback);
+#endif
 
         if( mosquitto_connect(mMQTT, mHost.c_str(), mPort, keepalive) == MOSQ_ERR_SUCCESS )
         {

@@ -19,8 +19,7 @@
 
 #include "Graphics.h"
 #include "Element.h"
-
-#include "TinyWeather.h"
+#include "../OpenMeteoFetch/open-meteo.h"
 
 #include <ctime>
 #include <string>
@@ -29,20 +28,23 @@
 #include <vector>
 
 class WeatherIcon;
+
 class DisplayWeather : public eui::Element
 {
 public:
 
-    DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
     ~DisplayWeather();
-    
+
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);
+    bool GetIsDay()const{return mIsDay;}
 
 private:
-
     WeatherIcon* icons[4];
+    bool mIsDay = true;
     int tick = 0;
     float anim = 0;
+    std::vector<openmeteo::Hourly>mForcast;
 
     std::map<std::string,uint32_t>WeatherIcons;
 
@@ -72,14 +74,14 @@ private:
     bool mFirstFail; //!< Sometimes just after boot the fetch fails. Normally if it does I wait an hour before trying again. But for the first time will try in one minutes time.
     std::time_t mFetchLimiter;
     std::time_t mHourlyUpdates;
-    tinyweather::OpenWeatherMap mWeather;
 
     std::string mCurrentTemperature;
 
-    tinyweather::HourlyIconVector mNextHourlyIcons;
-
     void LoadWeatherIcons(eui::Graphics* graphics,const std::string& pPath);
     uint32_t GetRandomIcon();
+    bool LoadWeather();
+
+    bool GetForcast(std::time_t theTime,openmeteo::Hourly& found)const;
 };
 
 #endif //#ifndef DISPLAY_WEATHER_H

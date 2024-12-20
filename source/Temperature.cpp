@@ -18,7 +18,7 @@
 
 #include "TinyTools.h"
 
-Temperature::Temperature(int pFont,const eui::Style &pStyle,float CELL_PADDING) : eui::Element(pStyle)
+Temperature::Temperature(int pFont,int pSmallFont,const eui::Style &pStyle,float CELL_PADDING,bool pDayDisplay) : eui::Element(pStyle),mSmallFont(pSmallFont),mDayDisplay(pDayDisplay)
 {
     SET_DEFAULT_ID();
 
@@ -55,24 +55,49 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
     eui::Colour shedColour = GetStyle().mForeground;
     eui::Colour loftColour = GetStyle().mForeground;
 
-    if( mOutside.GetIsOnline() == false )
+    if( mDayDisplay )
     {
-        outSideColour = eui::COLOUR_RED;
-    }
+        if( mOutside.GetIsOnline() == false )
+        {
+            outSideColour = eui::COLOUR_RED;
+        }
 
-    if( mShed.GetIsOnline() == false )
-    {
-        shedColour = eui::COLOUR_RED;
-    }
+        if( mShed.GetIsOnline() == false )
+        {
+            shedColour = eui::COLOUR_RED;
+        }
 
-    if( mLoft.GetIsOnline() == false )
+        if( mLoft.GetIsOnline() == false )
+        {
+            loftColour = eui::COLOUR_RED;
+        }
+    }
+    else
     {
-        loftColour = eui::COLOUR_RED;
+        if( mOutside.GetIsOnline() == false )
+        {
+            outSideColour = eui::COLOUR_DARK_RED;
+        }
+
+        if( mShed.GetIsOnline() == false )
+        {
+            shedColour = eui::COLOUR_DARK_RED;
+        }
+
+        if( mLoft.GetIsOnline() == false )
+        {
+            loftColour = eui::COLOUR_DARK_RED;
+        }
     }
 
     pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
     pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_CENTER,shedColour,shed);
     pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,loftColour,loftS);
+
+    const eui::Colour smallCol = eui::COLOUR_DARK_GREEN;
+    pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_LEFT_BOTTOM,smallCol,"Outside");
+    pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_CENTER_BOTTOM,smallCol,"Shed");
+    pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_RIGHT_BOTTOM,smallCol,"Loft");
 
     return true;
 }
