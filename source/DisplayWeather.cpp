@@ -149,7 +149,7 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
         mHasWeather = false;
         if( LoadWeather() )
         {
-//            std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
+            std::clog << "Fetched weather data\n";
             mHasWeather = true;
 
             // It worked, do the next fetch in a days time.
@@ -168,6 +168,8 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
         // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
         if( mHourlyUpdates < currentTime )
         {
+            std::clog << "Updating weather display\n";
+
             try
             {
                 std::time_t t = currentTime;
