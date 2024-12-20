@@ -30,6 +30,16 @@ const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
 const std::time_t ONE_DAY = (ONE_HOUR*24);
 
 
+static const std::time_t RoundToHour(const std::time_t pTime)
+{
+    return pTime - (pTime%ONE_HOUR);
+}
+
+static const std::time_t NextHour(const std::time_t pTime)
+{
+    return RoundToHour(pTime) + ONE_HOUR;
+}
+
 class WeatherIcon : public eui::Element
 {
     eui::ElementPtr image,time,temperature;
@@ -142,6 +152,22 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
 //            std::clog << "Fetched weather data " << pTheWeather.mCurrent.mTime.GetDate() << " " << pTheWeather.mCurrent.mTime.GetTime() << "\n";
             mHasWeather = true;
 
+            // It worked, do the next fetch in a days time.
+            mFetchLimiter = currentTime + ONE_DAY;
+            // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
+            mFetchLimiter -= (mFetchLimiter%ONE_DAY);
+            mFetchLimiter += ONE_MINUTE;
+
+            // Reset this time out to force a rebuild.
+            mHourlyUpdates = 0;
+        }
+    }
+
+    if( mHasWeather )
+    {
+        // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
+        if( mHourlyUpdates < currentTime )
+        {
             try
             {
                 std::time_t t = currentTime;
@@ -179,82 +205,14 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
                         }
                     }
                 }
+                mHourlyUpdates = NextHour(currentTime);
             }
             catch( const std::runtime_error &e)
             {
                 std::cerr << "Something went wrong reading the wearth\n";
-            }
-
-            // It worked, do the next fetch in a days time.
-            mFetchLimiter = currentTime + ONE_DAY;
-            // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
-            mFetchLimiter -= (mFetchLimiter%ONE_DAY);
-            mFetchLimiter += ONE_MINUTE;
-
-//            const tinyweather::WeatherTime nextDownload(mFetchLimiter);
- //           std::clog << "Next download scheduled for " << nextDownload.GetDate() << " " << nextDownload.GetTime() << "\n";
-
-            // Reset this time out to force a rebuild.
-            mHourlyUpdates = 0;
-            /*
-            }
-            else
-            {
-                const tinyweather::WeatherTime now(currentTime);
-                std::cerr << "Failed to fetched weather data! " << now.GetDate() << " " << now.GetTime() << "\n";
-                mCurrentTemperature = "Failed";
-                if( mFirstFail )
-                {
-                    mFirstFail = false;
-                    mFetchLimiter = currentTime + 60;// Just booting up, try again in a minute.
-                }
-                else
-                {
-                    mFetchLimiter = currentTime + (60*60);// If it fails, this will make the next attempt an hour later.
-                }
-            }
-            */
+            }            
         }
     }
-/*
-    if( mHasWeather )
-    {
-        // Rebuild the Next Hourly Icons vector so its always correct an hour after the last time.
-        if( mHourlyUpdates < currentTime )
-        {
-            std::stringstream log;
-
-            if( mHourlyUpdates == 0 )
-                log << "Updating icons after fetching new weather data. ";
-            else
-                log << "Updating icons " << GetTimeString(mHourlyUpdates) << ". ";
-
-            try
-            {
-                const openmeteo::Hourly* Hourly = DisplayWeather::GetForcast(currentTime);
-                if( Hourly != null )
-                {
-                    // Update in an hour and on the hour.
-                    mHourlyUpdates = NextHour(currentTime);
-                    log << "Next icon update at " << GetTimeString(mHourlyUpdates) << ". ";
-
-//                    mNextHourlyIcons = mWeather.GetHourlyIconCodes(currentTime);
-//                    mNextHourlyIcons
-
-                    // Not building for C++20 so can't use std::format yet.... So go old school.
-                    const float temperature = mWeather.GetHourlyTemperature(currentTime);
-
-                    char buf[64];
-                    snprintf(buf,sizeof(buf),"%03.1fC",tinytools::math::RoundToPointFive(temperature));
-                    mCurrentTemperature = buf;
-                }
-            }
-            catch( const std::runtime_error &e)
-            {
-                std::cerr << "Something went wrong reading the wearth\n";
-            }
-        }
-    }*/
 
 
     return true;
