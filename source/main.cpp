@@ -18,6 +18,7 @@
 #include "Graphics.h"
 #include "Element.h"
 #include "Application.h"
+#include "FileDownload.h"
 
 
 #include "DisplayClock.h"
@@ -29,6 +30,8 @@
 #include "DisplayTideData.h"
 #include "Temperature.h"
 #include "MQTTData.h"
+#include "../OpenMeteoFetch/open-meteo.h"
+
 
 #include <unistd.h>
 #include <filesystem>
@@ -42,14 +45,7 @@ public:
 
     virtual void OnOpen(eui::Graphics* pGraphics);
     virtual void OnClose();
-    virtual void OnUpdate()
-    {
-        MQTT->Tick();
-        if( mWeather != nullptr )
-        {
-            mIsDay = mWeather->GetIsDay();
-        }
-    }
+    virtual void OnUpdate();
 
     virtual eui::ElementPtr GetRootElement()
     {
@@ -75,7 +71,8 @@ private:
     const std::string mPath;
     eui::ElementPtr mDayTime = nullptr;
     eui::ElementPtr mNightTime = nullptr;
-    DisplayWeather* mWeather = nullptr;// temp hack
+
+    std::time_t mFetchLimiter;
 
     MQTTData* MQTT = nullptr;
     std::map<std::string,std::string> mMQTTData;
@@ -90,7 +87,8 @@ private:
     struct
     {
         Temperature *mOutSideTemp = nullptr;
-        DisplaySolaX* mSolar = nullptr;
+        DisplaySolaX *mSolar = nullptr;
+        DisplayWeather *mWeather = nullptr;
 
         void Update(const std::string &pTopic,const std::string &pData)
         {
@@ -117,6 +115,7 @@ private:
     eui::ElementPtr MakeDayTimeDisplay(eui::Graphics* pGraphics);
     eui::ElementPtr MakeNightTimeDisplay(eui::Graphics* pGraphics);
 
+    std::vector<openmeteo::Hourly> LoadWeather();
 };
 
 MyUI::MyUI(const std::string& path):mPath(path)
@@ -166,6 +165,37 @@ void MyUI::OnClose()
 
     mDayTime = nullptr;
     mNightTime = nullptr;
+}
+
+void MyUI::OnUpdate()
+{
+    MQTT->Tick();
+
+    std::time_t currentTime = std::time(nullptr);
+    if( mFetchLimiter < currentTime )
+    {
+        const std::vector<openmeteo::Hourly> forcast = LoadWeather();
+        if( forcast.size() > 0 )
+        {
+            std::clog << "Fetched weather data\n";
+
+            if( day.mWeather )
+            {
+                day.mWeather->OnNewForcast(forcast);
+            }
+
+            if( night.mWeather )
+            {
+                night.mWeather->OnNewForcast(forcast);
+            }
+
+            // It worked, do the next fetch in a days time.
+            mFetchLimiter = currentTime + ONE_DAY;
+            // Now round to start of day plus one minute to be safe, 00:01. The weather forcast may have changed. Also if we boot in the evening don't want all downloads at the same time every day.
+            mFetchLimiter -= (mFetchLimiter%ONE_DAY);
+            mFetchLimiter += ONE_MINUTE;
+        }
+    }
 }
 
 void MyUI::StartMQTT()
@@ -239,7 +269,6 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
         BottomPannel->SetPos(0,2);
         BottomPannel->SetGrid(6,2);
         BottomPannel->SetSpan(3,1);
-
             day.mSolar = new DisplaySolaX(pGraphics,mPath,mLargeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true);
             day.mOutSideTemp = new Temperature(mLargeFont,mMiniFont,UpStyle,CELL_PADDING,true);
             day.mOutSideTemp->SetPos(0,1);
@@ -252,8 +281,8 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
     root->Attach(new DisplaySystemStatus(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,0.1f,true));
 
     // need to seperate the weather collection from the weather display.
-    mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true);
-    root->Attach(mWeather);
+    day.mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true);
+    root->Attach(day.mWeather);
 
     return root;
 }
@@ -290,12 +319,25 @@ eui::ElementPtr MyUI::MakeNightTimeDisplay(eui::Graphics* pGraphics)
     root->Attach(BottomPannel);
 
     root->Attach(new DisplayClock(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false));
-    root->Attach(new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false));
     root->Attach(new DisplaySystemStatus(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,0.1f,false));
+    night.mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false);
+    root->Attach(night.mWeather);
 
     return root;
 }
 
+std::vector<openmeteo::Hourly> MyUI::LoadWeather()
+{
+    const std::string openMeta =
+        "https://api.open-meteo.com/v1/forecast?"
+        "latitude=51.50985954887405&"
+        "longitude=-0.12022833383470222&"
+        "hourly=temperature_2m,precipitation_probability,weather_code,cloud_cover,visibility,wind_speed_10m,is_day";
+
+    const std::string weatherJson = DownloadJson(openMeta,"Weather");
+    openmeteo::OpenMeteo weather(weatherJson);
+    return weather.GetForcast();
+}
 
 int main(const int argc,const char *argv[])
 {

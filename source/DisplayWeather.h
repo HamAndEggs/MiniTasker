@@ -19,13 +19,17 @@
 
 #include "Graphics.h"
 #include "Element.h"
-#include "../OpenMeteoFetch/open-meteo.h"
 
 #include <ctime>
 #include <string>
 #include <map>
 
 #include <vector>
+#include "../OpenMeteoFetch/open-meteo.h"
+
+const std::time_t ONE_MINUTE = (60);
+const std::time_t ONE_HOUR = (ONE_MINUTE * 60);
+const std::time_t ONE_DAY = (ONE_HOUR*24);
 
 class WeatherIcon;
 
@@ -36,8 +40,14 @@ public:
     DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
     ~DisplayWeather();
 
-    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
     bool GetIsDay()const{return mIsDay;}
+
+
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);    
+    void OnNewForcast(const std::vector<openmeteo::Hourly>& pForcast)
+    {
+        mForcast = pForcast;
+    }
 
 private:
     WeatherIcon* icons[4];
@@ -48,7 +58,7 @@ private:
 
     std::map<std::string,uint32_t>WeatherIcons;
 
-    const std::vector<std::string> files =
+    const std::vector<std::string> iconFiles =
     {
         "01d",
         "01n",
@@ -68,19 +78,16 @@ private:
         "13n",
         "50d",
         "50n",
+        "not-found"
     };
 
-    bool mHasWeather;
     bool mFirstFail; //!< Sometimes just after boot the fetch fails. Normally if it does I wait an hour before trying again. But for the first time will try in one minutes time.
-    std::time_t mFetchLimiter;
     std::time_t mHourlyUpdates;
 
     std::string mCurrentTemperature;
 
     void LoadWeatherIcons(eui::Graphics* graphics,const std::string& pPath);
-    uint32_t GetRandomIcon();
-    bool LoadWeather();
-
+    uint32_t GetIcon(const std::string &pIconCode);
     bool GetForcast(std::time_t theTime,openmeteo::Hourly& found)const;
 };
 
