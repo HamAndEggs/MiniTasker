@@ -40,9 +40,6 @@ public:
     DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
     ~DisplayWeather();
 
-    bool GetIsDay()const{return mIsDay;}
-
-
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);    
     void OnNewForcast(const std::vector<openmeteo::Hourly>& pForcast)
     {
@@ -51,7 +48,6 @@ public:
 
 private:
     WeatherIcon* icons[4];
-    bool mIsDay = true;
     int tick = 0;
     float anim = 0;
     std::vector<openmeteo::Hourly>mForcast;

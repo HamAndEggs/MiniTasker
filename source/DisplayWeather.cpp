@@ -174,11 +174,6 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
                 openmeteo::Hourly Hourly;
                 if( DisplayWeather::GetForcast(t,Hourly) )
                 {
-                    if( n == 0 )
-                    {
-                        mIsDay = Hourly.is_day;
-                    }
-
                     const std::string hour = CTimeToString(Hourly.ctime);
                     const uint32_t icon = GetIcon(Hourly.icon_code);
                     icons[n]->SetInfo(icon,hour,Hourly.temperature_2m,Hourly.is_day);

@@ -87,7 +87,8 @@
 			"ios": "cpp",
 			"locale": "cpp",
 			"stack": "cpp",
-			"regex": "cpp"
+			"regex": "cpp",
+			"queue": "cpp"
 		}
 	}
 }

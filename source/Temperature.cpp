@@ -94,7 +94,7 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
     pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_CENTER,shedColour,shed);
     pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,loftColour,loftS);
 
-    const eui::Colour smallCol = eui::COLOUR_DARK_GREEN;
+    const eui::Colour smallCol = mDayDisplay?eui::COLOUR_DARK_GREEN:eui::COLOUR_DARK_GREY;
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_LEFT_BOTTOM,smallCol,"Outside");
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_CENTER_BOTTOM,smallCol,"Shed");
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_RIGHT_BOTTOM,smallCol,"Loft");

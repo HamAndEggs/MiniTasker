@@ -49,7 +49,7 @@ public:
 
     virtual eui::ElementPtr GetRootElement()
     {
-        if( mIsDay )
+        if( GetIsDay() )
         {
             return mDayTime;
         }
@@ -76,8 +76,7 @@ private:
 
     MQTTData* MQTT = nullptr;
     std::map<std::string,std::string> mMQTTData;
-
-    bool mIsDay = true;
+    std::vector<openmeteo::Hourly> mForcast;
 
     int mMiniFont = 0;
     int mNormalFont = 0;
@@ -116,6 +115,7 @@ private:
     eui::ElementPtr MakeNightTimeDisplay(eui::Graphics* pGraphics);
 
     std::vector<openmeteo::Hourly> LoadWeather();
+    bool GetIsDay()const;
 };
 
 MyUI::MyUI(const std::string& path):mPath(path)
@@ -174,19 +174,19 @@ void MyUI::OnUpdate()
     std::time_t currentTime = std::time(nullptr);
     if( mFetchLimiter < currentTime )
     {
-        const std::vector<openmeteo::Hourly> forcast = LoadWeather();
-        if( forcast.size() > 0 )
+        mForcast = LoadWeather();
+        if( mForcast.size() > 0 )
         {
             std::clog << "Fetched weather data\n";
 
             if( day.mWeather )
             {
-                day.mWeather->OnNewForcast(forcast);
+                day.mWeather->OnNewForcast(mForcast);
             }
 
             if( night.mWeather )
             {
-                night.mWeather->OnNewForcast(forcast);
+                night.mWeather->OnNewForcast(mForcast);
             }
 
             // It worked, do the next fetch in a days time.
@@ -337,6 +337,24 @@ std::vector<openmeteo::Hourly> MyUI::LoadWeather()
     const std::string weatherJson = DownloadJson(openMeta,"Weather");
     openmeteo::OpenMeteo weather(weatherJson);
     return weather.GetForcast();
+}
+
+bool MyUI::GetIsDay()const
+{
+    std::time_t currentTime = std::time(nullptr);
+    tm myTM = *gmtime(&currentTime);
+
+    for( openmeteo::Hourly h : mForcast )
+	{
+		if( h.ctime.tm_mday == myTM.tm_mday &&
+			h.ctime.tm_mon == myTM.tm_mon &&
+			h.ctime.tm_year == myTM.tm_year &&
+			h.ctime.tm_hour == myTM.tm_hour)
+		{
+			return h.is_day;
+		}
+	}
+    return true;
 }
 
 int main(const int argc,const char *argv[])
