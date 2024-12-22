@@ -13,6 +13,7 @@ include_directories(
     /usr/include/libdrm
     ./EdgeUI/include
     ./TinyJson
+    ./TinyTools
     ./source
     ${GTK4_INCLUDE_DIRS}
 )
@@ -32,10 +33,10 @@ add_executable(${THIS_PROJECT}
     ./source/Temperature.cpp
     ./source/main.cpp
     ./source/MQTTData.cpp
-    ./source/TinyTools.cpp
     ./source/DisplayTideData.cpp
     ./source/FileDownload.cpp
     ./OpenMeteoFetch/open-meteo.cpp
+    ./TinyTools/TinyTools.cpp
 )
 
 set_property(TARGET ${THIS_PROJECT} PROPERTY CXX_STANDARD 17)

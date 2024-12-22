@@ -7,3 +7,6 @@
 [submodule "TinyJson"]
 	path = TinyJson
 	url = https://github.com/HamAndEggs/TinyJson.git
+[submodule "TinyTools"]
+	path = TinyTools
+	url = https://github.com/HamAndEggs/TinyTools.git
