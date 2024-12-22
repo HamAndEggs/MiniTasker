@@ -12,6 +12,7 @@ include_directories(
     /usr/include/freetype2
     /usr/include/libdrm
     ./EdgeUI/include
+    ./TinyJson
     ./source
     ${GTK4_INCLUDE_DIRS}
 )
@@ -23,21 +24,18 @@ include_directories(
 add_subdirectory(./EdgeUI)
 
 add_executable(${THIS_PROJECT}
-    ./source/DisplayAirQuality.cpp
     ./source/DisplayBitcoinPrice.cpp
     ./source/DisplayClock.cpp
     ./source/DisplaySystemStatus.cpp
     ./source/DisplayWeather.cpp
     ./source/DisplaySolaX.cpp
     ./source/Temperature.cpp
-    ./source/i2c_device.cpp
     ./source/main.cpp
     ./source/MQTTData.cpp
-    ./source/sgp30.cpp
     ./source/TinyTools.cpp
-    ./source/TinyWeather.cpp
     ./source/DisplayTideData.cpp
     ./source/FileDownload.cpp
+    ./OpenMeteoFetch/open-meteo.cpp
 )
 
 set_property(TARGET ${THIS_PROJECT} PROPERTY CXX_STANDARD 17)

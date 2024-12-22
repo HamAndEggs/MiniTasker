@@ -57,7 +57,7 @@ namespace tinytools{	// Using a namespace to try to prevent name clashes as my c
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace math
 {
-}
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace string{
@@ -158,7 +158,20 @@ std::string TrimWhiteSpace(const std::string &s)
     return std::string(it, rit.base());
 }
 
-}//namespace string{
+};//namespace string{
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace time{
+
+const std::string UnixTimeToString(uint64_t unixTime,const std::string& pFormat)
+{
+    const std::time_t t = (std::time_t)unixTime;
+    const std::tm tm = *std::localtime(&t);
+    std::stringstream s;
+    s << std::put_time(&tm, pFormat.c_str());
+    return s.str();
+}
+
+};//namespace timer{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace timers{
 MillisecondTicker::MillisecondTicker(int pMilliseconds)
@@ -194,7 +207,7 @@ void MillisecondTicker::Tick(const std::chrono::system_clock::time_point pNow,st
 	}
 }
 
-}//namespace timers{
+};//namespace timers{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace network{
 
@@ -499,7 +512,7 @@ size_t Decode7Bit(const uint8_t* p7Bit,size_t p7BitSize,uint8_t** r8Bit)
     return out - *r8Bit;
 }
 
-}//namespace network
+};// namespace network
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace system{
@@ -858,7 +871,7 @@ bool ExecuteShellCommand(const std::string& pCommand,const std::vector<std::stri
     close(pipeSTDOUT[1]); /* Close writing end of pipes, don't need them */
     close(pipeSTDERR[1]); /* Close writing end of pipes, don't need them */
 
-    const size_t BufSize = 1000;
+    size_t BufSize = 1000;
     char buf[BufSize+1];
     buf[BufSize] = 0;
 
@@ -954,7 +967,7 @@ void ExecuteCommand(const std::string& pCommand,const std::vector<std::string>& 
     _exit(1);
 }
 
-}//namespace system{
+};//namespace system{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace threading{
 
@@ -1051,7 +1064,7 @@ bool LocklessRingBuffer::WriteNext(const void* pItem,size_t pBufferSize)
     return true;// Written ok.
 }
 
-}//namespace threading{
+};//namespace threading{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 CommandLineOptions::CommandLineOptions(const std::string& pUsageHelp):mUsageHelp(pUsageHelp)
 {// Always add this, everyone does. BE rude not to. ;)
@@ -1503,9 +1516,9 @@ std::string LoadFileIntoString(const std::string& pFilename)
     return "";
 }
 
-}//namespace file{
+};//namespace file{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-}//namespace tinytools
+};//namespace tinytools
 	

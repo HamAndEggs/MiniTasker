@@ -25,7 +25,6 @@
 #include "DisplayWeather.h"
 #include "DisplaySolaX.h"
 #include "DisplaySystemStatus.h"
-#include "DisplayAirQuality.h"
 #include "DisplayBitcoinPrice.h"
 #include "DisplayTideData.h"
 #include "Temperature.h"

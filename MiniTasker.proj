@@ -1,16 +1,13 @@
 {
     "source_files": [
-        "./source/DisplayAirQuality.cpp",
         "./source/DisplayBitcoinPrice.cpp",
         "./source/DisplayClock.cpp",
         "./source/DisplaySystemStatus.cpp",
         "./source/DisplayWeather.cpp",
         "./source/DisplaySolaX.cpp",
         "./source/Temperature.cpp",
-        "./source/i2c_device.cpp",
         "./source/main.cpp",
         "./source/MQTTData.cpp",
-        "./source/sgp30.cpp",
         "./source/TinyTools.cpp",
         "./source/DisplayTideData.cpp",
         "./source/FileDownload.cpp",
@@ -66,7 +63,7 @@
                 "PLATFORM_GLES"
             ]
         },
-        "x11": {
+        "debug": {
             "source_files":
             [
                 "./EdgeUI/source/GL/PlatformInterface_GTK4.cpp"

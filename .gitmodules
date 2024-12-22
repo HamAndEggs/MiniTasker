@@ -1,3 +1,9 @@
 [submodule "OpenMeteoFetch"]
 	path = OpenMeteoFetch
 	url = https://github.com/HamAndEggs/OpenMeteoFetch.git
+[submodule "EdgeUI"]
+	path = EdgeUI
+	url = https://github.com/HamAndEggs/EdgeUI.git
+[submodule "TinyJson"]
+	path = TinyJson
+	url = https://github.com/HamAndEggs/TinyJson.git

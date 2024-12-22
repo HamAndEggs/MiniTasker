@@ -1,3 +1,19 @@
 # MiniTasker
-A simple Framebuffer time and schedule display for raspberry pi.
-ss
+A simple GLES 2.0 time and schedule display for raspberry pi lite. No desktop needed, runs in keosk mode.
+
+To build run the makeit.sh scripte which uses cmake
+
+For RaspberryPi OS lite.
+...
+makeit.sh DRM
+...
+
+For Linux desktop and wayland.
+...
+makeit.sh GTK4
+...
+
+For Linux desktop and X11.
+...
+makeit.sh X11
+...
