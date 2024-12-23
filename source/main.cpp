@@ -67,7 +67,7 @@ private:
     const std::string mPath;
     eui::ElementPtr mRoot = nullptr;
 
-    std::time_t mFetchLimiter;
+    std::time_t mFetchLimiter = 0;
 
     MQTTData* MQTT = nullptr;
     std::map<std::string,std::string> mMQTTData;
@@ -283,6 +283,7 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
 
     return root;
 }
+//https://api.open-meteo.com/v1/forecast?latitude=51.50985954887405&longitude=-0.12022833383470222&hourly=temperature_2m,precipitation_probability,weather_code,cloud_cover,visibility,wind_speed_10m,is_day
 
 std::vector<openmeteo::Hourly> MyUI::LoadWeather()
 {
