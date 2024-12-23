@@ -162,8 +162,8 @@ void MyUI::OnUpdate()
         }
     }
 
-//    dayDisplay = GetIsDay();
-    dayDisplay = !dayDisplay;
+    dayDisplay = GetIsDay();
+//    dayDisplay = !dayDisplay;
 
     if( dayDisplay )
     {
