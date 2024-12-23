@@ -8,9 +8,9 @@
         "./source/Temperature.cpp",
         "./source/main.cpp",
         "./source/MQTTData.cpp",
-        "./source/TinyTools.cpp",
         "./source/DisplayTideData.cpp",
         "./source/FileDownload.cpp",
+        "./TinyTools/TinyTools.cpp",
         "./EdgeUI/source/Element.cpp",
         "./EdgeUI/source/TinyPNG.cpp",
         "./EdgeUI/source/ResourceMap.cpp",
@@ -20,6 +20,21 @@
         "./EdgeUI/source/GL/Graphics_GL.cpp",
         "./OpenMeteoFetch/open-meteo.cpp"
     ],
+    "include": [
+        "./EdgeUI/include",
+        "./EdgeUI/source",
+        "./EdgeUI/TinyJson",
+        "./TinyTools",
+        "./"
+    ],    
+    "libs": [
+        "m",
+        "stdc++",
+        "pthread",
+        "freetype",
+        "curl",
+        "z"
+    ],    
     "configurations": {
         "release": {
             "source_files":
@@ -35,25 +50,14 @@
             "include": [
                 "/opt/vc/include/",
                 "/usr/include/freetype2",
-                "./",
-                "./EdgeUI/include",
-                "./EdgeUI/source",
                 "/usr/include/libdrm"
             ],
             "libs": [
-                "m",
-                "stdc++",
-                "pthread",
-                "freetype",
-                "curl",
-                "z",
-                "stdc++fs",
                 "mosquitto",
                 "GLESv2",
                 "EGL",
                 "gbm",
-                "drm",
-                "i2c"
+                "drm"
             ],
             "define": [
                 "NDEBUG",
@@ -88,22 +92,11 @@
                 "/usr/include/gdk-pixbuf-2.0",
                 "/usr/include/x86_64-linux-gnu",
                 "/usr/include/graphene-1.0",
-                "/usr/lib/x86_64-linux-gnu/graphene-1.0/include",
-                "./EdgeUI/include",
-                "./EdgeUI/source",
-                "./EdgeUI/TinyJson",
-                "./"
+                "/usr/lib/x86_64-linux-gnu/graphene-1.0/include"
             ],
             "libs": [
-               "m",
-                "stdc++",
-                "pthread",
                 "GL",
-                "freetype",
-                "curl",
-                "z",
                 "mosquitto",
-                "i2c",
                 "libgtk-4.so",
                 "libpangocairo-1.0.so",
                 "libpango-1.0.so",

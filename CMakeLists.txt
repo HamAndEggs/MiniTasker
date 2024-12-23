@@ -12,7 +12,7 @@ include_directories(
     /usr/include/freetype2
     /usr/include/libdrm
     ./EdgeUI/include
-    ./TinyJson
+    ./EdgeUI/TinyJson
     ./TinyTools
     ./source
     ${GTK4_INCLUDE_DIRS}
