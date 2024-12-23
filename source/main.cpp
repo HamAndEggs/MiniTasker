@@ -160,6 +160,10 @@ void MyUI::OnUpdate()
             mFetchLimiter -= (mFetchLimiter%ONE_DAY);
             mFetchLimiter += ONE_MINUTE;
         }
+        else
+        {
+            std::clog << "Failed to download data\n";
+        }
     }
 
     dayDisplay = GetIsDay();
