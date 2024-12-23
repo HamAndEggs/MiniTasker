@@ -17,12 +17,13 @@
 #include "TinyJson.h"
 #include "TinyTools.h"
 #include "DisplaySolaX.h"
+#include "style.h"
 
 #include <ctime>
 #include <string>
 #include <array>
 
-DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
+DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int pFont)
 {
     SET_DEFAULT_ID();
 
@@ -31,21 +32,6 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
     this->SetGrid(6,2);
     this->GetStyle().mFont = (pFont);
     this->SetSpan(6,2);
-
-    eui::Style SOCStyle;
-    if( pDayDisplay )
-    {
-        SOCStyle.mBackground = eui::MakeColour(100,255,100);
-        SOCStyle.mThickness = BORDER_SIZE;
-        SOCStyle.mBorder = eui::COLOUR_WHITE;
-        SOCStyle.mRadius = RECT_RADIUS;
-        SOCStyle.mForeground = eui::COLOUR_BLACK;
-    }
-    else
-    {
-        SOCStyle.mForeground = eui::COLOUR_GREY;
-    }
-
 
 mYeld = nullptr;
 //    mYeld = new eui::Element;
@@ -61,26 +47,22 @@ mYeld = nullptr;
     mBatterySOC->SetText("Fetching");
     mBatterySOC->SetPadding(CELL_PADDING);
     mBatterySOC->SetPos(0,0);
-    mBatterySOC->SetSpan(2,1);
-    mBatterySOC->SetStyle(SOCStyle);
+
     this->Attach(mBatterySOC);
     
     mInverter = new eui::Element;
     mInverter->SetPadding(0.05f);
     mInverter->SetText("Fetching");
     mInverter->SetPadding(CELL_PADDING);
-    mInverter->SetPos(2,0);
-    mInverter->SetSpan(2,1);
-    mInverter->SetStyle(SOCStyle);
+    mInverter->SetPos(1,0);
     this->Attach(mInverter);
 
     mFeedIn = new eui::Element;
     mFeedIn->SetPadding(0.05f);
     mFeedIn->SetText("Fetching");
     mFeedIn->SetPadding(CELL_PADDING);
-    mFeedIn->SetPos(4,0);
-    mFeedIn->SetStyle(SOCStyle);
-    mFeedIn->SetSpan(2,1);
+    mFeedIn->SetPos(2,0);
+
     this->Attach(mFeedIn);
 
     eui::ElementPtr pannels = new eui::Element;
@@ -92,7 +74,6 @@ mYeld = nullptr;
             mFrontPanels->SetText("...");
             mFrontPanels->SetPadding(CELL_PADDING);
             mFrontPanels->SetPos(0,0);
-            mFrontPanels->SetStyle(SOCStyle);
         pannels->Attach(mFrontPanels);
 
         mBackPanels = new eui::Element;
@@ -100,11 +81,18 @@ mYeld = nullptr;
             mBackPanels->SetText("...");
             mBackPanels->SetPadding(CELL_PADDING);
             mBackPanels->SetPos(1,0);
-            mBackPanels->SetStyle(SOCStyle);
         pannels->Attach(mBackPanels);
     this->Attach(pannels);
+}
 
-    if( pDayDisplay )
+DisplaySolaX::~DisplaySolaX()
+{
+
+}
+
+bool DisplaySolaX::OnUpdate(const eui::Rectangle& pContentRect)
+{
+    if( dayDisplay )
     {
         ExportStyle.mBackground = eui::MakeColour(100,255,100);
         ExportStyle.mThickness = BORDER_SIZE;
@@ -123,11 +111,23 @@ mYeld = nullptr;
         ExportStyle.mForeground = eui::COLOUR_DARK_GREEN;
         ImportStyle.mForeground = eui::COLOUR_DARK_RED;
     }
-}
 
-DisplaySolaX::~DisplaySolaX()
-{
+    eui::Style SOCStyle;
+    if( dayDisplay )
+    {
+        SOCStyle.mBackground = eui::MakeColour(100,255,100);
+        SOCStyle.mThickness = BORDER_SIZE;
+        SOCStyle.mBorder = eui::COLOUR_WHITE;
+        SOCStyle.mRadius = RECT_RADIUS;
+        SOCStyle.mForeground = eui::COLOUR_BLACK;
+    }
+    mBatterySOC->SetStyle(SOCStyle);
+    mInverter->SetStyle(SOCStyle);
+    mFeedIn->SetStyle(SOCStyle);
+    mFrontPanels->SetStyle(SOCStyle);
+    mBackPanels->SetStyle(SOCStyle);
 
+    return true;
 }
 
 void DisplaySolaX::UpdateData(const std::string& pTopic,const std::string& pData)

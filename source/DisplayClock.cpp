@@ -15,10 +15,14 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "DisplayClock.h"
+#include "style.h"
+
 #include <time.h>
 #include <chrono>
+#include <string>
+#include <array>
 
-DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
+DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont)
 {
     this->SetID("clock");
     this->SetPos(0,0);
@@ -44,7 +48,11 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
         dayNumber->GetStyle().mFont = (pNormalFont);
     this->Attach(dayNumber);
 
-    if( pDayDisplay )
+}
+
+bool DisplayClock::OnUpdate(const eui::Rectangle& pContentRect)
+{
+    if( dayDisplay )
     {
         eui::Style s;
         s.mBackground = eui::COLOUR_BLACK;
@@ -52,25 +60,32 @@ DisplayClock::DisplayClock(int pBigFont,int pNormalFont,int pMiniFont,float CELL
         s.mBorder = eui::COLOUR_WHITE;
         s.mRadius = 0.1f;
         this->SetStyle(s);
+
+        clock->GetStyle().mForeground = eui::COLOUR_WHITE;
+        dayName->GetStyle().mForeground = eui::COLOUR_WHITE;
+        dayNumber->GetStyle().mForeground = eui::COLOUR_WHITE;
     }
     else
     {
+        eui::Style s;
+        s.mBackground = eui::COLOUR_BLACK;
+        s.mThickness = BORDER_SIZE;
+        s.mBorder = eui::COLOUR_DARK_GREY;
+        s.mRadius = 0.1f;
+        this->SetStyle(s);
+
         clock->GetStyle().mForeground = eui::COLOUR_GREY;
         dayName->GetStyle().mForeground = eui::COLOUR_GREY;
         dayNumber->GetStyle().mForeground = eui::COLOUR_GREY;
     }
 
-}
-
-bool DisplayClock::OnUpdate(const eui::Rectangle& pContentRect)
-{
     std::time_t result = std::time(nullptr);
     tm *currentTime = localtime(&result);
     if( currentTime )
     {
         clock->SetTextF("%02d:%02d",currentTime->tm_hour,currentTime->tm_min);
 
-        const std::array<std::string,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+        std::array<const char*,7> Days = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
         dayName->SetText(Days[currentTime->tm_wday]);
 
         // Do month day.

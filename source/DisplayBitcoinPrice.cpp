@@ -2,9 +2,10 @@
 #include "DisplayBitcoinPrice.h"
 #include "TinyJson.h"
 #include "FileDownload.h"
+#include "style.h"
 
 
-DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplayBitcoinPrice::DisplayBitcoinPrice(int pBitcoinFont)
 {
     this->SetID("bitcoin");
     this->GetStyle().mFont = pBitcoinFont;

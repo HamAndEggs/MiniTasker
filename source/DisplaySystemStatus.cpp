@@ -15,8 +15,9 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "DisplaySystemStatus.h"
+#include "style.h"
 
-DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay)
+DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniFont)
 {
     this->SetID("system status");
     this->SetPos(2,0);
@@ -24,7 +25,6 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
 
     uptime = new eui::Element;
         uptime->SetPadding(0.05f);
-//        uptime->GetStyle().mAlignment = eui::ALIGN_CENTER_TOP;
         uptime->GetStyle().mFont = (pNormalFont);
         uptime->SetText("UP: XX:XX:XX");
         uptime->SetPos(0,0);
@@ -32,7 +32,6 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
 
     localIP = new eui::Element;
         localIP->SetPadding(0.05f);
-//        localIP->GetStyle().mAlignment = eui::ALIGN_LEFT_CENTER;
         localIP->GetStyle().mFont = (pMiniFont);
         localIP->SetText("XX.XX.XX.XX");
         localIP->SetPos(0,1);
@@ -40,7 +39,6 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
 
     hostName = new eui::Element;
         hostName->SetPadding(0.05f);
-//        hostName->GetStyle().mAlignment = eui::ALIGN_RIGHT_CENTER;
         hostName->GetStyle().mFont = (pMiniFont);
         hostName->SetText("--------");
         hostName->SetPos(0,2);
@@ -62,7 +60,16 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
         ramUsed->SetPos(0,3);
     this->Attach(ramUsed);
 
-    if( pDayDisplay )
+    this->SetPadding(CELL_PADDING);
+
+    std::map<int,int> CPULoads;
+    int totalSystemLoad;
+    tinytools::system::GetCPULoad(trackingData,totalSystemLoad,CPULoads);
+}
+
+bool DisplaySystemStatus::OnUpdate(const eui::Rectangle& pContentRect)
+{
+    if( dayDisplay )
     {
         eui::Style s;
         s.mBackground = eui::COLOUR_BLUE;
@@ -86,17 +93,7 @@ DisplaySystemStatus::DisplaySystemStatus(int pBigFont,int pNormalFont,int pMiniF
         cpuLoad->GetStyle().mForeground = eui::COLOUR_GREY;
         ramUsed->GetStyle().mForeground = eui::COLOUR_GREY;
 
-    }
-
-    this->SetPadding(CELL_PADDING);
-
-    std::map<int,int> CPULoads;
-    int totalSystemLoad;
-    tinytools::system::GetCPULoad(trackingData,totalSystemLoad,CPULoads);
-}
-
-bool DisplaySystemStatus::OnUpdate(const eui::Rectangle& pContentRect)
-{
+    }    
 // Render the uptime
     uint64_t upDays,upHours,upMinutes;
     tinytools::system::GetUptime(upDays,upHours,upMinutes);

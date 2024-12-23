@@ -17,6 +17,7 @@
 #include "TinyJson.h"
 #include "TinyTools.h"
 #include "DisplayWeather.h"
+#include "style.h"
 
 #include <ctime>
 #include <time.h>
@@ -61,11 +62,11 @@ static const std::string CTimeToString(tm pTime)
 class WeatherIcon : public eui::Element
 {
     eui::ElementPtr image,time,temperature;
-    const bool mDayDisplay;
+
 
 public:
 
-    WeatherIcon(float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay):mDayDisplay(pDayDisplay)
+    WeatherIcon()
     {
         SET_DEFAULT_ID();
 
@@ -87,26 +88,6 @@ public:
         temperature->SetPadding(0.07f);
         temperature->GetStyle().mAlignment = eui::ALIGN_RIGHT_BOTTOM;
         Attach(temperature);
-
-        if( mDayDisplay )
-        {
-            eui::Style s;
-            s.mBackground = eui::MakeColour(0,0,0,200);
-            s.mRadius = RECT_RADIUS;
-            SetStyle(s);
-        }
-        else
-        {
-            eui::Style s;
-            s.mBorder = eui::COLOUR_DARK_GREY;
-            s.mThickness = 3;
-            s.mRadius = RECT_RADIUS;
-            SetStyle(s);
-
-            time->GetStyle().mForeground = eui::COLOUR_GREY;
-            temperature->GetStyle().mForeground = eui::COLOUR_GREY;
-            image->GetStyle().mBackground = eui::COLOUR_LIGHT_GREY;
-        }        
     }
 
     void SetInfo(uint32_t pIcon,const std::string& pTime,float pTemperature,bool is_day)
@@ -114,7 +95,7 @@ public:
         if( image )
         {
             image->GetStyle().mTexture = pIcon;
-            if( mDayDisplay )
+            if( dayDisplay )
             {
                 if( is_day )
                 {
@@ -130,9 +111,38 @@ public:
         }
     }
 
+    void Update()
+    {
+        if( dayDisplay )
+        {
+            eui::Style s;
+            s.mBackground = eui::MakeColour(0,0,0,200);
+            s.mRadius = RECT_RADIUS;
+            SetStyle(s);
+
+            time->GetStyle().mForeground = eui::COLOUR_WHITE;
+            temperature->GetStyle().mForeground = eui::COLOUR_WHITE;
+            image->GetStyle().mBackground = eui::COLOUR_WHITE;
+        }
+        else
+        {
+            eui::Style s;
+            s.mBorder = eui::COLOUR_DARK_GREY;
+            s.mThickness = 3;
+            s.mRadius = RECT_RADIUS;
+            s.mBackground = eui::COLOUR_NONE;
+            SetStyle(s);
+
+            time->GetStyle().mForeground = eui::COLOUR_GREY;
+            temperature->GetStyle().mForeground = eui::COLOUR_GREY;
+            image->GetStyle().mBackground = eui::COLOUR_LIGHT_GREY;
+        }        
+
+    }
+
 };
 
-DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay) :
+DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont) :
     mFirstFail(true),
     mHourlyUpdates(0)
 {
@@ -146,7 +156,7 @@ DisplayWeather::DisplayWeather(eui::Graphics* graphics,const std::string& pPath,
 
     for( int n = 0 ; n < 4 ; n++ )
     {
-        icons[n] = new WeatherIcon(CELL_PADDING,BORDER_SIZE,RECT_RADIUS,pDayDisplay);
+        icons[n] = new WeatherIcon();
         icons[n]->SetPos(n,0);
         this->Attach(icons[n]);
     }
@@ -193,6 +203,12 @@ bool DisplayWeather::OnUpdate(const eui::Rectangle& pContentRect)
             std::cerr << "Something went wrong reading the wearth\n";
         }            
     }
+
+    for( int n = 0 ; n < 4 ; n++ )
+    {
+        icons[n]->Update();
+    }
+
 
     return true;
 }

@@ -26,8 +26,9 @@ class Temperature : public eui::Element
 {
 public:
 
-    Temperature(int pFont,int pSmallFont,const eui::Style &pStyle,float CELL_PADDING,bool pDayDisplay);
+    Temperature(int pFont,int pSmallFont,float CELL_PADDING);
     virtual bool OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect);
+    virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 
     void NewShedTemperature(const std::string pTemperature);
     void NewOutSideTemperature(const std::string pTemperature);
@@ -35,7 +36,6 @@ public:
 
 private:
     const int mSmallFont;
-    const bool mDayDisplay;
     struct Data
     {
         std::chrono::time_point<std::chrono::system_clock> lastUpdate;

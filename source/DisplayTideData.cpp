@@ -2,11 +2,13 @@
 #include "DisplayTideData.h"
 #include "TinyJson.h"
 #include "FileDownload.h"
+#include "style.h"
+
 #include <time.h>
 #include <chrono>
 #include <sstream>
 
-DisplayTideData::DisplayTideData(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS)
+DisplayTideData::DisplayTideData(int pFont)
 {
     SetGrid(3,1);
 

@@ -8,7 +8,7 @@
 class DisplayTideData : public eui::Element
 {
 public:
-    DisplayTideData(int pFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayTideData(int pFont);
     ~DisplayTideData();
     
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);

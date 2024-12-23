@@ -11,7 +11,7 @@ class DisplayBitcoinPrice : public eui::Element
 {
 public:
 
-    DisplayBitcoinPrice(int pBitcoinFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS);
+    DisplayBitcoinPrice(int pBitcoinFont);
     ~DisplayBitcoinPrice();
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);
 

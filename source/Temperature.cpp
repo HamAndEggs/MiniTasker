@@ -15,10 +15,11 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include "Temperature.h"
+#include "style.h"
 
 #include "TinyTools.h"
 
-Temperature::Temperature(int pFont,int pSmallFont,const eui::Style &pStyle,float CELL_PADDING,bool pDayDisplay) : eui::Element(pStyle),mSmallFont(pSmallFont),mDayDisplay(pDayDisplay)
+Temperature::Temperature(int pFont,int pSmallFont,float CELL_PADDING) : mSmallFont(pSmallFont)
 {
     SET_DEFAULT_ID();
 
@@ -29,6 +30,29 @@ Temperature::Temperature(int pFont,int pSmallFont,const eui::Style &pStyle,float
 
     mShed.temperature = "N/A";
     mOutside.temperature = "N/A";
+}
+
+bool Temperature::OnUpdate(const eui::Rectangle& pContentRect)
+{
+    if( dayDisplay )
+    {
+        eui::Style s;
+        s.mBackground = eui::MakeColour(100,255,100);
+        s.mThickness = BORDER_SIZE;
+        s.mBorder = eui::COLOUR_WHITE;
+        s.mRadius = RECT_RADIUS;
+        s.mForeground = eui::COLOUR_BLACK;
+        SetStyle(s);
+    }
+    else
+    {
+        eui::Style s;
+        s.mBorder = eui::COLOUR_DARK_GREY;
+        s.mThickness = 3;
+        s.mRadius = RECT_RADIUS;
+        SetStyle(s);
+    }
+    return true;
 }
 
 bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContentRect)
@@ -54,8 +78,7 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
     eui::Colour outSideColour = GetStyle().mForeground;
     eui::Colour shedColour = GetStyle().mForeground;
     eui::Colour loftColour = GetStyle().mForeground;
-
-    if( mDayDisplay )
+    if( dayDisplay )
     {
         if( mOutside.GetIsOnline() == false )
         {
@@ -88,13 +111,13 @@ bool Temperature::OnDraw(eui::Graphics* pGraphics,const eui::Rectangle& pContent
         {
             loftColour = eui::COLOUR_DARK_RED;
         }
-    }
+    }    
 
     pGraphics->FontPrint(font,textRect,eui::ALIGN_LEFT_CENTER,outSideColour,outside);
     pGraphics->FontPrint(font,textRect,eui::ALIGN_CENTER_CENTER,shedColour,shed);
     pGraphics->FontPrint(font,textRect,eui::ALIGN_RIGHT_CENTER,loftColour,loftS);
 
-    const eui::Colour smallCol = mDayDisplay?eui::COLOUR_DARK_GREEN:eui::COLOUR_DARK_GREY;
+    const eui::Colour smallCol = dayDisplay?eui::COLOUR_DARK_GREEN:eui::COLOUR_DARK_GREY;
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_LEFT_BOTTOM,smallCol,"Outside");
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_CENTER_BOTTOM,smallCol,"Shed");
     pGraphics->FontPrint(mSmallFont,textRect,eui::ALIGN_RIGHT_BOTTOM,smallCol,"Loft");

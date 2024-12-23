@@ -37,7 +37,7 @@ class DisplayWeather : public eui::Element
 {
 public:
 
-    DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont,float CELL_PADDING,float BORDER_SIZE,float RECT_RADIUS,bool pDayDisplay);
+    DisplayWeather(eui::Graphics* graphics,const std::string& pPath,int pBigFont,int pNormalFont,int pMiniFont);
     ~DisplayWeather();
 
     virtual bool OnUpdate(const eui::Rectangle& pContentRect);    
@@ -50,6 +50,7 @@ private:
     WeatherIcon* icons[4];
     int tick = 0;
     float anim = 0;
+
     std::vector<openmeteo::Hourly>mForcast;
 
     std::map<std::string,uint32_t>WeatherIcons;

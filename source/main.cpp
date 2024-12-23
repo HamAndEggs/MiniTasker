@@ -31,10 +31,14 @@
 #include "MQTTData.h"
 #include "../OpenMeteoFetch/open-meteo.h"
 
+#include "style.h"
+
 
 #include <unistd.h>
 #include <filesystem>
 #include <curl/curl.h> // libcurl4-openssl-dev
+
+bool dayDisplay = true;
 
 class MyUI : public eui::Application
 {
@@ -48,12 +52,7 @@ public:
 
     virtual eui::ElementPtr GetRootElement()
     {
-        if( GetIsDay() )
-        {
-            return mDayTime;
-        }
-
-        return mNightTime;
+        return mRoot;
     }
     virtual uint32_t GetUpdateInterval()const{return 1000;}
 
@@ -64,12 +63,9 @@ public:
 //    virtual int GetEmulatedHeight()const{return 720;}
 
 private:
-    const float CELL_PADDING = 0.02f;
-    const float RECT_RADIUS = 0.2f;
-    const float BORDER_SIZE = 3.0f;
+
     const std::string mPath;
-    eui::ElementPtr mDayTime = nullptr;
-    eui::ElementPtr mNightTime = nullptr;
+    eui::ElementPtr mRoot = nullptr;
 
     std::time_t mFetchLimiter;
 
@@ -81,37 +77,14 @@ private:
     int mNormalFont = 0;
     int mLargeFont = 0;
     int mBigFont = 0;
+    int bgTexture = 0;
 
-    struct
-    {
-        Temperature *mOutSideTemp = nullptr;
-        DisplaySolaX *mSolar = nullptr;
-        DisplayWeather *mWeather = nullptr;
-
-        void Update(const std::string &pTopic,const std::string &pData)
-        {
-            if( tinytools::string::CompareNoCase(pTopic,"/loft/temperature") && mOutSideTemp )
-            {
-                mOutSideTemp->NewLoftTemperature(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/outside/temperature") && mOutSideTemp )
-            {
-                mOutSideTemp->NewOutSideTemperature(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/shed/temperature") && mOutSideTemp)
-            {
-                mOutSideTemp->NewShedTemperature(pData);
-            }
-            else if( tinytools::string::CompareNoCase(pTopic,"/solar/",7) && mSolar )
-            {
-                mSolar->UpdateData(pTopic,pData);
-            }            
-        }
-    }day,night;
+    Temperature *mOutSideTemp = nullptr;
+    DisplaySolaX *mSolar = nullptr;
+    DisplayWeather *mWeather = nullptr;
 
     void StartMQTT();
     eui::ElementPtr MakeDayTimeDisplay(eui::Graphics* pGraphics);
-    eui::ElementPtr MakeNightTimeDisplay(eui::Graphics* pGraphics);
 
     std::vector<openmeteo::Hourly> LoadWeather();
     bool GetIsDay()const;
@@ -149,9 +122,9 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
         mBigFont = pGraphics->FontLoad(mPath + "liberation_serif_font/LiberationSerif-Bold.ttf",130);
     }
 
+    bgTexture = pGraphics->TextureLoad(mPath + "images/bg-pastal-01.png");
 
-    mDayTime = MakeDayTimeDisplay(pGraphics);
-    mNightTime = MakeNightTimeDisplay(pGraphics);
+    mRoot = MakeDayTimeDisplay(pGraphics);
 
     std::cout << "UI started\n";
 }
@@ -159,11 +132,8 @@ void MyUI::OnOpen(eui::Graphics* pGraphics)
 
 void MyUI::OnClose()
 {
-    delete mDayTime;
-    delete mNightTime;
-
-    mDayTime = nullptr;
-    mNightTime = nullptr;
+    delete mRoot;
+    mRoot = nullptr;
 }
 
 void MyUI::OnUpdate()
@@ -178,14 +148,9 @@ void MyUI::OnUpdate()
         {
             std::clog << "Fetched weather data\n";
 
-            if( day.mWeather )
+            if( mWeather )
             {
-                day.mWeather->OnNewForcast(mForcast);
-            }
-
-            if( night.mWeather )
-            {
-                night.mWeather->OnNewForcast(mForcast);
+                mWeather->OnNewForcast(mForcast);
             }
 
             // It worked, do the next fetch in a days time.
@@ -195,6 +160,23 @@ void MyUI::OnUpdate()
             mFetchLimiter += ONE_MINUTE;
         }
     }
+
+//    dayDisplay = GetIsDay();
+    dayDisplay = !dayDisplay;
+
+    if( dayDisplay )
+    {
+        mRoot->GetStyle().mFont = (mNormalFont);
+        mRoot->GetStyle().mTexture = bgTexture;
+        mRoot->GetStyle().mBackground = eui::COLOUR_WHITE;
+    }
+    else
+    {
+        mRoot->GetStyle().mFont = (mNormalFont);
+        mRoot->GetStyle().mBackground = eui::COLOUR_BLACK;
+        mRoot->GetStyle().mForeground = eui::COLOUR_BLACK;
+    }
+
 }
 
 void MyUI::StartMQTT()
@@ -239,9 +221,22 @@ void MyUI::StartMQTT()
             // Record when we last seen a change, if we don't see one for a while something is wrong.
             // I send an 'hartbeat' with new data that is just a value incrementing.
             // This means we get an update even if the tempareture does not change.
-            day.Update(pTopic,pData);
-            night.Update(pTopic,pData);
-
+            if( tinytools::string::CompareNoCase(pTopic,"/loft/temperature") && mOutSideTemp )
+            {
+                mOutSideTemp->NewLoftTemperature(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/outside/temperature") && mOutSideTemp )
+            {
+                mOutSideTemp->NewOutSideTemperature(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/shed/temperature") && mOutSideTemp)
+            {
+                mOutSideTemp->NewShedTemperature(pData);
+            }
+            else if( tinytools::string::CompareNoCase(pTopic,"/solar/",7) && mSolar )
+            {
+                mSolar->UpdateData(pTopic,pData);
+            }            
         });
 
 }
@@ -253,74 +248,24 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
     root->SetID("Day time root");
     root->SetGrid(3,3);
 
-    root->GetStyle().mFont = (mNormalFont);
-    root->GetStyle().mTexture = pGraphics->TextureLoad(mPath + "images/bg-pastal-01.png");
-    root->GetStyle().mBackground = eui::COLOUR_WHITE;
-
-    eui::Style UpStyle;
-    UpStyle.mBackground = eui::MakeColour(100,255,100);
-    UpStyle.mThickness = BORDER_SIZE;
-    UpStyle.mBorder = eui::COLOUR_WHITE;
-    UpStyle.mRadius = RECT_RADIUS;
-    UpStyle.mForeground = eui::COLOUR_BLACK;
-
     eui::ElementPtr BottomPannel = new eui::Element;
         BottomPannel->SetPos(0,2);
         BottomPannel->SetGrid(6,2);
         BottomPannel->SetSpan(3,1);
-            day.mSolar = new DisplaySolaX(pGraphics,mPath,mLargeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true);
-            day.mOutSideTemp = new Temperature(mLargeFont,mMiniFont,UpStyle,CELL_PADDING,true);
-            day.mOutSideTemp->SetPos(0,1);
-            day.mOutSideTemp->SetSpan(4,1);
-            BottomPannel->Attach(day.mSolar);
-        BottomPannel->Attach(day.mOutSideTemp);
+            mSolar = new DisplaySolaX(pGraphics,mPath,mLargeFont);
+        BottomPannel->Attach(mSolar);
+            mOutSideTemp = new Temperature(mLargeFont,mMiniFont,CELL_PADDING);
+            mOutSideTemp->SetPos(0,1);
+            mOutSideTemp->SetSpan(4,1);
+        BottomPannel->Attach(mOutSideTemp);
     root->Attach(BottomPannel);
 
-    root->Attach(new DisplayClock(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true));
-    root->Attach(new DisplaySystemStatus(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,0.1f,true));
+    root->Attach(new DisplayClock(mBigFont,mNormalFont,mMiniFont));
+    root->Attach(new DisplaySystemStatus(mBigFont,mNormalFont,mMiniFont));
 
     // need to seperate the weather collection from the weather display.
-    day.mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,true);
-    root->Attach(day.mWeather);
-
-    return root;
-}
-
-eui::ElementPtr MyUI::MakeNightTimeDisplay(eui::Graphics* pGraphics)
-{
-    eui::ElementPtr root = new eui::Element;
-
-    root->SetID("Night time root");
-    root->SetGrid(3,3);
-
-    root->GetStyle().mFont = (mNormalFont);
-    root->GetStyle().mBackground = eui::COLOUR_BLACK;
-    root->GetStyle().mForeground = eui::COLOUR_BLACK;
-
-    eui::Style temperatureStyle;
-    temperatureStyle.mBorder = eui::COLOUR_DARK_GREY;
-    temperatureStyle.mThickness = 3;
-    temperatureStyle.mRadius = RECT_RADIUS;
-
-
-    eui::ElementPtr BottomPannel = new eui::Element;
-        BottomPannel->SetPos(0,2);
-        BottomPannel->SetGrid(6,2);
-        BottomPannel->SetSpan(3,1);
-
-            night.mSolar = new DisplaySolaX(pGraphics,mPath,mLargeFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false);
-            night.mOutSideTemp = new Temperature(mLargeFont,mMiniFont,temperatureStyle,CELL_PADDING,false);
-            night.mOutSideTemp->SetPos(0,1);
-            night.mOutSideTemp->SetSpan(4,1);
-            night.mOutSideTemp->GetStyle().mForeground = eui::COLOUR_GREY;
-            BottomPannel->Attach(night.mSolar);
-        BottomPannel->Attach(night.mOutSideTemp);
-    root->Attach(BottomPannel);
-
-    root->Attach(new DisplayClock(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false));
-    root->Attach(new DisplaySystemStatus(mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,0.1f,false));
-    night.mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont,CELL_PADDING,BORDER_SIZE,RECT_RADIUS,false);
-    root->Attach(night.mWeather);
+    mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont);
+    root->Attach(mWeather);
 
     return root;
 }
