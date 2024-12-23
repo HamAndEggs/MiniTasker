@@ -50,6 +50,7 @@ bool Temperature::OnUpdate(const eui::Rectangle& pContentRect)
         s.mBorder = eui::COLOUR_DARK_GREY;
         s.mThickness = 3;
         s.mRadius = RECT_RADIUS;
+        s.mForeground = eui::COLOUR_GREY;
         SetStyle(s);
     }
     return true;

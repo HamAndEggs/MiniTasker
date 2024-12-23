@@ -82,6 +82,7 @@ private:
     Temperature *mOutSideTemp = nullptr;
     DisplaySolaX *mSolar = nullptr;
     DisplayWeather *mWeather = nullptr;
+    DisplayBitcoinPrice *mBTC = nullptr;
 
     void StartMQTT();
     eui::ElementPtr MakeDayTimeDisplay(eui::Graphics* pGraphics);
@@ -236,7 +237,12 @@ void MyUI::StartMQTT()
             else if( tinytools::string::CompareNoCase(pTopic,"/solar/",7) && mSolar )
             {
                 mSolar->UpdateData(pTopic,pData);
-            }            
+            }           
+            else if( tinytools::string::CompareNoCase(pTopic,"/btc/mine",7) && mSolar )
+            {
+                mBTC->UpdateGBP(pData);
+            }
+             
         });
 
 }
@@ -266,6 +272,10 @@ eui::ElementPtr MyUI::MakeDayTimeDisplay(eui::Graphics* pGraphics)
     // need to seperate the weather collection from the weather display.
     mWeather = new DisplayWeather(pGraphics,mPath,mBigFont,mNormalFont,mMiniFont);
     root->Attach(mWeather);
+
+    mBTC = new DisplayBitcoinPrice(mNormalFont);
+        mBTC->SetPos(2,2);
+    root->Attach(mBTC);
 
     return root;
 }

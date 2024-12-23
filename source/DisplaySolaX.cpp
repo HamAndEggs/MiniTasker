@@ -29,9 +29,9 @@ DisplaySolaX::DisplaySolaX(eui::Graphics* graphics,const std::string& pPath,int 
 
     this->SetID("solaX");
     this->SetPos(0,0);
-    this->SetGrid(6,2);
+    this->SetGrid(6,1);
     this->GetStyle().mFont = (pFont);
-    this->SetSpan(6,2);
+    this->SetSpan(6,1);
 
 mYeld = nullptr;
 //    mYeld = new eui::Element;
@@ -66,7 +66,7 @@ mYeld = nullptr;
     this->Attach(mFeedIn);
 
     eui::ElementPtr pannels = new eui::Element;
-        pannels->SetPos(4,1);
+        pannels->SetPos(4,0);
         pannels->SetSpan(2,1);
         pannels->SetGrid(2,1);
         mFrontPanels = new eui::Element;
@@ -121,6 +121,14 @@ bool DisplaySolaX::OnUpdate(const eui::Rectangle& pContentRect)
         SOCStyle.mRadius = RECT_RADIUS;
         SOCStyle.mForeground = eui::COLOUR_BLACK;
     }
+    else
+    {
+        SOCStyle.mThickness = BORDER_SIZE;
+        SOCStyle.mBorder = eui::COLOUR_DARK_GREY;
+        SOCStyle.mRadius = RECT_RADIUS;
+        SOCStyle.mForeground = eui::COLOUR_GREY;
+    }
+
     mBatterySOC->SetStyle(SOCStyle);
     mInverter->SetStyle(SOCStyle);
     mFeedIn->SetStyle(SOCStyle);
