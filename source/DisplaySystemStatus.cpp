@@ -76,6 +76,13 @@ bool DisplaySystemStatus::OnUpdate(const eui::Rectangle& pContentRect)
         s.mThickness = BORDER_SIZE;
         s.mBorder = eui::COLOUR_WHITE;
         s.mRadius = RECT_RADIUS;
+
+        uptime->GetStyle().mForeground = eui::COLOUR_WHITE;
+        localIP->GetStyle().mForeground = eui::COLOUR_WHITE;
+        hostName->GetStyle().mForeground = eui::COLOUR_WHITE;
+        cpuLoad->GetStyle().mForeground = eui::COLOUR_WHITE;
+        ramUsed->GetStyle().mForeground = eui::COLOUR_WHITE;
+
         this->SetStyle(s);
     }
     else

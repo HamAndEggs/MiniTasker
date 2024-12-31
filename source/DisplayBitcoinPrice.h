@@ -4,6 +4,7 @@
 #include "Graphics.h"
 #include "Element.h"
 #include "TinyTools.h"
+#include "DataBinding.h"
 
 #include <string>
 
@@ -28,6 +29,7 @@ private:
 
     eui::Style UpStyle,DownStyle;
 
+    
     struct
     {
         eui::ElementPtr LastPriceUK;
